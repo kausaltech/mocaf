@@ -52,6 +52,8 @@ django-cors-headers==3.7.0
     # via -r requirements.in
 django-environ==0.4.5
     # via -r requirements.in
+django-extensions==3.1.0
+    # via -r requirements.in
 django-filter==2.4.0
     # via wagtail
 django-modelcluster==5.1
@@ -70,7 +72,9 @@ django==3.1.6
     #   graphene-django
     #   wagtail
 djangorestframework==3.12.2
-    # via wagtail
+    # via
+    #   -r requirements.in
+    #   wagtail
 draftjs-exporter==2.1.7
     # via wagtail
 et-xmlfile==1.0.1

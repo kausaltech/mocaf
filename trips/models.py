@@ -42,6 +42,8 @@ class Location(models.Model):
     speed = models.FloatField(null=True)
     heading = models.FloatField(null=True)
 
+    public_fields = ['time', 'uuid', 'loc', 'acc', 'atype', 'aconf', 'speed', 'heading']
+
     def __str__(self):
         return '%s [%s]' % (self.uuid, self.time)
 

@@ -12,3 +12,5 @@ django-cors-headers
 patchy
 graphene-django
 sentry_sdk
+djangorestframework
+django-extensions
