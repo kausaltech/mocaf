@@ -3,3 +3,5 @@ __pycache__/
 *~
 *.pickle
 /.env
+/.django_secret
+/local_settings.py
