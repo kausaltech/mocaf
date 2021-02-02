@@ -16,12 +16,6 @@ class LocationImport(models.Model):
     ms = models.IntegerField(null=True)
 
 
-class TransportMode(models.Model):
-    identifier = models.CharField(max_length=20)
-    label = models.CharField(max_length=50)
-    emission_factor = models.FloatField(null=True)
-
-
 class ActivityTypeChoices(models.TextChoices):
     UNKNOWN = 'unknown', _('Unknown')
     STILL = 'still', _('Still')
@@ -36,9 +30,9 @@ class Location(models.Model):
     time = models.DateTimeField(null=False)
     uuid = models.UUIDField(null=False)
     loc = models.PointField(null=False, srid=4326)
-    acc = models.IntegerField(null=True)
+    loc_error = models.FloatField(null=True)
     atype = models.CharField(choices=ActivityTypeChoices.choices, null=True, max_length=20)
-    aconf = models.IntegerField(null=True)
+    aconf = models.FloatField(null=True)
     speed = models.FloatField(null=True)
     heading = models.FloatField(null=True)
 
@@ -56,10 +50,30 @@ class Location(models.Model):
 
 class Installation(models.Model):
     uuid = models.UUIDField(null=False, unique=True)
+    token = models.CharField(max_length=50)
+
+
+class TransportMode(models.Model):
+    identifier = models.CharField(
+        max_length=20, unique=True, verbose_name=_('Identifier'),
+        editable=False,
+    )
+    label = models.CharField(max_length=50, verbose_name=_('Label'))
+    emission_factor = models.FloatField(
+        null=True, verbose_name=_('Emission factor'),
+        help_text=_('Emission factor of transport mode in g (CO2e)/passenger-km')
+    )
+
+    def __str__(self):
+        return self.label
+
+
+class Trip(models.Model):
+    installation = models.ForeignKey(Installation, on_delete=models.CASCADE, related_name='trips')
 
 
 class Leg(models.Model):
-    installation = models.ForeignKey(Installation, on_delete=models.CASCADE)
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='legs')
     mode = models.ForeignKey(TransportMode, on_delete=models.PROTECT)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
@@ -71,3 +85,7 @@ class LegLocation(models.Model):
     leg = models.ForeignKey(Leg, on_delete=models.CASCADE, related_name='locations')
     loc = models.PointField(null=False, srid=4326)
     time = models.DateTimeField()
+    speed = models.FloatField()
+
+    class Meta:
+        ordering = ('leg', 'time')
