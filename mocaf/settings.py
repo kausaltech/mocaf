@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'wagtail.search',
     'wagtail.admin',
     'wagtail.core',
-    # 'django_enum',
 
     'modelcluster',
     'taggit',
@@ -92,6 +91,7 @@ INSTALLED_APPS = [
     'django_extensions',
 
     'trips',
+    'budget',
 ]
 
 MIDDLEWARE = [
@@ -179,7 +179,7 @@ LANGUAGES = (
     ('sv', _('Swedish')),
 )
 MODELTRANS_AVAILABLE_LANGUAGES = [x[0] for x in LANGUAGES]
-LANGUAGE_CODE = 'en'
+LANGUAGE_CODE = 'fi'
 TIME_ZONE = 'Europe/Helsinki'
 USE_I18N = True
 USE_L10N = True
