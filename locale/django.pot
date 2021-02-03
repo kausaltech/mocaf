@@ -1,0 +1,110 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-02-03 09:53+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: budget/apps.py
+msgid "Emission budget"
+msgstr ""
+
+#: budget/models.py
+msgid "Year"
+msgstr ""
+
+#: budget/models.py
+msgid "Emission amount"
+msgstr ""
+
+#: budget/models.py
+msgid "Amount of mobility carbon emissions per resident per day (in grams of CO2e.)"
+msgstr ""
+
+#: budget/models.py
+msgid "Daily emission budget"
+msgstr ""
+
+#: budget/models.py
+msgid "Daily emission budgets"
+msgstr ""
+
+#: mocaf/settings.py
+msgid "Finnish"
+msgstr ""
+
+#: mocaf/settings.py
+msgid "English"
+msgstr ""
+
+#: mocaf/settings.py
+msgid "Swedish"
+msgstr ""
+
+#: trips/apps.py
+msgid "Trips"
+msgstr ""
+
+#: trips/models.py
+msgid "Unknown"
+msgstr ""
+
+#: trips/models.py
+msgid "Still"
+msgstr ""
+
+#: trips/models.py
+msgid "On foot"
+msgstr ""
+
+#: trips/models.py
+msgid "Walking"
+msgstr ""
+
+#: trips/models.py
+msgid "Running"
+msgstr ""
+
+#: trips/models.py
+msgid "On bicycle"
+msgstr ""
+
+#: trips/models.py
+msgid "In vehicle"
+msgstr ""
+
+#: trips/models.py
+msgid "Identifier"
+msgstr ""
+
+#: trips/models.py
+msgid "Name"
+msgstr ""
+
+#: trips/models.py
+msgid "Emission factor"
+msgstr ""
+
+#: trips/models.py
+msgid "Emission factor of transport mode in g (CO2e)/passenger-km"
+msgstr ""
+
+#: trips/models.py
+msgid "Transport mode"
+msgstr ""
+
+#: trips/models.py
+msgid "Transport modes"
+msgstr ""

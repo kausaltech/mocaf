@@ -5,3 +5,4 @@ __pycache__/
 /.env
 /.django_secret
 /local_settings.py
+*.mo
