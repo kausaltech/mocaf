@@ -58,11 +58,15 @@ class TransportMode(models.Model):
         max_length=20, unique=True, verbose_name=_('Identifier'),
         editable=False,
     )
-    label = models.CharField(max_length=50, verbose_name=_('Label'))
+    name = models.CharField(max_length=50, verbose_name=_('Name'))
     emission_factor = models.FloatField(
         null=True, verbose_name=_('Emission factor'),
         help_text=_('Emission factor of transport mode in g (CO2e)/passenger-km')
     )
+
+    class Meta:
+        verbose_name = _('Transport mode')
+        verbose_name_plural = _('Transport modes')
 
     def __str__(self):
         return self.label

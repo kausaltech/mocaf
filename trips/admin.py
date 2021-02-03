@@ -3,7 +3,7 @@ from .models import TransportMode
 
 
 class TransportModeAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('name', 'emission_factor')
 
 
 admin.site.register(TransportMode, TransportModeAdmin)
