@@ -16,6 +16,17 @@ class LocationImport(models.Model):
     ms = models.IntegerField(null=True)
 
 
+class SensorSampleImport(models.Model):
+    id = models.IntegerField(primary_key=True)
+    uid = models.CharField(max_length=50)
+    time = models.IntegerField(null=False)
+    ms = models.IntegerField(null=True)
+    x = models.FloatField(null=False)
+    y = models.FloatField(null=False)
+    z = models.FloatField(null=False)
+    type = models.CharField(null=False, max_length=20)
+
+
 class ActivityTypeChoices(models.TextChoices):
     UNKNOWN = 'unknown', _('Unknown')
     STILL = 'still', _('Still')
@@ -48,7 +59,27 @@ class Location(models.Model):
         ]
 
 
-class Installation(models.Model):
+class SensorTypeChoices(models.TextChoices):
+    UNKNOWN = 'acce', _('Accelerometer')
+    STILL = 'gyro', _('Gyroscope')
+
+
+class SensorSample(models.Model):
+    time = models.DateTimeField(null=False)
+    uuid = models.UUIDField(null=False)
+    x = models.FloatField(null=False)
+    y = models.FloatField(null=False)
+    z = models.FloatField(null=False)
+    type = models.CharField(null=False, max_length=20, choices=SensorTypeChoices.choices)
+
+    class Meta:
+        unique_together = (('uuid', 'time'),)
+        indexes = [
+            models.Index(fields=['uuid', '-time']),
+        ]
+
+
+class Device(models.Model):
     uuid = models.UUIDField(null=False, unique=True)
     token = models.CharField(max_length=50)
 
@@ -73,7 +104,7 @@ class TransportMode(models.Model):
 
 
 class Trip(models.Model):
-    installation = models.ForeignKey(Installation, on_delete=models.CASCADE, related_name='trips')
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
 
 
 class Leg(models.Model):
