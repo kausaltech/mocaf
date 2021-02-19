@@ -18,20 +18,36 @@ DEFAULT_ZOOM = 12
 
 eng = create_engine(os.getenv('DATABASE_URL'))
 
+COLOR_MAP = {
+    'still': '#073b4c',
+    'walking': '#ffd166',
+    'in_vehicle': '#ef476f',
+    'running': '#f77f00',
+    'on_bicycle': '#06d6a0',
+}
 
 def read_uuids():
     with eng.connect() as conn:
         print('Reading uids')
-        res = conn.execute(f'SELECT uuid, count(id) AS count FROM {TABLE_NAME} WHERE aconf IS NOT NULL GROUP BY uuid ORDER BY count DESC LIMIT 100');
+        res = conn.execute(f"""
+            SELECT uuid, count(id) AS count FROM {TABLE_NAME}
+                WHERE aconf IS NOT NULL AND time >= now() - interval '14 days'
+                GROUP BY uuid
+                ORDER BY count
+                DESC LIMIT 100
+        """);
         rows = res.fetchall()
-        uuids = [str(row[0]) for row in rows]
-    return uuids
+        uuid_counts = ['%s,%s' % (str(row[0]), row[1]) for row in rows]
+    print(uuid_counts)
+    return uuid_counts
 
 
 try:
-    uuids = [x.strip() for x in open('uuids.txt', 'r').readlines()]
+    uuids = [x.split(',')[0].strip() for x in open('uuids.txt', 'r').readlines()]
 except FileNotFoundError:
-    open('uuids.txt', 'w').write('\n'.join(read_uuids()))
+    s = read_uuids()
+    open('uuids.txt', 'w').write('\n'.join(s))
+    uuids = [x.split(',')[0].strip() for x in s]
 
 
 def read_locations(uid):
@@ -42,12 +58,14 @@ def read_locations(uid):
                 time,
                 ST_X(ST_Transform(loc, 3067)) AS x,
                 ST_Y(ST_Transform(loc, 3067)) AS y,
-                acc,
+                loc_error,
                 atype,
                 aconf,
                 speed,
                 heading
-            FROM {TABLE_NAME} WHERE uuid = '%s'::uuid ORDER BY time
+            FROM {TABLE_NAME}
+            WHERE uuid = '%s'::uuid AND time >= now() - interval '14 days'
+            ORDER BY time
         """ % uid, conn)
 
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y, crs='epsg:3067'))
@@ -70,20 +88,40 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 map_fig = None
 gdf = None
 
+
+def make_map_fig(xstart=None, xend=None):
+    df = gdf
+    if xstart and xend:
+        df = df[(df.datetime >= xstart) & (df.datetime <= xend)]
+
+    fig = px.scatter_mapbox(
+        df, lat="lat", lon="lon", color='atype', zoom=DEFAULT_ZOOM,
+        height=400, hover_data=['atype', 'speed', 'loc_error'], size='size', size_max=5,
+        color_discrete_map=COLOR_MAP,
+    )
+    fig.update_layout(mapbox_style="open-street-map", margin={'l': 0, 'b': 0, 'r': 0, 't': 10})
+    return fig
+
+
 @app.callback(
     Output('map-graph', 'figure'),
-    [Input('time-graph', 'hoverData'), Input('time-graph', 'clickData')])
-def display_hover_data(hoverData, clickData):
-    if not hoverData and not clickData:
+    [Input('time-graph', 'hoverData'), Input('time-graph', 'clickData'), Input('time-graph', 'relayoutData')])
+def display_hover_data(hover_data, click_data, relayout_data):
+    global map_fig
+
+    if relayout_data and 'xaxis.range[0]' in relayout_data:
+        map_fig = make_map_fig(relayout_data['xaxis.range[0]'], relayout_data['xaxis.range[1]'])
+
+    if not hover_data and not click_data:
         return map_fig
 
-    if clickData:
+    if click_data:
         click = True
     else:
         click = False
 
     layers = []
-    for p in hoverData['points']:
+    for p in hover_data['points']:
         trace = map_fig['data'][p['curveNumber']]
         r = gdf.loc[gdf.datetime == p['x']].iloc[0]
         layer = dict(
@@ -125,13 +163,11 @@ def handle_uuid_selection(new_uid):
         return None
     gdf = read_locations(new_uid)
 
-    map_fig = px.scatter_mapbox(
-        gdf, lat="lat", lon="lon", color='atype', zoom=DEFAULT_ZOOM,
-        height=400, hover_data=['atype', 'speed', 'acc'], size='size', size_max=5
+    map_fig = make_map_fig()
+    time_fig = px.scatter(
+        gdf, x='datetime', y='speed', color='atype', hover_data=['loc_error'],
+        color_discrete_map=COLOR_MAP,
     )
-    map_fig.update_layout(mapbox_style="open-street-map", margin={'l': 0, 'b': 0, 'r': 0, 't': 10})
-
-    time_fig = px.scatter(gdf, x='datetime', y='speed', color='atype', hover_data=['acc'])
 
     return [
         dbc.Col(dcc.Graph(id='map-graph', figure=map_fig), md=6),
