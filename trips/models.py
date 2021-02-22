@@ -46,6 +46,7 @@ class Location(models.Model):
     aconf = models.FloatField(null=True)
     speed = models.FloatField(null=True)
     heading = models.FloatField(null=True)
+    sensor_data_count = models.PositiveIntegerField(null=True)
 
     public_fields = ['time', 'uuid', 'loc', 'acc', 'atype', 'aconf', 'speed', 'heading']
 
