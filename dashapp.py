@@ -15,6 +15,7 @@ load_dotenv()
 
 TABLE_NAME = 'trips_location'
 DEFAULT_ZOOM = 12
+LOCAL_TZ = 'Europe/Helsinki'
 
 eng = create_engine(os.getenv('DATABASE_URL'))
 
@@ -74,7 +75,7 @@ def read_locations(uid):
     gdf['lon'] = gdf.geometry.x
     gdf['size'] = 1
 
-    gdf['datetime'] = pd.to_datetime(gdf.time)
+    gdf['datetime'] = pd.to_datetime(gdf.time).dt.tz_convert(LOCAL_TZ)
     gdf['speed'] *= 3.6
     print(gdf)
 
