@@ -1,11 +1,6 @@
-sqlalchemy
 psycopg2-binary
-dash
-geoalchemy2
 pandas
 python-dotenv
-geopandas
-dash-bootstrap-components
 wagtail
 django-environ
 django-cors-headers
@@ -14,3 +9,12 @@ graphene-django
 sentry_sdk
 djangorestframework
 django-extensions
+scipy
+
+dash
+dash-deck
+sqlalchemy
+geoalchemy2
+geopandas
+dash-bootstrap-components
+pydeck
