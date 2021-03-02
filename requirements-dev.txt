@@ -5,37 +5,63 @@
 #    pip-compile requirements-dev.in
 #
 backcall==0.2.0
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 click==7.1.2
     # via
     #   -c requirements.txt
     #   pip-tools
 decorator==4.4.2
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 ipython-genutils==0.2.0
-    # via traitlets
-ipython==7.19.0
-    # via -r requirements-dev.in
+    # via
+    #   -c requirements.txt
+    #   traitlets
+ipython==7.21.0
+    # via
+    #   -c requirements.txt
+    #   -r requirements-dev.in
 jedi==0.18.0
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 parso==0.8.1
-    # via jedi
+    # via
+    #   -c requirements.txt
+    #   jedi
 pexpect==4.8.0
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 pickleshare==0.7.5
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 pip-tools==5.5.0
     # via -r requirements-dev.in
-prompt-toolkit==3.0.14
-    # via ipython
+prompt-toolkit==3.0.16
+    # via
+    #   -c requirements.txt
+    #   ipython
 ptyprocess==0.7.0
-    # via pexpect
-pygments==2.7.4
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   pexpect
+pygments==2.8.0
+    # via
+    #   -c requirements.txt
+    #   ipython
 traitlets==5.0.5
-    # via ipython
+    # via
+    #   -c requirements.txt
+    #   ipython
 wcwidth==0.2.5
-    # via prompt-toolkit
+    # via
+    #   -c requirements.txt
+    #   prompt-toolkit
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
