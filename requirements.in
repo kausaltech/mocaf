@@ -11,6 +11,7 @@ djangorestframework
 django-extensions
 scipy
 arrow
+-e git+https://github.com/Raekkeri/django-multi-gtfs.git@django3#egg=multigtfs
 
 dash
 dash-deck
