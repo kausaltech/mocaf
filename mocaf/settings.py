@@ -92,6 +92,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
 
+    'transitrt',
+    'trips_ingest',
     'trips',
     'budget',
 ]
