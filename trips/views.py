@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from mocaf.utils import public_fields
-from .models import Location
+from trips_ingest.models import Location
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -14,6 +14,7 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class LocationList(APIView):
     def post(self, request, format=None):
+        return
         data = request.data.copy()
         if 'lon' in data and 'lat' in data:
             lon = float(data['lon'])

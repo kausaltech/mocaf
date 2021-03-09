@@ -1,4 +1,5 @@
 import uuid
+import geopandas as gpd
 
 import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()  # noqa
 from calc.trips import LOCAL_2D_CRS, LOCAL_TZ
@@ -30,7 +31,9 @@ coord_transform = CoordTransform(local_crs, gps_crs)
 
 def insert_leg_locations(rows):
     pc = PerfCounter('save_locations', show_time_to_last=True)
-    query = f'''EXPLAIN ANALYZE INSERT INTO {LEG_LOCATION_TABLE} (leg_id, loc, time, speed) VALUES %s'''
+    query = f'''INSERT INTO {LEG_LOCATION_TABLE} (
+        leg_id, loc, time, speed
+    ) VALUES %s'''
 
     with connection.cursor() as cursor:
         pc.display('after cursor')
@@ -40,19 +43,24 @@ def insert_leg_locations(rows):
                 %s :: timestamptz,
                 %s
         )"""
-        ret = execute_values(
-            cursor, query, rows, template=value_template, fetch=True, page_size=10000
+        execute_values(
+            cursor, query, rows, template=value_template, page_size=10000
         )
-        for row in ret:
-            print(row[0])
 
     pc.display('after insert')
+
+
+# Transform to GPS coordinates
+def make_point(x, y):
+    pnt = Point(x, y, srid=LOCAL_2D_CRS)
+    pnt.transform(coord_transform)
+    return pnt
 
 
 def generate_leg_rows(leg, df):
     rows = df.apply(lambda row: (
         leg.id,
-        row['loc'].x, row['loc'].y,
+        row.lon, row.lat,
         '%s' % str(row.time),
         row.speed,
     ), axis=1)
@@ -60,31 +68,31 @@ def generate_leg_rows(leg, df):
 
 
 def save_leg(trip, df, last_ts):
-    pc = PerfCounter('save_leg', show_time_to_last=True)
+    start = df.iloc[0][['time', 'x', 'y']]
+    end = df.iloc[-1][['time', 'x', 'y']]
 
-    leg_start = df.time.min()
-    leg_end = df.time.max()
-    leg_length = df.distance.sum()
+    leg_length = df['distance'].sum()
 
     # Ensure trips are ordered properly
-    assert leg_start >= last_ts and leg_end >= last_ts
+    assert start.time >= last_ts and end.time >= last_ts
 
     mode = ATYPE_TO_MODE[df.iloc[0].atype]
 
     leg = Leg(
         trip=trip,
         mode=mode,
-        length=df.distance.sum(),
-        started_at=leg_start,
-        ended_at=leg_end,
+        length=leg_length,
+        started_at=start.time,
+        ended_at=end.time,
+        start_loc=make_point(start.x, start.y),
+        end_loc=make_point(end.x, end.y),
         carbon_footprint=leg_length * mode.emission_factor
     )
     leg.save()
-    pc.display('after save')
 
     rows = generate_leg_rows(leg, df)
 
-    return rows, leg_end
+    return rows, end.time
 
 
 def generate_trips_for_uuid(uid, df):
@@ -102,18 +110,16 @@ def generate_trips_for_uuid(uid, df):
         return
 
     pc.display('device save')
-    df.time = df.time.dt.tz_localize(LOCAL_TZ)
+
     min_time = df.time.min()
     max_time = df.time.max()
 
-    # Transform to GPS coordinates
-    def transform_point(x, y):
-        pnt = Point(x, y, srid=LOCAL_2D_CRS)
-        pnt.transform(coord_transform)
-        return pnt
-
-    df['loc'] = df[['x', 'y']].apply(lambda row: transform_point(row.x, row.y), axis=1)
-    pc.display('after crs')
+    df = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y, crs=LOCAL_2D_CRS))
+    pc.display('after crs for %d points' % len(df))
+    df['geometry'] = df['geometry'].to_crs(4326)
+    df['lon'] = df.geometry.x
+    df['lat'] = df.geometry.y
+    pc.display('after crs for %d points' % len(df))
 
     # Delete trips that overlap with our data
     overlap = Q(ended_at__gte=min_time) & Q(ended_at__lte=max_time)
@@ -136,11 +142,10 @@ def generate_trips_for_uuid(uid, df):
         leg_ids = trip_df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = trip_df[trip_df.leg_id == leg_id]
-            pc.display('before leg save')
             leg_rows, last_ts = save_leg(trip, leg_df, last_ts)
             all_rows += leg_rows
-            pc.display('after leg save')
 
+    pc.display('after leg location generation')
     insert_leg_locations(all_rows)
     pc.display('after leg location insert')
 
@@ -154,6 +159,7 @@ if __name__ == '__main__':
     load_dotenv()
     eng = create_engine(os.getenv('DATABASE_URL'))
     all_uids = read_uuids(eng)
+    transaction.set_autocommit(False)
     for uid in all_uids:
         print(uid)
         device = Device.objects.filter(uuid=uid).first()
@@ -161,8 +167,7 @@ if __name__ == '__main__':
             continue
         df = read_trips(eng, uid)
         df = split_trip_legs(df)
-        transaction.set_autocommit(False)
         with transaction.atomic():
             generate_trips_for_uuid(uid, df)
         transaction.commit()
-        transaction.set_autocommit(True)
+    transaction.set_autocommit(True)
