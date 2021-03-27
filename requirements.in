@@ -6,11 +6,14 @@ django-environ
 django-cors-headers
 patchy
 graphene-django
+graphene-django-optimizer
 sentry_sdk
 djangorestframework
 django-extensions
+graphene-gis
 scipy
 arrow
+filterpy
 -e git+https://github.com/Raekkeri/django-multi-gtfs.git@django3#egg=multigtfs
 
 dash

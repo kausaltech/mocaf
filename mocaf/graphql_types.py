@@ -1,5 +1,6 @@
 import re
 
+import graphene
 from graphene_django import DjangoObjectType
 from graphene.utils.trim_docstring import trim_docstring
 
@@ -20,3 +21,7 @@ class DjangoNode(DjangoObjectType):
 
     class Meta:
         abstract = True
+
+
+class AuthenticatedDeviceNode(graphene.ObjectType):
+    pass

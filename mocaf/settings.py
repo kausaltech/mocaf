@@ -82,6 +82,8 @@ INSTALLED_APPS = [
     'modelcluster',
     'taggit',
     'multigtfs',
+    'graphene_django',
+    'graphene_gis',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -171,6 +173,9 @@ CORS_ALLOW_HEADERS = list(default_cors_headers) + [
 
 GRAPHENE = {
     'SCHEMA': 'mocaf.schema.schema',
+    'MIDDLEWARE': [
+        'mocaf.graphql_middleware.APITokenMiddleware',
+    ],
 }
 
 
@@ -233,6 +238,8 @@ WAGTAIL_PASSWORD_RESET_ENABLED = True
 # Base URL to use when referring to full URLs within the Wagtail admin backend -
 # e.g. in notification emails. Don't include '/admin' or a trailing slash
 BASE_URL = 'http://example.com'
+
+LOCAL_SRS = 3067  # ETRS-TM35-FIN
 
 
 # local_settings.py can be used to override environment-specific settings

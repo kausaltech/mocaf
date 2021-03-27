@@ -1,5 +1,6 @@
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
 
 class LocationImport(models.Model):
@@ -41,7 +42,7 @@ class Location(models.Model):
     time = models.DateTimeField(primary_key=True)
     origin_row_id = models.BigIntegerField()
     uuid = models.UUIDField()
-    loc = models.PointField(null=False, srid=3857)
+    loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
     loc_error = models.FloatField(null=True)
     atype = models.CharField(choices=ActivityTypeChoices.choices, null=True, max_length=20)
     aconf = models.FloatField(null=True)

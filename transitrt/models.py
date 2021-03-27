@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.gis.db import models
 from multigtfs.models import Route
 
@@ -8,7 +9,7 @@ class VehicleLocation(models.Model):
     vehicle_ref = models.CharField(max_length=30)
     journey_ref = models.CharField(max_length=30)
     time = models.DateTimeField(primary_key=True)
-    loc = models.PointField(null=False, srid=3857)
+    loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
     bearing = models.FloatField(null=True)
 
     class Meta:

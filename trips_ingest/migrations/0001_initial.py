@@ -2,7 +2,7 @@
 
 import django.contrib.gis.db.models.fields
 from django.db import migrations, models
-
+from django.conf import settings
 
 class Migration(migrations.Migration):
 
@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
         """),
-        migrations.RunSQL(sql="""
+        migrations.RunSQL(sql=f"""
             CREATE TABLE "trips_ingest_location" (
                 "time" timestamp with time zone NOT NULL,
                 "uuid" uuid NOT NULL,
-                "loc" geometry(POINT,3857) NOT NULL,
+                "loc" geometry(POINT,{settings.LOCAL_SRS}) NOT NULL,
                 "loc_error" double precision NULL,
                 "atype" varchar(20) NULL,
                 "aconf" double precision NULL,
