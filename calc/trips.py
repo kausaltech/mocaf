@@ -1,13 +1,18 @@
 import pandas as pd
 from utils.perf import PerfCounter
 
+from .dragimm import filter_trajectory, filters as transport_modes
+
 
 TABLE_NAME = 'trips_ingest_location'
 TRANSIT_TABLE = 'transitrt_vehiclelocation'
 LOCAL_TZ = 'Europe/Helsinki'
+
 MINS_BETWEEN_TRIPS = 20
+MIN_DISTANCE_MOVED_IN_TRIP = 200
+
 DAYS_TO_FETCH = 30
-LOCAL_2D_CRS = 3857
+LOCAL_2D_CRS = 3067
 
 
 def read_trips(eng, uid, start_at=None, end_at=None):
@@ -83,15 +88,24 @@ def read_trips(eng, uid, start_at=None, end_at=None):
         df = pd.read_sql_query(query, conn)
     pc.display('queried')
 
+    df['time'] = pd.to_datetime(df.time, utc=True)
     df['timediff'] = df['time'].diff().dt.total_seconds().fillna(value=0)
-    df['new_trip'] = df['timediff'] > 20 * 60
+    df['new_trip'] = df['timediff'] > MINS_BETWEEN_TRIPS * 60
     df['trip_id'] = df['new_trip'].cumsum()
     d = ((df.x - df.x.shift()) ** 2 + (df.y - df.y.shift()) ** 2).pow(.5).fillna(0)
     df['distance'] = d
 
-    # Drop trips that do not have enough location samples
-    trips = df[df.loc_error < 100].groupby('trip_id')['time'].count()
-    trips_to_keep = trips.index[trips > 50]
+    # Filter out trips that do not have enough low location error samples
+    # far enough from the trip center point.
+    good_samples = df[df.loc_error < 100]
+    avg_loc = good_samples.groupby('trip_id')[['x', 'y']].mean()
+    avg_loc.columns = ['avg_x', 'avg_y']
+    d = good_samples.join(avg_loc, on='trip_id')
+    d['mean_distance'] = ((d.x - d.avg_x) ** 2 + (d.y - d.avg_y) ** 2).pow(.5)
+
+    loc_count = d[d['mean_distance'] > MIN_DISTANCE_MOVED_IN_TRIP].groupby('trip_id')['time'].count()
+    trips_to_keep = loc_count.index[loc_count > 10]
+
     df = df[df.trip_id.isin(trips_to_keep)]
     df = df.drop(columns=['timediff', 'new_trip'])
 
@@ -147,6 +161,51 @@ def read_trips(eng, uid, start_at=None, end_at=None):
     return df
 
 
+ATYPE_MAPPING = {
+    'still': 'still',
+    'running': 'walking',
+    'on_foot': 'walking',
+    'walking': 'walking',
+    'on_bicycle': 'cycling',
+    'in_vehicle': 'driving',
+}
+
+
+def filter_trips(df):
+    out = df[['time', 'x', 'y', 'speed']].copy()
+    s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
+    out['time'] = s / pd.Timedelta('1s')
+
+    out['location_std'] = df['loc_error'].clip(lower=0.1)
+    out['atype'] = df['atype'].map(ATYPE_MAPPING)
+    out['aconf'] = df['aconf'] / 100
+    out.loc[out.aconf == 1, 'aconf'] /= 2
+
+    ms, Ss, state_probs = filter_trajectory((r for i, r in out.iterrows()))
+    x = ms[:, 0]
+    y = ms[:, 1]
+
+    df = df.copy()
+    df['xf'] = x
+    df['yf'] = y
+
+    print(len(df))
+    print(len(state_probs))
+
+    modes = transport_modes.keys()
+    for idx, mode in enumerate(modes):
+        if mode == 'driving':
+            mode = 'in_vehicle'
+        elif mode == 'cycling':
+            mode = 'on_bicycle'
+        df[mode] = [x[idx] for x in state_probs]
+
+    print(df.tail(20))
+    print(state_probs[-30:])
+
+    return df
+
+
 def read_uuids_from_sql(eng):
     with eng.connect() as conn:
         print('Reading uids')
@@ -196,7 +255,20 @@ if __name__ == '__main__':
     load_dotenv()
     eng = create_engine(os.getenv('DATABASE_URL'))
     default_uid = os.getenv('DEFAULT_UUID')
+
     if True:
+        pd.set_option("max_rows", None)
+        pd.set_option("min_rows", None)
+        df = read_trips(eng, default_uid)
+        trip_ids = df.trip_id.unique()
+        for trip in trip_ids:
+            print(trip)
+            tdf = filter_trips(df[df.trip_id == trip])
+            break
+
+    if False:
         for uid in read_uuids(eng):
             df = read_trips(eng, uid)
-    split_trip_legs(df)
+            print(df)
+            exit()
+    # split_trip_legs(df)
