@@ -15,6 +15,8 @@ class LocationImport(models.Model):
     speed = models.FloatField(null=True)
     heading = models.FloatField(null=True)
     ms = models.IntegerField(null=True)
+    created_at = models.IntegerField(null=True)
+    debug = models.IntegerField(null=True)
 
 
 class SensorSampleImport(models.Model):
@@ -40,7 +42,6 @@ class ActivityTypeChoices(models.TextChoices):
 
 class Location(models.Model):
     time = models.DateTimeField(primary_key=True)
-    origin_row_id = models.BigIntegerField()
     uuid = models.UUIDField()
     loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
     loc_error = models.FloatField(null=True)
@@ -48,6 +49,8 @@ class Location(models.Model):
     aconf = models.FloatField(null=True)
     speed = models.FloatField(null=True)
     heading = models.FloatField(null=True)
+    created_at = models.DateTimeField(null=True)
+    debug = models.BooleanField(default=False)
     sensor_data_count = models.PositiveIntegerField(null=True)
 
     public_fields = ['time', 'uuid', 'loc', 'acc', 'atype', 'aconf', 'speed', 'heading']
