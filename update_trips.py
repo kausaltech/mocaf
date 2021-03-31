@@ -82,12 +82,12 @@ def save_leg(trip, df, last_ts):
         trip=trip,
         mode=mode,
         length=leg_length,
-        started_at=start.time,
-        ended_at=end.time,
+        start_time=start.time,
+        end_time=end.time,
         start_loc=make_point(start.x, start.y),
         end_loc=make_point(end.x, end.y),
-        carbon_footprint=leg_length * mode.emission_factor
     )
+    leg.update_carbon_footprint()
     leg.save()
 
     rows = generate_leg_rows(leg, df)
@@ -122,8 +122,8 @@ def generate_trips_for_uuid(uid, df):
     pc.display('after crs for %d points' % len(df))
 
     # Delete trips that overlap with our data
-    overlap = Q(ended_at__gte=min_time) & Q(ended_at__lte=max_time)
-    overlap |= Q(started_at__gte=min_time) & Q(started_at__lte=max_time)
+    overlap = Q(end_time__gte=min_time) & Q(end_time__lte=max_time)
+    overlap |= Q(start_time__gte=min_time) & Q(start_time__lte=max_time)
     legs = Leg.objects.filter(trip__device=device).filter(overlap)
     device.trips.filter(legs__in=legs).delete()
     pc.display('deleted')
