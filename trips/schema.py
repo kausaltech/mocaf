@@ -94,7 +94,7 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
         return dict(ok=False)
 
 
-class UpdateLeg(graphene.mutation, AuthenticatedDeviceNode):
+class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
         leg = graphene.ID(required=True)
         mode = graphene.ID()
