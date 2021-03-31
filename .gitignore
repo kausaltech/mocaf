@@ -7,3 +7,5 @@ __pycache__/
 /local_settings.py
 *.mo
 /uuids.txt
+/.ipynb_checkpoints/
+/.vscode/
