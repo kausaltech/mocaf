@@ -73,7 +73,7 @@ class Trip(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
 
     def get_start_time(self):
-        return self.legs.all()[0].started_at
+        return self.legs.all()[0].start_time
 
     def __str__(self):
         legs = list(self.legs.all())
@@ -81,16 +81,16 @@ class Trip(models.Model):
         for leg in legs:
             length += leg.length
 
-        started_at = legs[0].started_at
-        ended_at = legs[-1].ended_at
-        duration = (ended_at - started_at).total_seconds() / 60
+        start_time = legs[0].start_time
+        end_time = legs[-1].end_time
+        duration = (end_time - start_time).total_seconds() / 60
 
         return 'Trip with %d legs, started %s (duration %.1f min), length %.1f km [%s]' % (
-            len(legs), started_at, duration, length / 1000, self.device
+            len(legs), start_time, duration, length / 1000, self.device
         )
 
     class Meta:
-        get_latest_by = 'legs__started_at'
+        get_latest_by = 'legs__start_time'
 
 
 class Leg(models.Model):
@@ -122,16 +122,16 @@ class Leg(models.Model):
         ordering = ('trip', 'start_time')
 
     def update_carbon_footprint(self):
-        footprint = self.mode.emission_factor * self.length
+        footprint = self.mode.emission_factor * self.length / 1000
         if self.mode.identifier == 'car' and self.nr_passengers:
             footprint /= (1 + self.nr_passengers)
         self.carbon_footprint = footprint
 
     def __str__(self):
-        duration = (self.ended_at - self.started_at).total_seconds() / 60
-        deleted = 'DELETED ' if self.deleted else False
+        duration = (self.end_time - self.start_time).total_seconds() / 60
+        deleted = 'DELETED ' if self.deleted else ''
         return '%sLeg [%s]: Started at %s (duration %.1s min), length %.1f km' % (
-            deleted, self.mode.identifier, self.started_at, duration, self.length / 1000
+            deleted, self.mode.identifier, self.start_time, duration, self.length / 1000
         )
 
 
