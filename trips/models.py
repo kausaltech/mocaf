@@ -1,4 +1,3 @@
-from datetime import timezone
 import uuid
 from django.utils import timezone
 from django.db import transaction
@@ -12,7 +11,11 @@ class InvalidStateError(Exception):
 
 class Device(models.Model):
     uuid = models.UUIDField(null=False, unique=True, db_index=True)
-    token = models.CharField(max_length=50)
+    token = models.CharField(max_length=50, null=True)
+    platform = models.CharField(max_length=20, null=True)
+    system_version = models.CharField(max_length=20, null=True)
+    brand = models.CharField(max_length=20, null=True)
+    model = models.CharField(max_length=20, null=True)
 
     def generate_token(self):
         assert not self.token
