@@ -22,7 +22,7 @@ class LegNode(DjangoNode, AuthenticatedDeviceNode):
     class Meta:
         model = Leg
         fields = [
-            'id', 'mode', 'mode_confidence', 'started_at', 'ended_at', 'start_loc', 'end_loc',
+            'id', 'mode', 'mode_confidence', 'start_time', 'end_time', 'start_loc', 'end_loc',
             'length', 'carbon_footprint'
         ]
 
@@ -101,7 +101,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
         nr_passengers = graphene.Int()
         deleted = graphene.Boolean()
 
-    leg = graphene.Field(Leg)
+    leg = graphene.Field(LegNode)
     ok = graphene.Boolean()
 
     @classmethod
@@ -128,7 +128,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
         with transaction.atomic():
             update_fields = []
             try:
-                obj = Leg.objects.filter(trip__device=dev).select_for_update().get()
+                obj = Leg.objects.filter(trip__device=dev, id=leg).select_for_update().get()
             except Leg.DoesNotExist:
                 raise GraphQLError('Leg does not exist', [info])
 
@@ -167,3 +167,4 @@ class Query(graphene.ObjectType):
 class Mutations(graphene.ObjectType):
     enable_mocaf = EnableMocafMutation.Field()
     disable_mocaf = DisableMocafMutation.Field()
+    update_leg = UpdateLeg.Field()
