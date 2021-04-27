@@ -169,7 +169,13 @@ ATYPE_MAPPING = {
     'on_bicycle': 'cycling',
     'in_vehicle': 'driving',
 }
-
+ATYPE_REVERSE = {
+    'still': 'still',
+    'walking': 'on_foot',
+    'cycling': 'on_bicycle',
+    'driving': 'in_vehicle',
+}
+IDX_MAPPING = {idx: ATYPE_REVERSE[x] for idx, x in enumerate(transport_modes.keys())}
 
 def filter_trips(df):
     out = df[['time', 'x', 'y', 'speed']].copy()
@@ -181,16 +187,14 @@ def filter_trips(df):
     out['aconf'] = df['aconf'] / 100
     out.loc[out.aconf == 1, 'aconf'] /= 2
 
-    ms, Ss, state_probs = filter_trajectory((r for i, r in out.iterrows()))
+    ms, Ss, state_probs, most_likely_path = filter_trajectory((r for i, r in out.iterrows()))
     x = ms[:, 0]
     y = ms[:, 1]
-
     df = df.copy()
     df['xf'] = x
     df['yf'] = y
-
-    print(len(df))
-    print(len(state_probs))
+    df['atypef'] = most_likely_path
+    df['atypef'] = df['atypef'].map(IDX_MAPPING)
 
     modes = transport_modes.keys()
     for idx, mode in enumerate(modes):
@@ -201,7 +205,6 @@ def filter_trips(df):
         df[mode] = [x[idx] for x in state_probs]
 
     print(df.tail(20))
-    print(state_probs[-30:])
 
     return df
 
@@ -264,7 +267,6 @@ if __name__ == '__main__':
         for trip in trip_ids:
             print(trip)
             tdf = filter_trips(df[df.trip_id == trip])
-            break
 
     if False:
         for uid in read_uuids(eng):

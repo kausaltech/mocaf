@@ -45,6 +45,8 @@ H = np.array([
     [0, 1, 0, 0,]
     ])
 
+float_eps = np.finfo(float).eps
+
 # Sympy generated mess for solving the "Qd" for the Fc and Q above
 def Qd(dt, force, drag):
     exp = np.exp
@@ -101,16 +103,9 @@ class DragFilter:
 
 
     def predict(self, dt):
-        with np.errstate(all="raise"):
-            # Qd(dt) overflows when the dt is too high. Just revert
-            # to initial in these cases
-            try:
-                Q = Qd(dt, self.force, self.drag)
-            except FloatingPointError:
-                print("Qt overflow!")
-                #self.x = self.x0.copy()
-                self.P = self.P0.copy()
-                return
+        # Hack to avoid over/underflows: cap "effective" dt to 300 seconds
+        dt = min(dt, 300)
+        Q = Qd(dt, self.force, self.drag)
         self.x, self.P = predict(dt, self.x, self.P, self.F, Q)
 
     def update(self, z, R):
@@ -123,6 +118,7 @@ class DragFilter:
         residual = z - predicted_z
         
         self.likelihood = np.exp(mvnormlogpdf(x=residual, cov=z_cov))
+        self.likelihood = max(self.likelihood, float_eps)
         self.x, self.P = update(self.x, self.P, z, R, self.H)
 
 
@@ -147,7 +143,7 @@ def filter_trajectory(traj):
             try:
                 m, S = predict(dt, m, S, F, Qd(dt))
             except FloatingPointError:
-                m = m0.copy()
+                #m = m0.copy()
                 S = S0.copy()
 
         measurement = np.array([z.x, z.y])
