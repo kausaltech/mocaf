@@ -19,6 +19,24 @@ class LocationImport(models.Model):
     debug = models.IntegerField(null=True)
 
 
+class DeviceImport(models.Model):
+    id = models.IntegerField(primary_key=True)
+    uid = models.CharField(max_length=50)
+    platform = models.CharField(max_length=20, null=True)
+    system_version = models.CharField(max_length=20, null=True)
+    brand = models.CharField(max_length=20, null=True)
+    model = models.CharField(max_length=20, null=True)
+    created_at = models.IntegerField(null=True)
+
+
+class HeartbeatImport(models.Model):
+    id = models.IntegerField(primary_key=True)
+    time = models.IntegerField(null=False)
+    ms = models.IntegerField(null=True)
+    uid = models.CharField(max_length=50)
+    debug = models.IntegerField(null=True)
+
+
 class SensorSampleImport(models.Model):
     id = models.IntegerField(primary_key=True)
     uid = models.CharField(max_length=50)
@@ -61,6 +79,15 @@ class Location(models.Model):
 
     def __str__(self):
         return '%s [%s]' % (self.uuid, self.time)
+
+
+class DeviceHeartbeat(models.Model):
+    time = models.DateTimeField()
+    uuid = models.UUIDField()
+    created_at = models.DateTimeField(null=True)
+
+    class Meta:
+        unique_together = ('uuid', 'time')
 
 
 class SensorTypeChoices(models.TextChoices):
