@@ -15,11 +15,8 @@ scipy
 arrow
 filterpy
 -e git+https://github.com/Raekkeri/django-multi-gtfs.git@django3#egg=multigtfs
-
-dash
-dash-deck
-sqlalchemy
-geoalchemy2
+# -e git+https://github.com/City-of-Helsinki/django-munigeo.git@0.2#egg=django-munigeo
 geopandas
-dash-bootstrap-components
-pydeck
+celery
+redis
+django-modeltrans

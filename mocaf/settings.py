@@ -34,6 +34,8 @@ env = environ.Env(
     COOKIE_PREFIX=(str, 'mocaf'),
     SERVER_EMAIL=(str, 'noreply@kausal.tech'),
     DEFAULT_FROM_EMAIL=(str, 'noreply@kausal.tech'),
+    CELERY_BROKER_URL=(str, 'redis://localhost:6379'),
+    CELERY_RESULT_BACKEND=(str, 'redis://localhost:6379'),
     INTERNAL_IPS=(list, []),
 )
 
@@ -59,9 +61,8 @@ CACHES = {
 
 SECRET_KEY = env('SECRET_KEY')
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
 
 
 # Application definition
@@ -184,7 +185,6 @@ USE_TZ = True
 LOCALE_PATHS = [
     os.path.join(BASE_DIR, 'locale')
 ]
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
