@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
+from modeltrans.fields import TranslationField
 
 
 class InvalidStateError(Exception):
@@ -16,6 +17,7 @@ class Device(models.Model):
     system_version = models.CharField(max_length=20, null=True)
     brand = models.CharField(max_length=20, null=True)
     model = models.CharField(max_length=20, null=True)
+    created_at = models.DateTimeField(null=True)
 
     def generate_token(self):
         assert not self.token
@@ -48,9 +50,33 @@ class TransportMode(models.Model):
         help_text=_('Emission factor of transport mode in g (CO2e)/passenger-km')
     )
 
+    i18n = TranslationField(fields=('name',))
+
     class Meta:
         verbose_name = _('Transport mode')
         verbose_name_plural = _('Transport modes')
+
+    def __str__(self):
+        return self.name
+
+
+class TransportModeVariant(models.Model):
+    mode = models.ForeignKey(TransportMode, on_delete=models.CASCADE, related_name='variants')
+    identifier = models.CharField(
+        max_length=20, unique=True, verbose_name=_('Identifier'),
+        editable=False,
+    )
+    name = models.CharField(max_length=50, verbose_name=_('Name'))
+    emission_factor = models.FloatField(
+        null=True, verbose_name=_('Emission factor'),
+        help_text=_('Emission factor of transport mode in g (CO2e)/passenger-km')
+    )
+
+    i18n = TranslationField(fields=('name',))
+
+    class Meta:
+        verbose_name = _('Transport mode variant')
+        verbose_name_plural = _('Transport mode variants')
 
     def __str__(self):
         return self.name
@@ -96,7 +122,13 @@ class Trip(models.Model):
 class Leg(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='legs')
     deleted = models.BooleanField(default=False)
-    mode = models.ForeignKey(TransportMode, on_delete=models.PROTECT)
+    mode = models.ForeignKey(
+        TransportMode, on_delete=models.PROTECT, related_name='legs'
+    )
+    mode_variant = models.ForeignKey(
+        TransportModeVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='legs',
+    )
+
     estimated_mode = models.ForeignKey(
         TransportMode, on_delete=models.PROTECT, related_name='+', db_index=False,
         null=True,
@@ -104,6 +136,10 @@ class Leg(models.Model):
     mode_confidence = models.FloatField(null=True)
     user_corrected_mode = models.ForeignKey(
         TransportMode, on_delete=models.PROTECT, related_name='+', db_index=False,
+        null=True
+    )
+    user_corrected_mode_variant = models.ForeignKey(
+        TransportModeVariant, on_delete=models.SET_NULL, related_name='+', db_index=False,
         null=True
     )
 
@@ -130,8 +166,12 @@ class Leg(models.Model):
     def __str__(self):
         duration = (self.end_time - self.start_time).total_seconds() / 60
         deleted = 'DELETED ' if self.deleted else ''
+        mode_str = self.mode.identifier
+        if self.mode_variant:
+            mode_str += ' (%s)' % self.mode_variant.identifier
+
         return '%sLeg [%s]: Started at %s (duration %.1s min), length %.1f km' % (
-            deleted, self.mode.identifier, self.start_time, duration, self.length / 1000
+            deleted, mode_str, self.start_time, duration, self.length / 1000
         )
 
 
