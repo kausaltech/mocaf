@@ -1,13 +1,17 @@
+import bz2
 import time
 import logging
 import json
+from datetime import datetime, timedelta
+
 import pytz
 import requests
-from datetime import datetime, timedelta
+from psycopg2.extras import execute_values
 from django.db.models import Max
-from django.db import transaction
+from django.db import transaction, connection
+from django.conf import settings
 from django.contrib.gis.geos import Point
-
+from django.contrib.gis.gdal import CoordTransform, SpatialReference
 from multigtfs.models import Route
 
 from transitrt.models import VehicleLocation
@@ -18,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 
+coord_transform = ct = CoordTransform(
+    SpatialReference('WGS84'), SpatialReference(settings.LOCAL_SRS)
+)
 
 def js_to_dt(ts):
     return LOCAL_TZ.localize(datetime.fromtimestamp(ts / 1000))
@@ -34,7 +41,8 @@ class SiriImporter:
         time = js_to_dt(d['RecordedAtTime'])
         d = d['MonitoredVehicleJourney']
         loc = Point(d['VehicleLocation']['Longitude'], d['VehicleLocation']['Latitude'], srid=4326)
-        route = self.routes_by_ref[d['LineRef']['value']]
+        loc.transform(coord_transform)
+        route = self.routes_by_ref[d['LineRef']['value']].id
         jr = d['FramedVehicleJourneyRef']
         journey_ref = '%s:%s' % (jr['DataFrameRef']['value'], jr['DatedVehicleJourneyRef'])
 
@@ -92,6 +100,26 @@ class SiriImporter:
             self._batch_vids.add(act['vehicle_ref'])
             self._batch.append(act)
 
+    def bulk_insert_locations(self, objs):
+        table_name = VehicleLocation._meta.db_table
+        local_srs = settings.LOCAL_SRS
+        for obj in objs:
+            obj['x'] = obj['loc'].x
+            obj['y'] = obj['loc'].y
+
+        query = f"""
+            INSERT INTO {table_name}
+                (route_id, direction_ref, vehicle_ref, journey_ref, time, loc, bearing)
+            VALUES %s
+        """
+        template = "(%(route)s, %(direction_ref)s, %(vehicle_ref)s, "
+        template += "%(journey_ref)s, %(time)s, "
+        template += f"ST_SetSRID(ST_MakePoint(%(x)s, %(y)s), {local_srs}), %(bearing)s)"
+
+        with connection.cursor() as cursor:
+            execute_values(cursor, query, objs, template=template, page_size=2048)
+
+
     def commit(self):
         self.update_cached_locs(self._batch_vids)
         new_objs = []
@@ -102,7 +130,7 @@ class SiriImporter:
             if last_time and last_time + timedelta(seconds=1) >= act['time']:
                 continue
 
-            new_objs.append(VehicleLocation(**act))
+            new_objs.append(act)
             self.cached_locs[vid] = act['time']
 
         self._batch = []
@@ -111,7 +139,8 @@ class SiriImporter:
         logger.info('Saving %d observations' % len(new_objs))
         if not new_objs:
             return
-        VehicleLocation.objects.bulk_create(new_objs)
+
+        self.bulk_insert_locations(new_objs)
         transaction.commit()
 
     def update_from_files(self, fns):
@@ -119,8 +148,11 @@ class SiriImporter:
         file_count = 0
 
         for fn in fns:
-            with open(fn, 'r') as f:
-                data = json.load(f)
+            if fn.endswith('.bz2'):
+                f = bz2.open(fn, 'r')
+            else:
+                f = open(fn, 'r')
+            data = json.load(f)
             logger.info('Importing from %s' % fn)
             self.update_from_siri(data)
             file_count += 1
