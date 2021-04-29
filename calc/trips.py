@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import pandas as pd
 from utils.perf import PerfCounter
 
@@ -250,6 +251,21 @@ def split_trip_legs(df):
     return df
 
 
+def get_vehicle_locations(eng, start: datetime, end: datetime):
+    with eng.connect() as conn:
+        query = """
+            SELECT vehicle_ref, journey_ref, time, ST_X(loc) AS x, ST_Y(loc) AS y
+                FROM transitrt_vehiclelocation
+                WHERE time >= %(start)s - interval '5 minutes' AND time <= %(end)s + interval '5 minutes'
+                ORDER BY time
+        """
+        params = dict(start=start, end=end)
+        df = pd.read_sql_query(query, conn, params=params)
+        print(df)
+    return df
+
+
+
 if __name__ == '__main__':
     import os
     from dotenv import load_dotenv
@@ -258,6 +274,12 @@ if __name__ == '__main__':
     load_dotenv()
     eng = create_engine(os.getenv('DATABASE_URL'))
     default_uid = os.getenv('DEFAULT_UUID')
+
+    if True:
+        start = datetime(2021, 4, 28, 12)
+        end = start + timedelta(hours=1)
+        out = get_vehicle_locations(eng, start, end)
+        exit()
 
     if True:
         pd.set_option("max_rows", None)
