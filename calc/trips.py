@@ -16,7 +16,7 @@ DAYS_TO_FETCH = 30
 LOCAL_2D_CRS = 3067
 
 
-def read_trips(eng, uid, start_at=None, end_at=None):
+def read_trips(eng, uid, start_time=None, end_time=None):
     print('Selected UID %s. Reading dataframe.' % uid)
     pc = PerfCounter('read_locations', show_time_to_last=True)
     query = f"""
@@ -178,6 +178,7 @@ ATYPE_REVERSE = {
 }
 IDX_MAPPING = {idx: ATYPE_REVERSE[x] for idx, x in enumerate(transport_modes.keys())}
 
+
 def filter_trips(df):
     out = df[['time', 'x', 'y', 'speed']].copy()
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
@@ -204,8 +205,6 @@ def filter_trips(df):
         elif mode == 'cycling':
             mode = 'on_bicycle'
         df[mode] = [x[idx] for x in state_probs]
-
-    print(df.tail(20))
 
     return df
 
@@ -261,7 +260,6 @@ def get_vehicle_locations(eng, start: datetime, end: datetime):
         """
         params = dict(start=start, end=end)
         df = pd.read_sql_query(query, conn, params=params)
-        print(df)
     return df
 
 
