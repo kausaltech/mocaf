@@ -3,6 +3,7 @@
 import django.contrib.gis.db.models.fields
 from django.db import migrations, models
 import django.db.models.deletion
+from django.conf import settings
 
 
 class Migration(migrations.Migration):
@@ -17,13 +18,13 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
         """, reverse_sql=""),
-        migrations.RunSQL(sql="""
+        migrations.RunSQL(sql=f"""
             CREATE TABLE "transitrt_vehiclelocation" (
                 "direction_ref" varchar(5) NULL,
                 "vehicle_ref" varchar(30) NOT NULL,
                 "journey_ref" varchar(30) NOT NULL,
                 "time" timestamp with time zone NOT NULL,
-                "loc" geometry(POINT,3857) NOT NULL,
+                "loc" geometry(POINT,{settings.LOCAL_SRS}) NOT NULL,
                 "route_id" integer NULL,
                 "bearing" double precision NULL
             );
