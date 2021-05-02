@@ -8,19 +8,6 @@ def paginate_queryset(
     qs: QuerySet, info: ResolveInfo, kwargs: dict,
     orderable_fields: list[str] = None,
 ):
-    offset = kwargs.get('offset')
-    if offset is None:
-        offset = 0
-    elif offset < 0:
-        raise GraphQLError("Invalid offset", [info])
-    limit = kwargs.get('limit')
-    if limit is not None:
-        if limit < 0:
-            raise GraphQLError("Invalid limit", [info])
-        qs = qs[offset:offset + limit]
-    else:
-        qs = qs[offset:]
-
     order = kwargs.get('order_by')
     if order and orderable_fields:
         ascending = True
@@ -33,5 +20,18 @@ def paginate_queryset(
         if not ascending:
             order = '-' + order
         qs = qs.order_by(order)
+
+    offset = kwargs.get('offset')
+    if offset is None:
+        offset = 0
+    elif offset < 0:
+        raise GraphQLError("Invalid offset", [info])
+    limit = kwargs.get('limit')
+    if limit is not None:
+        if limit < 0:
+            raise GraphQLError("Invalid limit", [info])
+        qs = qs[offset:offset + limit]
+    else:
+        qs = qs[offset:]
 
     return qs
