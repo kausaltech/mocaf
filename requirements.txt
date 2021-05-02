@@ -171,6 +171,8 @@ pytz==2021.1
     #   django-modelcluster
     #   l18n
     #   pandas
+pyyaml==5.4.1
+    # via -r requirements.in
 redis==3.5.3
     # via -r requirements.in
 requests==2.25.1
