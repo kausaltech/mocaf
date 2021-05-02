@@ -5,12 +5,12 @@ wagtail
 django-environ
 django-cors-headers
 patchy
-graphene-django
+graphene<3.0
+graphene-django<3.0
 graphene-django-optimizer
 sentry_sdk
 djangorestframework
 django-extensions
-graphene-gis
 scipy
 arrow
 filterpy

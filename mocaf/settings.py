@@ -84,7 +84,6 @@ INSTALLED_APPS = [
     'taggit',
     'multigtfs',
     'graphene_django',
-    'graphene_gis',
 
     'django.contrib.admin',
     'django.contrib.auth',

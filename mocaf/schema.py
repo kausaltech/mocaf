@@ -1,9 +1,11 @@
 import graphene
+from graphql import DirectiveLocation
 from graphql.type import (
     GraphQLArgument, GraphQLNonNull, GraphQLString, GraphQLDirective,
-    DirectiveLocation, specified_directives
+    specified_directives
 )
-from graphene.types import UUID
+from . import graphql_gis  # noqa
+
 from trips import schema as trips_schema
 
 

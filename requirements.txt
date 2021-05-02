@@ -12,7 +12,7 @@ aniso8601==7.0.0
     # via graphene
 anyascii==0.2.0
     # via wagtail
-arrow==1.0.3
+arrow==1.1.0
     # via -r requirements.in
 asgiref==3.3.4
     # via django
@@ -98,20 +98,15 @@ geopandas==0.9.0
 graphene-django-optimizer==0.8.0
     # via -r requirements.in
 graphene-django==2.15.0
-    # via
-    #   -r requirements.in
-    #   graphene-gis
-graphene-gis==0.0.6
     # via -r requirements.in
 graphene==2.1.8
     # via
+    #   -r requirements.in
     #   graphene-django
-    #   graphene-gis
 graphql-core==2.3.2
     # via
     #   graphene
     #   graphene-django
-    #   graphene-gis
     #   graphql-relay
 graphql-relay==2.0.1
     # via graphene
@@ -167,7 +162,7 @@ python-dateutil==2.8.1
     #   arrow
     #   matplotlib
     #   pandas
-python-dotenv==0.17.0
+python-dotenv==0.17.1
     # via -r requirements.in
 pytz==2021.1
     # via
