@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from graphql.error import GraphQLError
+from graphql.language.ast import Variable
 
 from trips.models import Device
 from .graphql_types import AuthenticatedDeviceNode
@@ -12,9 +13,13 @@ class APITokenMiddleware:
     def process_device_directive(self, info, directive):
         dev = None
         token = None
+        variable_vals = info.variable_values
         for arg in directive.arguments:
             if arg.name.value == 'uuid':
-                val = arg.value.value
+                if isinstance(arg.value, Variable):
+                    val = variable_vals.get(arg.value.name.value)
+                else:
+                    val = arg.value.value
                 try:
                     dev = Device.objects.get(uuid=val)
                 except Device.DoesNotExist:
@@ -23,7 +28,11 @@ class APITokenMiddleware:
                     raise GraphQLError("Invalid UUID", [arg])
 
             elif arg.name.value == 'token':
-                token = arg.value.value
+                if isinstance(arg.value, Variable):
+                    val = variable_vals.get(arg.value.name.value)
+                else:
+                    val = arg.value.value
+                token = val
 
         if not token:
             raise GraphQLError("Token required", [directive])
