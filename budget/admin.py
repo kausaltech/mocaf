@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from .models import DailyEmissionBudget
+from .models import EmissionBudgetLevel
 
 
-class DailyEmissionBudgetAdmin(admin.ModelAdmin):
-    list_display = ('year', 'amount')
+class EmissionBudgetLevelAdmin(admin.ModelAdmin):
+    pass
 
 
-admin.site.register(DailyEmissionBudget, DailyEmissionBudgetAdmin)
+admin.site.register(EmissionBudgetLevel, EmissionBudgetLevelAdmin)

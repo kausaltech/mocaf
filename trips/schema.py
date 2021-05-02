@@ -14,7 +14,7 @@ class TransportModeNode(DjangoNode):
     class Meta:
         model = TransportMode
         fields = [
-            'id', 'identifier', 'name'
+            'id', 'identifier', 'name', 'emission_factor',
         ]
 
 
