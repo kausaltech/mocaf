@@ -1,0 +1,43 @@
+emission_budget_levels:
+  - identifier: bronze
+    name: Pronssi
+    carbon_footprint: 1100
+    year: 2021
+  - identifier: silver
+    name: Hopea
+    carbon_footprint: 800
+    year: 2021
+  - identifier: gold
+    name: Kulta
+    carbon_footprint: 550
+    year: 2021
+
+transport_modes:
+  - identifier: still
+    name: Paikoillaan
+    name_en: Still
+    emission_factor: 0
+  - identifier: walk
+    name: Kävely
+    name_en: Walking
+    emission_factor: 0
+  - identifier: bicycle
+    name: Pyöräily
+    name_en: Bicycling
+    emission_factor: 5
+  - identifier: car
+    name: Henkilöauto
+    name_en: Car
+    emission_factor: 185.6
+  - identifier: bus
+    name: Bussi
+    name_en: Bus
+    emission_factor: 63.2
+  - identifier: tram
+    name: Ratikka
+    name_en: Tram
+    emission_factor: 5.6
+  - identifier: train
+    name: Juna
+    name_en: Train
+    emission_factor: 5.2
