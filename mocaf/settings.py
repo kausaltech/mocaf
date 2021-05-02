@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     'trips_ingest',
     'trips',
     'budget',
+    'feedback',
 ]
 
 MIDDLEWARE = [

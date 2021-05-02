@@ -8,9 +8,10 @@ from . import graphql_gis  # noqa
 
 from trips import schema as trips_schema
 from budget import schema as budget_schema
+from feedback import schema as feedback_schema
 
 
-class Mutations(trips_schema.Mutations):
+class Mutations(trips_schema.Mutations, feedback_schema.Mutations):
     pass
 
 
