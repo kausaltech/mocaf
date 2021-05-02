@@ -180,10 +180,10 @@ class Trip(models.Model):
         return end_time
 
     def update_carbon_footprint(self):
-        all_legs = self.legs.order_by('time')
+        all_legs = list(self.legs.order_by('start_time'))
         self.device.update_carbon_footprint(
             start_time=all_legs[0].start_time,
-            end_time=all_legs[1].end_time
+            end_time=all_legs[-1].end_time
         )
 
     def handle_leg_deletion(self, leg: Leg):

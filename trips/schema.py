@@ -147,7 +147,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
             except Leg.DoesNotExist:
                 raise GraphQLError('Leg does not exist', [info])
 
-            if not obj.user_can_update:
+            if not obj.can_user_update():
                 raise GraphQLError('Leg update no longer possible', [info])
 
             if mode_obj:
