@@ -3,10 +3,10 @@ from django.db.models import Q
 from django.db import transaction
 import graphene
 from graphql.error import GraphQLError
-from graphene_gis.converter import gis_converter  # noqa
 import graphene_django_optimizer as gql_optimizer
-
 from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
+from mocaf.graphql_helpers import paginate_queryset
+
 from .models import Trip, Leg, Device, TransportMode, InvalidStateError
 
 
@@ -19,24 +19,39 @@ class TransportModeNode(DjangoNode):
 
 
 class LegNode(DjangoNode, AuthenticatedDeviceNode):
+    can_update = graphene.Boolean()
+
+    def resolve_can_update(root: Leg, info):
+        return root.can_user_update()
+
     class Meta:
         model = Leg
         fields = [
             'id', 'mode', 'mode_confidence', 'start_time', 'end_time', 'start_loc', 'end_loc',
-            'length', 'carbon_footprint'
+            'length', 'carbon_footprint', 'nr_passengers', 'deleted_at',
         ]
 
 
 class TripNode(DjangoNode, AuthenticatedDeviceNode):
+    legs = graphene.List(
+        LegNode, offset=graphene.Int(), limit=graphene.Int(), order_by=graphene.String(),
+    )
+    start_time = graphene.DateTime()
+    end_time = graphene.DateTime()
+    carbon_footprint = graphene.Float()
+    length = graphene.Float()
+
     class Meta:
         model = Trip
-        fields = ['id', 'legs']
+        fields = ['id', 'legs', 'deleted_at']
 
     @gql_optimizer.resolver_hints(
-        model_field='legs',
+        model_field='legs'
     )
-    def resolve_legs(root, info):
-        return root.legs.exclude(deleted=True)
+    def resolve_legs(root, info, **kwargs):
+        qs = root.legs.active()
+        qs = paginate_queryset(qs, info, kwargs, orderable_fields=['start_time'])
+        return qs
 
 
 class EnableMocafMutation(graphene.Mutation):
@@ -132,6 +147,9 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
             except Leg.DoesNotExist:
                 raise GraphQLError('Leg does not exist', [info])
 
+            if not obj.user_can_update:
+                raise GraphQLError('Leg update no longer possible', [info])
+
             if mode_obj:
                 obj.user_corrected_mode = mode_obj
                 obj.mode = mode_obj
@@ -141,6 +159,10 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.nr_passengers = nr_passengers
                 update_fields.append('nr_passengers')
 
+            if deleted:
+                obj.deleted_at = timezone.now()
+                update_fields += ['deleted_at']
+
             if update_fields:
                 obj.update_carbon_footprint()
                 obj.updated_at = timezone.now()
@@ -149,16 +171,39 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
 
             obj.user_updates.create(data=update_data)
 
+            if deleted:
+                obj.trip.handle_leg_deletion(obj)
+
+            if update_fields:
+                obj.trip.update_carbon_footprint()
+
         return dict(ok=True, leg=obj)
 
 
 class Query(graphene.ObjectType):
-    trips = graphene.List(TripNode)
+    trips = graphene.List(
+        TripNode, offset=graphene.Int(), limit=graphene.Int(),
+        order_by=graphene.String(),
+    )
+    trip = graphene.Field(TripNode, id=graphene.ID(required=True))
     transport_modes = graphene.List(TransportModeNode)
 
-    def resolve_trips(root, info):
+    def resolve_trips(root, info, **kwargs):
         dev = info.context.device
-        return gql_optimizer.query(dev.trips.all(), info)
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        qs = dev.trips.active().annotate_times()
+        qs = paginate_queryset(qs, info, kwargs, orderable_fields=['start_time'])
+        qs = gql_optimizer.query(qs, info)
+        return qs
+
+    def resolve_trip(root, info, id):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        qs = dev.trips.active().annotate_times().filter(id=id)
+        qs = gql_optimizer.query(qs, info)
+        return qs.first()
 
     def resolve_transport_modes(root, info):
         return gql_optimizer.query(TransportMode.objects.all(), info)

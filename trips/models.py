@@ -1,3 +1,6 @@
+from __future__ import annotations
+from datetime import datetime, timedelta
+from typing import List, Optional
 import uuid
 from django.utils import timezone
 from django.db import transaction
@@ -34,6 +37,11 @@ class Device(models.Model):
                 pass
 
             dev.enable_events.create(time=timezone.now(), enabled=enabled)
+
+    def update_carbon_footprint(self, start_time: datetime, end_time: datetime):
+        # from budget.models import DeviceDailyCarbonFootprint
+        # DeviceDailyCarbonFootprint.update_for_period(self.device, start_time, end_time)
+        pass
 
     def __str__(self):
         return str(self.uuid)
@@ -95,11 +103,94 @@ class EnableEvent(models.Model):
         get_latest_by = 'time'
 
 
+class TripQuerySet(models.QuerySet):
+    def annotate_times(self):
+        if getattr(self, '_times_annotated', False):
+            return
+
+        qs = self.annotate(
+            start_time=models.Min('legs__start_time'),
+            end_time=models.Max('legs__end_time'),
+        )
+        qs._times_annotated = True
+        return qs
+
+    def started_during(self, start_time, end_time):
+        qs = self.annotate_times()
+        qs = qs.filter(start_time__gte=start_time)\
+            .filter(start_time__lt=end_time)
+        return qs
+
+    def active(self):
+        return self.filter(deleted_at__isnull=True)
+
+
 class Trip(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
+    deleted_at = models.DateTimeField(null=True)
+
+    objects = TripQuerySet.as_manager()
+
+    _ordered_legs: List[Leg]
+
+    def _ensure_ordered_legs(self):
+        if hasattr(self, '_ordered_legs'):
+            return
+        self._ordered_legs = list(self.legs.active().order_by('start_time'))
+
+    @property
+    def first_leg(self) -> Optional[Leg]:
+        self._ensure_ordered_legs()
+        if not self._ordered_legs:
+            return None
+        return self._ordered_legs[0]
+
+    @property
+    def last_leg(self) -> Optional[Leg]:
+        self._ensure_ordered_legs()
+        if not self._ordered_legs:
+            return None
+        return self._ordered_legs[-1]
+
+    @property
+    def length(self) -> float:
+        self._ensure_ordered_legs()
+        length = 0
+        for leg in self._ordered_legs:
+            length += leg.length
+        return length
+
+    @property
+    def carbon_footprint(self) -> float:
+        self._ensure_ordered_legs()
+        footprint = 0
+        for leg in self._ordered_legs:
+            footprint += leg.carbon_footprint
+        return footprint
 
     def get_start_time(self):
-        return self.legs.all()[0].start_time
+        return self.legs.order_by('start_time')[0].start_time
+
+    def get_update_end_time(self):
+        end_time = getattr(self, '_update_end_time', None)
+        if not end_time:
+            # Hard-code to two weeks for now
+            end_time = self.get_start_time() + timedelta(days=14)
+        self._update_end_time = end_time
+        return end_time
+
+    def update_carbon_footprint(self):
+        all_legs = self.legs.order_by('time')
+        self.device.update_carbon_footprint(
+            start_time=all_legs[0].start_time,
+            end_time=all_legs[1].end_time
+        )
+
+    def handle_leg_deletion(self, leg: Leg):
+        active_legs = self.legs.active()
+        if not active_legs:
+            self.deleted_at = timezone.now()
+            self.save(update_fields=['deleted_at'])
 
     def __str__(self):
         legs = list(self.legs.all())
@@ -119,9 +210,14 @@ class Trip(models.Model):
         get_latest_by = 'legs__start_time'
 
 
+class LegQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(deleted_at__isnull=True)
+
+
 class Leg(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='legs')
-    deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True)
     mode = models.ForeignKey(
         TransportMode, on_delete=models.PROTECT, related_name='legs'
     )
@@ -154,6 +250,8 @@ class Leg(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
 
+    objects = LegQuerySet.as_manager()
+
     class Meta:
         ordering = ('trip', 'start_time')
 
@@ -163,9 +261,12 @@ class Leg(models.Model):
             footprint /= (1 + self.nr_passengers)
         self.carbon_footprint = footprint
 
+    def can_user_update(self) -> bool:
+        return timezone.now() < self.trip.get_update_end_time()
+
     def __str__(self):
         duration = (self.end_time - self.start_time).total_seconds() / 60
-        deleted = 'DELETED ' if self.deleted else ''
+        deleted = 'DELETED ' if self.deleted_at else ''
         mode_str = self.mode.identifier
         if self.mode_variant:
             mode_str += ' (%s)' % self.mode_variant.identifier
