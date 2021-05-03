@@ -1,8 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 from trips.schema import TransportModeNode
 import graphene
+from graphql.error import GraphQLError
 from django.utils import timezone
-from .models import EmissionBudgetLevel, TimeResolution, EmissionUnit
+from .models import EmissionBudgetLevel
+from .enums import TimeResolution, EmissionUnit
 from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
 
 
@@ -24,11 +26,17 @@ class TransportModeFootprint(graphene.ObjectType):
     length = graphene.Float()
 
 
-class CarbonFootprintSummary(AuthenticatedDeviceNode):
+class CarbonFootprintSummary(graphene.ObjectType):
     date = graphene.Date()
-    time_resolution = graphene.Field(TimeResolution)
-    footprint_per_mode = graphene.List(TransportModeFootprint)
+    time_resolution = graphene.Field(TimeResolutionEnum)
+    per_mode = graphene.List(TransportModeFootprint)
+    carbon_footprint = graphene.Float()
 
+    def resolve_carbon_footprint(root, info):
+        amount = 0
+        for mode in root['per_mode']:
+            amount += mode['carbon_footprint']
+        return amount
 
 
 class EmissionBudgetLevelNode(DjangoNode):
@@ -48,6 +56,15 @@ class Query(graphene.ObjectType):
         time_resolution=TimeResolutionEnum(),
         units=EmissionUnitEnum(),
         for_date=graphene.Date(),
+    )
+
+    carbon_footprint_summary = graphene.List(
+        CarbonFootprintSummary,
+        start_date=graphene.Date(required=True),
+        end_date=graphene.Date(),
+        time_resolution=TimeResolutionEnum(),
+        units=EmissionUnitEnum(),
+        description="Carbon footprint summary per transport mode"
     )
 
     def resolve_emission_budget_levels(
@@ -75,3 +92,29 @@ class Query(graphene.ObjectType):
             level.date = for_date
 
         return levels
+
+    def resolve_carbon_footprint_summary(
+        root, info, start_date, end_date=None, time_resolution=None, units=None
+    ):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+
+        if units is None:
+            units = EmissionUnit.KG
+        else:
+            units = EmissionUnit(units)
+
+        if time_resolution is None:
+            time_resolution = TimeResolution.DAY
+        else:
+            time_resolution = TimeResolution(time_resolution)
+
+        if end_date is not None:
+            if start_date > end_date:
+                raise GraphQLError("startDate must be less than or equal to endDate", [info])
+
+        summary = dev.get_carbon_footprint_summary(
+            start_date, end_date, time_resolution, units
+        )
+        return [dict(time_resolution=time_resolution, **x) for x in summary]

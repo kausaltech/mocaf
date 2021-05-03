@@ -1,12 +1,24 @@
 from __future__ import annotations
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
+from itertools import groupby
 from typing import List, Optional
+import calendar
 import uuid
+from django.db.models.aggregates import Sum
+from django.db.models.functions import Trunc
+
+import pytz
 from django.utils import timezone
 from django.db import transaction
 from django.contrib.gis.db import models
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
+
+from budget.enums import EmissionUnit, TimeResolution
+
+
+LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 class InvalidStateError(Exception):
@@ -42,6 +54,63 @@ class Device(models.Model):
         # from budget.models import DeviceDailyCarbonFootprint
         # DeviceDailyCarbonFootprint.update_for_period(self.device, start_time, end_time)
         pass
+
+    def _get_transport_modes(self):
+        modes = getattr(self, '_mode_cache', None)
+        if not modes:
+            self._mode_cache = {mode.id: mode for mode in TransportMode.objects.all()}
+        return self._mode_cache
+
+    def get_carbon_footprint_summary(
+        self, start_date: date, end_date: date = None,
+        time_resolution: TimeResolution = TimeResolution.DAY,
+        units: EmissionUnit = EmissionUnit.G
+    ):
+        if end_date is not None:
+            assert end_date >= start_date
+
+        modes = self._get_transport_modes()
+
+        if time_resolution == TimeResolution.YEAR:
+            trunc_kind = 'year'
+            if end_date is None:
+                end_date = start_date.replace(month=12, day=31)
+        elif time_resolution == TimeResolution.MONTH:
+            trunc_kind = 'month'
+            if end_date is None:
+                last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+                end_date = start_date.replace(day=last_day)
+        elif time_resolution == TimeResolution.DAY:
+            trunc_kind = 'day'
+            if end_date is None:
+                end_date = start_date
+        else:
+            raise Exception('Invalid time resolution')
+
+        start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
+        end_time = LOCAL_TZ.localize(datetime.combine(end_date + timedelta(days=1), time(0)))
+
+        annotation = {'date': Trunc('start_time', trunc_kind, tzinfo=LOCAL_TZ)}
+
+        legs = Leg.objects.active().filter(trip__device=self)\
+            .filter(start_time__gte=start_time, start_time__lt=end_time)\
+            .annotate(**annotation)\
+            .values('date', 'mode').annotate(
+                carbon_footprint=Sum('carbon_footprint'),
+                length=Sum('length')
+            ).order_by('date')
+
+        out = []
+        in_kg = units == EmissionUnit.KG
+        for dt, data in groupby(legs, lambda x: x['date']):
+            per_mode = [dict(
+                mode=modes[x['mode']],
+                carbon_footprint=x['carbon_footprint'] if not in_kg else x['carbon_footprint'] / 1000,
+                length=x['length']
+            ) for x in data]
+            out.append(dict(date=dt.date(), per_mode=per_mode))
+
+        return out
 
     def __str__(self):
         return str(self.uuid)
@@ -106,7 +175,7 @@ class EnableEvent(models.Model):
 class TripQuerySet(models.QuerySet):
     def annotate_times(self):
         if getattr(self, '_times_annotated', False):
-            return
+            return self
 
         qs = self.annotate(
             start_time=models.Min('legs__start_time'),

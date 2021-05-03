@@ -1,5 +1,4 @@
 import calendar
-from enum import Enum, auto
 from datetime import date, datetime, time, timedelta
 from django.db.models.aggregates import Min
 from modeltrans.fields import TranslationField
@@ -8,21 +7,10 @@ from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from trips.models import Device
+from .enums import TimeResolution, EmissionUnit
 
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
-
-
-class EmissionUnit(Enum):
-    G = auto()
-    KG = auto()
-
-
-class TimeResolution(Enum):
-    DAY = auto()
-    WEEK = auto()
-    MONTH = auto()
-    YEAR = auto()
 
 
 class EmissionBudgetLevel(models.Model):
