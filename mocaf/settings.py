@@ -36,6 +36,8 @@ env = environ.Env(
     DEFAULT_FROM_EMAIL=(str, 'noreply@kausal.tech'),
     CELERY_BROKER_URL=(str, 'redis://localhost:6379'),
     CELERY_RESULT_BACKEND=(str, 'redis://localhost:6379'),
+    GENIEM_NOTIFICATION_API_BASE=(str, ''),
+    GENIEM_NOTIFICATION_API_KEY=(str, ''),
     INTERNAL_IPS=(list, []),
 )
 
@@ -240,6 +242,10 @@ WAGTAIL_I18N_ENABLED = True
 BASE_URL = 'http://example.com'
 
 LOCAL_SRS = 3067  # ETRS-TM35-FIN
+
+# Notification engine
+GENIEM_NOTIFICATION_API_BASE = env('GENIEM_NOTIFICATION_API_BASE')
+GENIEM_NOTIFICATION_API_TOKEN = env('GENIEM_NOTIFICATION_API_TOKEN')
 
 
 # local_settings.py can be used to override environment-specific settings
