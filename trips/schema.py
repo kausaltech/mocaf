@@ -105,7 +105,7 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
     def mutate(root, info, uuid):
-        # dev = info.context.device
+        dev = info.context.device
         return dict(ok=False)
 
 
@@ -212,4 +212,5 @@ class Query(graphene.ObjectType):
 class Mutations(graphene.ObjectType):
     enable_mocaf = EnableMocafMutation.Field()
     disable_mocaf = DisableMocafMutation.Field()
+    clear_user_data = ClearUserDataMutation.Field()
     update_leg = UpdateLeg.Field()
