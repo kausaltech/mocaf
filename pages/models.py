@@ -9,6 +9,7 @@ class BlogPost(Page):
     body = RichTextField(blank=True)
 
     content_panels = Page.content_panels + [
+        FieldPanel('lead_paragraph'),
         FieldPanel('body'),
     ]
 

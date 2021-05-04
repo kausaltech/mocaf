@@ -7,15 +7,19 @@ from . import models
 class BlogPost(DjangoObjectType):
     class Meta:
         model = models.BlogPost
-        only_fields = ['id', 'title', 'body']
+        only_fields = ['id', 'title', 'lead_paragraph', 'body']
 
 
 class Query(graphene.ObjectType):
-    page = graphene.Field(BlogPost, id=graphene.Int(required=True))
-    pages = graphene.List(BlogPost)
+    blog_post = graphene.Field(BlogPost, id=graphene.Int(required=True))
+    blog_posts = graphene.List(BlogPost)
 
-    def resolve_page(self, info, id, **kwargs):
+    def resolve_blog_post(self, info, id, **kwargs):
         return models.BlogPost.objects.get(id=id)
 
-    def resolve_pages(self, info, **kwargs):
-        return models.BlogPost.objects.live().public().filter(depth__gt=1).specific()
+    def resolve_blog_posts(self, info, **kwargs):
+        return (models.BlogPost.objects
+                .live()
+                .public()
+                .filter(locale__language_code=info.context.language)
+                .specific())
