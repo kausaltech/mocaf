@@ -163,6 +163,12 @@ CORS_ALLOW_HEADERS = list(default_cors_headers) + [
     'sentry-trace',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
+}
+
 GRAPHENE = {
     'SCHEMA': 'mocaf.schema.schema',
     'MIDDLEWARE': [

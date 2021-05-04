@@ -7,7 +7,9 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.core import urls as wagtail_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
+from trips_ingest.api import ingest_view
 from .graphql_views import MocafGraphQLView
+
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
@@ -15,6 +17,7 @@ urlpatterns = [
     path('admin/', include(wagtailadmin_urls)),
     path('documents/', include(wagtaildocs_urls)),
     path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True))),
+    path('v1/ingest/', csrf_exempt(ingest_view))
 ]
 
 
