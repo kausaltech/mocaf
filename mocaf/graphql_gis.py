@@ -53,9 +53,6 @@ GIS_FIELD_SCALAR = {
 }
 
 
-print('Registering field converters')
-
-
 @convert_django_field.register(gis_models.GeometryField)
 @convert_django_field.register(gis_models.LineStringField)
 @convert_django_field.register(gis_models.PointField)
