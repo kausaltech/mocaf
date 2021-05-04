@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from graphql.error import GraphQLError
 from .graphql_helpers import GraphQLAuthFailedError, GraphQLAuthRequiredError
@@ -59,4 +60,23 @@ class APITokenMiddleware:
         if gt and issubclass(gt, AuthenticatedDeviceNode):
             if not getattr(context, 'device', None):
                 raise GraphQLAuthRequiredError("Authentication required", [info])
+        return next(root, info, **kwargs)
+
+
+class LocaleMiddleware:
+    def process_locale_directive(self, info, directive):
+        for arg in directive.arguments:
+            if arg.name.value == 'lang':
+                lang = arg.value.value
+                if lang not in settings.MODELTRANS_AVAILABLE_LANGUAGES:
+                    raise GraphQLError("unsupported language: %s" % lang, [info])
+                info.context._graphql_query_language = lang
+
+    def resolve(self, next, root, info, **kwargs):
+        if root is None:
+            info.context._graphql_query_language = None
+            operation = info.operation
+            for directive in operation.directives:
+                if directive.name.value == 'locale':
+                    self.process_locale_directive(info, directive)
         return next(root, info, **kwargs)

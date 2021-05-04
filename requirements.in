@@ -2,6 +2,7 @@ psycopg2-binary
 pandas
 python-dotenv
 wagtail
+wagtail-localize
 django-environ
 django-cors-headers
 patchy

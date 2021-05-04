@@ -68,7 +68,7 @@ django-taggit==1.4.0
     # via wagtail
 django-treebeard==4.5.1
     # via wagtail
-django==3.1.8
+django==3.1.9
     # via
     #   django-cors-headers
     #   django-extensions
@@ -81,6 +81,7 @@ django==3.1.8
     #   jsonfield
     #   multigtfs
     #   wagtail
+    #   wagtail-localize
 djangorestframework==3.12.4
     # via
     #   -r requirements.in
@@ -144,6 +145,8 @@ pillow==8.2.0
     # via
     #   matplotlib
     #   wagtail
+polib==1.1.1
+    # via wagtail-localize
 promise==2.3
     # via
     #   graphene-django
@@ -220,8 +223,12 @@ vine==5.0.0
     # via
     #   amqp
     #   celery
-wagtail==2.12.4
+wagtail-localize==0.9.5
     # via -r requirements.in
+wagtail==2.12.4
+    # via
+    #   -r requirements.in
+    #   wagtail-localize
 wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1

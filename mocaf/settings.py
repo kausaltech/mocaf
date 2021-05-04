@@ -84,6 +84,8 @@ INSTALLED_APPS = [
     'taggit',
     'multigtfs',
     'graphene_django',
+    'wagtail_localize',
+    'wagtail_localize.locales',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -99,6 +101,7 @@ INSTALLED_APPS = [
     'trips',
     'budget',
     'feedback',
+    'pages',
 ]
 
 MIDDLEWARE = [
@@ -164,6 +167,7 @@ GRAPHENE = {
     'SCHEMA': 'mocaf.schema.schema',
     'MIDDLEWARE': [
         'mocaf.graphql_middleware.APITokenMiddleware',
+        'mocaf.graphql_middleware.LocaleMiddleware',
     ],
 }
 
@@ -176,6 +180,7 @@ LANGUAGES = (
     ('en', _('English')),
     ('sv', _('Swedish')),
 )
+WAGTAIL_CONTENT_LANGUAGES = LANGUAGES
 MODELTRANS_AVAILABLE_LANGUAGES = [x[0] for x in LANGUAGES]
 LANGUAGE_CODE = 'fi'
 TIME_ZONE = 'Europe/Helsinki'
@@ -222,6 +227,7 @@ WAGTAIL_ENABLE_UPDATE_CHECK = False
 WAGTAIL_PASSWORD_MANAGEMENT_ENABLED = True
 WAGTAIL_EMAIL_MANAGEMENT_ENABLED = False
 WAGTAIL_PASSWORD_RESET_ENABLED = True
+WAGTAIL_I18N_ENABLED = True
 
 # Base URL to use when referring to full URLs within the Wagtail admin backend -
 # e.g. in notification emails. Don't include '/admin' or a trailing slash
