@@ -7,7 +7,7 @@ from . import models
 class BlogPost(DjangoObjectType):
     class Meta:
         model = models.BlogPost
-        only_fields = ['id', 'title', 'lead_paragraph', 'body']
+        only_fields = ['id', 'title', 'lead_paragraph', 'body', 'last_published_at']
 
 
 class Query(graphene.ObjectType):
