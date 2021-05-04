@@ -73,9 +73,11 @@ class EnableMocafMutation(graphene.Mutation):
                 raise GraphQLError("Device uuid required", [info])
 
             dev = Device.objects.filter(uuid=uuid).first()
-            if dev is not None:
-                raise GraphQLError("Device exists, specify token with the @device directive", [info])
-            dev = Device(uuid=uuid)
+            if dev is None:
+                dev = Device(uuid=uuid)
+            else:
+                if dev.token:
+                    raise GraphQLError("Device exists, specify token with the @device directive", [info])
             dev.generate_token()
             dev.save()
             token = dev.token
