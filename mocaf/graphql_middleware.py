@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from graphql.error import GraphQLError
+from .graphql_helpers import GraphQLAuthFailedError, GraphQLAuthRequiredError
 from graphql.language.ast import Variable
 
 from trips.models import Device
@@ -23,9 +24,9 @@ class APITokenMiddleware:
                 try:
                     dev = Device.objects.get(uuid=val)
                 except Device.DoesNotExist:
-                    raise GraphQLError("Device not found", [arg])
+                    raise GraphQLAuthFailedError("Device not found", [arg])
                 except ValidationError:
-                    raise GraphQLError("Invalid UUID", [arg])
+                    raise GraphQLAuthFailedError("Invalid UUID", [arg])
 
             elif arg.name.value == 'token':
                 if isinstance(arg.value, Variable):
@@ -35,11 +36,11 @@ class APITokenMiddleware:
                 token = val
 
         if not token:
-            raise GraphQLError("Token required", [directive])
+            raise GraphQLAuthFailedError("Token required", [directive])
         if not dev:
-            raise GraphQLError("Device required", [directive])
+            raise GraphQLAuthFailedError("Device required", [directive])
         if dev.token != token:
-            raise GraphQLError("Invalid token", [directive])
+            raise GraphQLAuthFailedError("Invalid token", [directive])
 
         info.context.device = dev
 
@@ -57,5 +58,5 @@ class APITokenMiddleware:
         gt = getattr(rt, 'graphene_type', None)
         if gt and issubclass(gt, AuthenticatedDeviceNode):
             if not getattr(context, 'device', None):
-                raise GraphQLError("Authentication required", [info])
+                raise GraphQLAuthRequiredError("Authentication required", [info])
         return next(root, info, **kwargs)

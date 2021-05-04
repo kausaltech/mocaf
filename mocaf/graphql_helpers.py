@@ -4,6 +4,7 @@ from graphql.error import GraphQLError
 from graphene.utils.str_converters import to_snake_case
 from django.db.models.query import QuerySet
 
+
 def paginate_queryset(
     qs: QuerySet, info: ResolveInfo, kwargs: dict,
     orderable_fields: list[str] = None,
@@ -35,3 +36,21 @@ def paginate_queryset(
         qs = qs[offset:]
 
     return qs
+
+
+class GraphQLAuthFailedError(GraphQLError):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.extensions:
+            self.extensions = {
+                'code': 'AUTH_FAILED',
+            }
+
+
+class GraphQLAuthRequiredError(GraphQLError):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.extensions:
+            self.extensions = {
+                'code': 'AUTH_REQUIRED',
+            }
