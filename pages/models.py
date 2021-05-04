@@ -5,11 +5,11 @@ from wagtail.core.models import Page
 
 
 class BlogPost(Page):
-    lead_paragraph = models.CharField(max_length=255, blank=True)
-    body = RichTextField(blank=True)
+    tagline = models.CharField(max_length=255)
+    body = RichTextField()
 
     content_panels = Page.content_panels + [
-        FieldPanel('lead_paragraph'),
+        FieldPanel('tagline'),
         FieldPanel('body'),
     ]
 

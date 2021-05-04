@@ -7,7 +7,7 @@ from . import models
 class BlogPost(DjangoObjectType):
     class Meta:
         model = models.BlogPost
-        only_fields = ['id', 'title', 'lead_paragraph', 'body', 'last_published_at']
+        only_fields = ['id', 'title', 'tagline', 'body', 'first_published_at']
 
 
 class Query(graphene.ObjectType):
@@ -22,4 +22,5 @@ class Query(graphene.ObjectType):
                 .live()
                 .public()
                 .filter(locale__language_code=info.context.language)
-                .specific())
+                .specific()
+                .order_by('-first_published_at'))
