@@ -29,8 +29,9 @@ class TransportModeFootprint(graphene.ObjectType):
 class CarbonFootprintSummary(graphene.ObjectType):
     date = graphene.Date()
     time_resolution = graphene.Field(TimeResolutionEnum)
-    per_mode = graphene.List(TransportModeFootprint)
+    per_mode = graphene.List(TransportModeFootprint, order_by=graphene.String())
     carbon_footprint = graphene.Float()
+    length = graphene.Float()
     ranking = graphene.Int()
     maximum_rank = graphene.Int()
 
@@ -40,11 +41,28 @@ class CarbonFootprintSummary(graphene.ObjectType):
             amount += mode['carbon_footprint']
         return amount
 
+    def resolve_length(root, info):
+        amount = 0
+        for mode in root['per_mode']:
+            amount += mode['length']
+        return amount
+
     def resolve_ranking(root, info):
         return 123
 
     def resolve_maximum_rank(root, info):
         return 1234
+
+    def resolve_per_mode(root, info, order_by=None):
+        if order_by is not None:
+            descending = False
+            if order_by[0] == '-':
+                descending = True
+                order_by = order_by[1:]
+            if order_by != 'length':
+                raise GraphQLError("Invalid order requested", [info])
+            root['per_mode'] = sorted(root['per_mode'], key=lambda x: x['length'], reverse=descending)
+        return root['per_mode']
 
 
 class EmissionBudgetLevelNode(DjangoNode):
