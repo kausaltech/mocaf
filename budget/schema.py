@@ -31,12 +31,20 @@ class CarbonFootprintSummary(graphene.ObjectType):
     time_resolution = graphene.Field(TimeResolutionEnum)
     per_mode = graphene.List(TransportModeFootprint)
     carbon_footprint = graphene.Float()
+    ranking = graphene.Int()
+    maximum_rank = graphene.Int()
 
     def resolve_carbon_footprint(root, info):
         amount = 0
         for mode in root['per_mode']:
             amount += mode['carbon_footprint']
         return amount
+
+    def resolve_ranking(root, info):
+        return 123
+
+    def resolve_maximum_rank(root, info):
+        return 1234
 
 
 class EmissionBudgetLevelNode(DjangoNode):
