@@ -29,29 +29,23 @@ class TransportModeFootprint(graphene.ObjectType):
 class CarbonFootprintSummary(graphene.ObjectType):
     date = graphene.Date()
     time_resolution = graphene.Field(TimeResolutionEnum)
+    units = graphene.Field(EmissionUnitEnum)
     per_mode = graphene.List(TransportModeFootprint, order_by=graphene.String())
     carbon_footprint = graphene.Float()
     length = graphene.Float()
     ranking = graphene.Int()
     maximum_rank = graphene.Int()
-
-    def resolve_carbon_footprint(root, info):
-        amount = 0
-        for mode in root['per_mode']:
-            amount += mode['carbon_footprint']
-        return amount
-
-    def resolve_length(root, info):
-        amount = 0
-        for mode in root['per_mode']:
-            amount += mode['length']
-        return amount
+    current_level = graphene.Field('budget.schema.EmissionBudgetLevelNode')
+    average_footprint_used = graphene.Boolean()
 
     def resolve_ranking(root, info):
         return 123
 
     def resolve_maximum_rank(root, info):
         return 1234
+
+    def resolve_average_footprint_used(root, info):
+        return False
 
     def resolve_per_mode(root, info, order_by=None):
         if order_by is not None:
@@ -63,6 +57,18 @@ class CarbonFootprintSummary(graphene.ObjectType):
                 raise GraphQLError("Invalid order requested", [info])
             root['per_mode'] = sorted(root['per_mode'], key=lambda x: x['length'], reverse=descending)
         return root['per_mode']
+
+    def resolve_current_level(root, info):
+        levels = list(EmissionBudgetLevel.objects.filter(year=root['date'].year))
+        for level in levels:
+            level.carbon_footprint = level.calculate_for_date(
+                root['date'], root['time_resolution'], root['units'],
+            )
+        levels = sorted(levels, key=lambda level: level.carbon_footprint)
+        for level in levels:
+            if root['carbon_footprint'] < level.carbon_footprint:
+                break
+        return level
 
 
 class EmissionBudgetLevelNode(DjangoNode):
@@ -143,4 +149,4 @@ class Query(graphene.ObjectType):
         summary = dev.get_carbon_footprint_summary(
             start_date, end_date, time_resolution, units
         )
-        return [dict(time_resolution=time_resolution, **x) for x in summary]
+        return [dict(time_resolution=time_resolution, units=units, **x) for x in summary]

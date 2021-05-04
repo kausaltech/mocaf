@@ -108,7 +108,11 @@ class Device(models.Model):
                 carbon_footprint=x['carbon_footprint'] if not in_kg else x['carbon_footprint'] / 1000,
                 length=x['length']
             ) for x in data]
-            out.append(dict(date=dt.date(), per_mode=per_mode))
+            total_length = sum([x['length'] for x in per_mode])
+            total_footprint = sum([x['carbon_footprint'] for x in per_mode])
+            out.append(dict(
+                date=dt.date(), per_mode=per_mode, length=total_length, carbon_footprint=total_footprint,
+            ))
 
         return out
 
