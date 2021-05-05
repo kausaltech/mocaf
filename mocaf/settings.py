@@ -37,7 +37,7 @@ env = environ.Env(
     CELERY_BROKER_URL=(str, 'redis://localhost:6379'),
     CELERY_RESULT_BACKEND=(str, 'redis://localhost:6379'),
     GENIEM_NOTIFICATION_API_BASE=(str, ''),
-    GENIEM_NOTIFICATION_API_KEY=(str, ''),
+    GENIEM_NOTIFICATION_API_TOKEN=(str, ''),
     INTERNAL_IPS=(list, []),
 )
 
