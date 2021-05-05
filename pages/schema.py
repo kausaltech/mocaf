@@ -8,7 +8,7 @@ from . import models
 class BlogPost(DjangoObjectType):
     class Meta:
         model = models.BlogPost
-        only_fields = ['id', 'title', 'tagline', 'body', 'first_published_at']
+        fields = ['id', 'title', 'tagline', 'body', 'first_published_at']
 
     body = graphene.String()
 

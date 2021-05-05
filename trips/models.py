@@ -267,17 +267,18 @@ class Trip(models.Model):
 
     def __str__(self):
         legs = list(self.legs.all())
-        length = 0
-        for leg in legs:
-            length += leg.length
+        if legs:
+            length = 0
+            for leg in legs:
+                length += leg.length
+            start_time = legs[0].start_time
+            end_time = legs[-1].end_time
+            duration = (end_time - start_time).total_seconds() / 60
 
-        start_time = legs[0].start_time
-        end_time = legs[-1].end_time
-        duration = (end_time - start_time).total_seconds() / 60
-
-        return 'Trip with %d legs, started %s (duration %.1f min), length %.1f km [%s]' % (
-            len(legs), start_time, duration, length / 1000, self.device
-        )
+            return 'Trip with %d legs, started %s (duration %.1f min), length %.1f km [%s]' % (
+                len(legs), start_time, duration, length / 1000, self.device
+            )
+        return 'Trip with 0 legs [%s]' % self.device
 
     class Meta:
         get_latest_by = 'legs__start_time'

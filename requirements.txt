@@ -17,7 +17,9 @@ arrow==1.1.0
 asgiref==3.3.4
     # via django
 attrs==20.3.0
-    # via fiona
+    # via
+    #   fiona
+    #   pytest
 beautifulsoup4==4.8.2
     # via wagtail
 billiard==3.6.4.0
@@ -90,6 +92,12 @@ draftjs-exporter==2.1.7
     # via wagtail
 et-xmlfile==1.1.0
     # via openpyxl
+factory-boy==3.2.0
+    # via
+    #   -r requirements.in
+    #   pytest-factoryboy
+faker==8.1.2
+    # via factory-boy
 filterpy==1.4.5
     # via -r requirements.in
 fiona==1.8.19
@@ -117,6 +125,10 @@ html5lib==1.1
     # via wagtail
 idna==2.10
     # via requests
+inflection==0.5.1
+    # via pytest-factoryboy
+iniconfig==1.1.1
+    # via pytest
 jsonfield==3.1.0
     # via multigtfs
 kiwisolver==1.3.1
@@ -137,6 +149,8 @@ numpy==1.20.2
     #   scipy
 openpyxl==3.0.7
     # via tablib
+packaging==20.9
+    # via pytest
 pandas==1.2.4
     # via
     #   -r requirements.in
@@ -147,6 +161,8 @@ pillow==8.2.0
     # via
     #   matplotlib
     #   wagtail
+pluggy==0.13.1
+    # via pytest
 polib==1.1.1
     # via wagtail-localize
 promise==2.3
@@ -158,13 +174,26 @@ prompt-toolkit==3.0.18
     # via click-repl
 psycopg2-binary==2.8.6
     # via -r requirements.in
+py==1.10.0
+    # via pytest
 pyparsing==2.4.7
-    # via matplotlib
+    # via
+    #   matplotlib
+    #   packaging
 pyproj==3.0.1
     # via geopandas
+pytest-django==4.2.0
+    # via -r requirements.in
+pytest-factoryboy==2.1.0
+    # via -r requirements.in
+pytest==6.2.4
+    # via
+    #   pytest-django
+    #   pytest-factoryboy
 python-dateutil==2.8.1
     # via
     #   arrow
+    #   faker
     #   matplotlib
     #   pandas
 python-dotenv==0.17.1
@@ -218,7 +247,11 @@ sqlparse==0.4.1
 tablib[xls,xlsx]==3.0.0
     # via wagtail
 text-unidecode==1.3
-    # via graphene-django
+    # via
+    #   faker
+    #   graphene-django
+toml==0.10.2
+    # via pytest
 urllib3==1.26.4
     # via
     #   requests
