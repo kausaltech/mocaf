@@ -111,6 +111,8 @@ graphql-core==2.3.2
     #   graphql-relay
 graphql-relay==2.0.1
     # via graphene
+greenlet==1.0.0
+    # via sqlalchemy
 html5lib==1.1
     # via wagtail
 idna==2.10
@@ -209,6 +211,8 @@ six==1.15.0
     #   singledispatch
 soupsieve==2.2.1
     # via beautifulsoup4
+sqlalchemy==1.4.13
+    # via -r requirements.in
 sqlparse==0.4.1
     # via django
 tablib[xls,xlsx]==3.0.0

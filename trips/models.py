@@ -320,6 +320,7 @@ class Leg(models.Model):
     carbon_footprint = models.FloatField()
     nr_passengers = models.IntegerField(null=True)
 
+    received_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
 

@@ -15,6 +15,7 @@ django-extensions
 scipy
 arrow
 filterpy
+sqlalchemy
 -e git+https://github.com/Raekkeri/django-multi-gtfs.git@django3#egg=multigtfs
 # -e git+https://github.com/City-of-Helsinki/django-munigeo.git@0.2#egg=django-munigeo
 geopandas
