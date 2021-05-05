@@ -1,18 +1,26 @@
 import os
 import dash
 import dash_deck
+import dash_table
 import pydeck
+import pytz
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
+from plotly.subplots import make_subplots
 import pandas as pd
 import geopandas as gpd
 from sqlalchemy import create_engine
 
 from utils.perf import PerfCounter
-from calc.trips import read_trips, read_uuids
+from calc.trips import LOCAL_TZ, read_trips, read_uuids, filter_trips
+
+
+import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()
+from trips.models import Device
+
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -20,6 +28,9 @@ load_dotenv()
 DEFAULT_ZOOM = 12
 DEFAULT_UUID = os.getenv('DEFAULT_UUID')
 
+LOCAL_TZ = pytz.timezone('Europe/Helsinki')
+
+from sqlalchemy import create_engine
 eng = create_engine(os.getenv('DATABASE_URL'))
 
 
@@ -31,6 +42,12 @@ COLOR_MAP = {
     'running': '#f77f00',
     'on_bicycle': '#06d6a0',
     'unknown': '#cccccc',
+}
+
+TRANSPORT_COLOR_MAP = {
+    'bicycle': COLOR_MAP['on_bicycle'],
+    'car': COLOR_MAP['in_vehicle'],
+    'walk': COLOR_MAP['walking'],
 }
 
 
@@ -45,7 +62,12 @@ COLOR_MAP_RGB = {atype: hex_to_rgba(color) for atype, color in COLOR_MAP.items()
 
 
 locations_df = None
+locations_uuid = None
+time_filtered_locations_df = None
 map_component = None
+trip_component = None
+data_table_component = None
+
 uuids = read_uuids(eng)
 if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
@@ -54,43 +76,32 @@ if DEFAULT_UUID and DEFAULT_UUID not in uuids:
 def make_map_component(xstart=None, xend=None):
     pc = PerfCounter('make_map_fig')
 
-    df = locations_df.copy()
-
-    if xstart and xend:
-        df = df[(df.time >= xstart) & (df.time <= xend)]
+    df = time_filtered_locations_df.copy()
 
     df['color'] = df['atype'].map(COLOR_MAP_RGB)
     df.loc_error = df.loc_error.fillna(value=-1)
     df.aconf = df.aconf.fillna(value=-1)
-
-    min_time = df.time.min()
-    max_time = df.time.max()
-    diff = (max_time - min_time).total_seconds()
-    if False and diff < 60 * 3600:
-        df['timestamp'] = ((df.time - min_time).dt.total_seconds() * 1000).astype(int)
-        df = df[['lon', 'lat', 'loc_error', 'color', 'aconf', 'timestamp']]
-        layer = pydeck.Layer(
-            'TripsLayer',
-            df,
-            get_position=['lon', 'lat'],
-            auto_highlight=True,
-            get_radius='loc_error < 20 ? loc_error : 20',
-            get_fill_color='color',
-            pickable=True,
-        )
-    else:
-        df = df[['lon', 'lat', 'loc_error', 'color', 'aconf']]
-        layer = pydeck.Layer(
-            'ScatterplotLayer',
-            df,
-            get_position=['lon', 'lat'],
-            auto_highlight=True,
-            get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
-            get_fill_color='color',
-            pickable=True,
-        )
+    df['time_str'] = df.local_time.astype(str)
+    df.speed = df.speed.fillna(value=-1)
+    df = df.dropna()
+    df = df[['lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype']]
+    layer = pydeck.Layer(
+        'PointCloudLayer',
+        df,
+        # get_position=['lon', 'lat', 'speed'],
+        get_position=['lon', 'lat'],
+        auto_highlight=True,
+        get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
+        get_color='color',
+        pickable=True,
+        point_size=5,
+    )
 
     initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df)
+
+    TOOLTIP_TEXT = {
+        'html': '{time_str}<br />{atype}<br />Speed: {speed} km/h'
+    }
 
     r = pydeck.Deck(
         layers=[layer],
@@ -98,9 +109,93 @@ def make_map_component(xstart=None, xend=None):
         # map_provider='mapbox',
         map_style='road')
     # print(r.to_json())
-    dc = dash_deck.DeckGL(data=r.to_json(), id="deck-gl", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'))
+    dc = dash_deck.DeckGL(
+        data=r.to_json(), id="deck-gl", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
+        tooltip=TOOLTIP_TEXT
+    )
 
     return dc
+
+
+def hex_to_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def make_trip_component():
+    device = Device.objects.filter(uuid=locations_uuid).first()
+    print(device)
+    if not device:
+        return None
+
+    trips = device.trips.all()
+    df = time_filtered_locations_df
+    start = df['local_time'].min()
+    end = df['local_time'].max()
+    trips = trips.started_during(start, end)
+    print('%d trips' % len(trips))
+
+    recs = []
+    for trip in trips:
+        for leg in trip.legs.all():
+            path = [[p.x, p.y] for p in leg.locations.values_list('loc', flat=True)]
+            name = 'Trip %d - %s' % (trip.id, leg.mode.name)
+            color = hex_to_rgb(TRANSPORT_COLOR_MAP.get(leg.mode.identifier, '#aaaaaa'))
+            recs.append(dict(
+                name=name, color=color, path=path,
+                start_time=leg.start_time.astimezone(LOCAL_TZ).isoformat(),
+                end_time=leg.end_time.astimezone(LOCAL_TZ).isoformat(),
+            ))
+
+    initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df[['lon', 'lat']])
+
+    paths_df = pd.DataFrame.from_records(recs)
+
+    layer = pydeck.Layer(
+        type='PathLayer',
+        data=paths_df,
+        pickable=True,
+        get_color='color',
+        # width_scale=20,
+        width_min_pixels=2,
+        get_path='path',
+        get_width=4,
+        auto_highlight=True,
+    )
+
+    TOOLTIP_TEXT = {
+        'html': '{name}<br />Start: {start_time}<br />End: {end_time}'
+    }
+
+    r = pydeck.Deck(
+        layers=[layer],
+        initial_view_state=initial_view_state,
+        map_style='road'
+    )
+    dc = dash_deck.DeckGL(
+        data=r.to_json(), id="deck-gl-trips", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
+        tooltip=TOOLTIP_TEXT, enableEvents=['click'],
+    )
+
+    return dc
+
+
+def make_data_table():
+    df = time_filtered_locations_df.copy()
+    cols = list(df.columns)
+    cols.remove('time')
+    cols.remove('local_time')
+    cols.remove('lon')
+    cols.remove('lat')
+    df['local_time'] = df.local_time.dt.tz_localize(None).dt.round('1s')
+    cols.insert(0, 'local_time')
+    table = dash_table.DataTable(
+        columns=[{'name': col, 'id': col} for col in cols],
+        data=df.to_dict('records'),
+        page_action='none',
+        style_table={'height': '450px', 'overflowY': 'auto', 'overflowX': 'auto'}
+    )
+    return table
 
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -109,17 +204,31 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 
 @app.callback(
-    Output('map-container', 'children'),
-    [Input('time-graph', 'hoverData'), Input('time-graph', 'clickData'), Input('time-graph', 'relayoutData')])
-def display_hover_data(hover_data, click_data, relayout_data):
+    [
+        Output('map-container', 'children'), Output('trip-container', 'children'),
+        Output('data-table-container', 'children')
+    ],
+    [Input('time-graph', 'clickData'), Input('time-graph', 'relayoutData')])
+def display_hover_data(click_data, relayout_data):
     global map_component
+    global trip_component
+    global data_table_component
+    global time_filtered_locations_df
 
-    if relayout_data and 'xaxis.range[0]' in relayout_data:
-        map_component = make_map_component(
-            relayout_data['xaxis.range[0]'], relayout_data['xaxis.range[1]']
-        )
+    if not relayout_data or 'xaxis.range[0]' not in relayout_data:
+        return map_component, trip_component, data_table_component
 
-    return map_component
+    start = relayout_data['xaxis.range[0]']
+    end = relayout_data['xaxis.range[1]']
+
+    df = locations_df.copy()
+    df = df[(df.local_time >= start) & (df.local_time <= end)]
+    time_filtered_locations_df = df
+
+    map_component = make_map_component()
+    trip_component = make_trip_component()
+    data_table_component = make_data_table()
+    return map_component, trip_component, data_table_component
 
     if not hover_data and not click_data:
         return map_fig
@@ -163,12 +272,39 @@ def display_hover_data(hover_data, click_data, relayout_data):
     return map_fig
 
 
+def generate_containers(uid, time_fig=None, map_component=None, trip_component=None):
+    graph_kwargs = {}
+    if time_fig is not None:
+        graph_kwargs['figure'] = time_fig
+
+    dev = Device.objects.filter(uuid=uid).first()
+    if dev is not None:
+        dev_str = '%s %s (%s %s)' % (
+            dev.platform, dev.system_version, dev.brand, dev.model
+        )
+    else:
+        dev_str = 'Unknown'
+
+    return [
+        html.Div('%s – %s' % (uid, dev_str)),
+        dbc.Row([
+            dbc.Col([map_component], md=6, id='map-container'),
+            dbc.Col(dcc.Graph(id='time-graph', **graph_kwargs), md=6),
+        ]),
+        dbc.Row([
+            dbc.Col([trip_component], id='trip-container', md=6, style={'height': '450px'}),
+            dbc.Col(id='data-table-container', md=6),
+        ], className='mt-3'),
+    ]
+
+
 @app.callback(
-    Output('graph-container', 'children'),
-    [Input('path', 'pathname'), Input('uuid-selector', 'value')]
+    Output('output-container', 'children'),
+    [Input('path', 'pathname'), Input('uuid-selector', 'value'), Input('filtered-switch', 'value')]
 )
-def render_graphs(new_path, new_uid):
-    global map_component, locations_df
+def render_output(new_path, new_uid, filtered):
+    global map_component, trip_component, locations_df, locations_uuid
+    global time_filtered_locations_df
 
     if not new_uid:
         if new_path:
@@ -178,27 +314,67 @@ def render_graphs(new_path, new_uid):
     if not new_uid:
         return None
 
-    locations_df = read_trips(eng, new_uid)
+    if locations_uuid is None or locations_uuid != new_uid:
+        df = read_trips(eng, new_uid)
+        df.time = pd.to_datetime(df.time, utc=True)
+        #print('filtering')
+        #df = filter_trips(df)
+        # df['speed'] *= 3.6
+        #print('done')
+        df['local_time'] = df.time.dt.tz_convert(LOCAL_TZ)
+        df['distance'] = df.distance.round(1)
+        df['x'] = df.x.round(1)
+        df['y'] = df.y.round(1)
+        locations_df = df
+        time_filtered_locations_df = df
+        locations_uuid = new_uid
+    else:
+        df = locations_df
 
-    time_fig = px.scatter(
-        locations_df, x='time', y='speed', color='atype',
-        hover_data=['trip_id', 'loc_error', 'heading', 'aconf'],
-        color_discrete_map=COLOR_MAP,
-    )
+    print(df.tail(20))
+
+    if filtered is not None and len(filtered):
+        geo = gpd.points_from_xy(df.xf, df.yf, crs=3067).to_crs(4326)
+    else:
+        geo = gpd.points_from_xy(df.x, df.y, crs=3067).to_crs(4326)
+    df['lon'] = geo.x
+    df['lat'] = geo.y
+
+    time_fig = make_subplots(specs=[[{"secondary_y": True}]])
+    time_fig.update_yaxes(rangemode='tozero', fixedrange=True)
+
+    time_fig.update_traces(marker=dict(opacity=0.5))
+    for mode in COLOR_MAP.keys():
+        mdf = df[df.atype == mode]
+        time_fig.add_trace(dict(
+            type='scatter', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
+            marker=dict(color=COLOR_MAP[mode])
+        ))
+        if mode in df:
+            time_fig.add_trace(dict(
+                type='scatter', x=df.local_time, y=df[mode], mode='lines', name=mode,
+                line=dict(color=COLOR_MAP[mode])
+            ), secondary_y=True)
 
     map_component = make_map_component()
+    trip_component = make_trip_component()
 
-    return [
-        html.Div(new_uid),
-        dbc.Row([
-            dbc.Col([map_component], md=6, id='map-container'),
-            dbc.Col(dcc.Graph(id='time-graph', figure=time_fig), md=6),
-        ]),
-    ]
+    return generate_containers(new_uid, time_fig, map_component, trip_component)
 
 
 app.layout = dbc.Container([
     dcc.Location(id='path', refresh=False),
+    dbc.Row([
+        dbc.Col([
+            dbc.FormGroup([
+                dbc.Checklist(
+                    options=[{"label": "Filtered", "value": 0}],
+                    id='filtered-switch',
+                    switch=True,
+                ),
+            ]),
+        ]),
+    ]),
     dbc.Row([
         dbc.Col([
             dbc.Select(
@@ -208,13 +384,12 @@ app.layout = dbc.Container([
             )
         ], md=4)
     ]),
-    html.Div([
-        dbc.Row([
-            dbc.Col(id='map-container', md=6),
-            dbc.Col(dcc.Graph(id='time-graph'), md=6),
-        ]),
-    ], id='graph-container'),
+    html.Div(
+        generate_containers(DEFAULT_UUID),
+        id='output-container'
+    ),
 ], fluid=True)
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
