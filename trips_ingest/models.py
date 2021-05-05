@@ -5,7 +5,12 @@ from django.conf import settings
 
 class ReceiveData(models.Model):
     data = models.JSONField()
-    received_at = models.DateTimeField()
+    received_at = models.DateTimeField(db_index=True)
+    imported_at = models.DateTimeField(null=True, db_index=True)
+    import_failed = models.BooleanField(null=True)
+
+    class Meta:
+        ordering = ('received_at',)
 
 
 class LocationImport(models.Model):
@@ -71,7 +76,14 @@ class Location(models.Model):
     atype = models.CharField(choices=ActivityTypeChoices.choices, null=True, max_length=20)
     aconf = models.FloatField(null=True)
     speed = models.FloatField(null=True)
+    speed_error = models.FloatField(null=True)
+    altitude = models.FloatField(null=True)
+    altitude_error = models.FloatField(null=True)
     heading = models.FloatField(null=True)
+    heading_error = models.FloatField(null=True)
+    odometer = models.FloatField(null=True)
+    is_moving = models.BooleanField(null=True)
+    battery_charging = models.BooleanField(null=True)
     created_at = models.DateTimeField(null=True)
     debug = models.BooleanField(default=False)
     sensor_data_count = models.PositiveIntegerField(null=True)

@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         generator.begin()
         if options['new']:
-            generator.generate_new_trips()
+            generator.generate_new_trips(only_uuid=options['uuid'])
         else:
             if uuid:
                 uuids = [uuid]

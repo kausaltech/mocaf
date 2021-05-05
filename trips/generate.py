@@ -76,6 +76,7 @@ class TripGenerator:
     def save_leg(self, trip, df, last_ts):
         start = df.iloc[0][['time', 'x', 'y']]
         end = df.iloc[-1][['time', 'x', 'y']]
+        received_at = df.iloc[-1].created_at
 
         leg_length = df['distance'].sum()
 
@@ -92,6 +93,7 @@ class TripGenerator:
             end_time=end.time,
             start_loc=make_point(start.x, start.y),
             end_loc=make_point(end.x, end.y),
+            received_at=received_at,
         )
         leg.update_carbon_footprint()
         leg.save()
@@ -210,10 +212,13 @@ class TripGenerator:
 
         return uuids_to_process
 
-    def generate_new_trips(self):
+    def generate_new_trips(self, only_uuid=None):
         uuids = self.find_uuids_with_new_samples()
         now = timezone.now()
         for uuid, last_leg_end in uuids:
+            if only_uuid is not None:
+                if str(uuid) != only_uuid:
+                    continue
             if last_leg_end:
                 start_time = last_leg_end
                 end_time = now
