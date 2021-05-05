@@ -38,7 +38,7 @@ query @device(uuid: "0bb26707-1016-4f60-92e3-62c209040cc2", token: "23730161-54a
 
 #### Enable Mocaf
 
-The first interaction with the API should be usually be the `enableMocaf` mutation.
+The first interaction with the API should usually be the `enableMocaf` mutation.
 It will create the access token and pass it as a response to the mutation.
 
 > :warning: **Remember to save the access token!** If you lose the access token, you are locked out of the UUID, as all future queries for that UUID will require passing the token.
@@ -87,4 +87,63 @@ mutation @device(uuid: "0bb26707-1016-4f60-92e3-62c209040cc2", token: "23730161-
     ok
   }
 }
+```
+
+## Installation
+
+### Development
+
+Install the required Python packages:
+
+```shell
+pip install -r requirements.txt
+```
+
+Create a file called `local_settings.py` in your repo root with the following contents:
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': 'mocaf',
+        'ATOMIC_REQUESTS': True,
+    }
+}
+```
+
+Create a Postgres database and the postgis extension:
+
+```shell
+createdb mocaf
+sudo -u postgres psql -c "CREATE EXTENSION postgis" mocaf
+```
+
+If you intend to run the tests, you need to make sure the extension is also created whenever the test database is
+created, which happens every time you run `pytest`. If you always run the tests with the `--reuse-db` flag, you can
+create the extension once for the database that is being re-used and you'll be fine:
+
+```shell
+createdb test_mocaf
+sudo -u postgres psql -c "CREATE EXTENSION postgis" test_mocaf
+```
+
+If you don't use the `--reuse-db` flag, the extension needs to be created along with the database every time you run
+`pytest`, so you can run the following. Bear in mind, however, that this enables the postgis extension for *any* new
+database.
+
+```shell
+sudo -u postgres psql -d template1 -c "CREATE EXTENSION IF NOT EXISTS postgis"
+```
+
+Run migrations:
+
+```shell
+python manage.py migrate
+```
+
+Create a superuser:
+> You might need the following translations during the createsuperuser operation: käyttäjätunnus = username, sähköpostiosoite = e-mail
+
+```shell
+python manage.py createsuperuser
 ```
