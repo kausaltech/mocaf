@@ -1,3 +1,4 @@
+from typing import Any
 from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
@@ -7,10 +8,37 @@ import graphene_django_optimizer as gql_optimizer
 from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
 from mocaf.graphql_helpers import paginate_queryset
 
-from .models import Trip, Leg, Device, TransportMode, InvalidStateError
+from .models import DeviceDefaultModeVariant, TransportModeVariant, Trip, Leg, Device, TransportMode, InvalidStateError
+
+
+def resolve_i18n_field(obj: Any, field_name: str, info):
+    lang = getattr(info.context, 'language', None)
+    if lang is not None:
+        lang_key = '%s_%s' % (field_name, lang)
+        lang_val = obj.i18n.get(lang_key, None)
+        if lang_val:
+            return lang_val
+    return getattr(obj, field_name)
+
+
+
+class TransportModeVariantNode(DjangoNode):
+    def resolve_name(root: TransportModeVariant, info):
+        return resolve_i18n_field(root, 'name', info)
+
+    class Meta:
+        model = TransportModeVariant
+        fields = [
+            'id', 'identifier', 'name', 'emission_factor',
+        ]
 
 
 class TransportModeNode(DjangoNode):
+    default_variant = graphene.Field(TransportModeVariantNode)
+
+    def resolve_name(root: TransportModeVariant, info):
+        return resolve_i18n_field(root, 'name', info)
+
     class Meta:
         model = TransportMode
         fields = [
@@ -27,7 +55,7 @@ class LegNode(DjangoNode, AuthenticatedDeviceNode):
     class Meta:
         model = Leg
         fields = [
-            'id', 'mode', 'mode_confidence', 'start_time', 'end_time', 'start_loc', 'end_loc',
+            'id', 'mode', 'mode_variant', 'mode_confidence', 'start_time', 'end_time', 'start_loc', 'end_loc',
             'length', 'carbon_footprint', 'nr_passengers', 'deleted_at',
         ]
 
@@ -115,6 +143,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
         leg = graphene.ID(required=True)
         mode = graphene.ID()
+        mode_variant = graphene.ID()
         nr_passengers = graphene.Int()
         deleted = graphene.Boolean()
 
@@ -122,7 +151,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
     @classmethod
-    def mutate(cls, root, info, leg, mode=None, nr_passengers=None, deleted=None):
+    def mutate(cls, root, info, leg, mode=None, mode_variant=None, nr_passengers=None, deleted=None):
         dev = info.context.device
 
         if mode is not None:
@@ -156,8 +185,20 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.user_corrected_mode = mode_obj
                 obj.mode = mode_obj
                 update_fields += ['user_corrected_mode', 'mode']
+            else:
+                mode_obj = obj.mode
 
-            if nr_passengers:
+            if mode_variant:
+                try:
+                    variant_obj = mode_obj.variants.get(identifier=mode_variant)
+                except TransportModeVariant.DoesNotExist:
+                    raise GraphQLError('Variant not found for mode %s' % mode_obj.identifier, [info])
+
+                obj.mode_variant = variant_obj
+                obj.user_corrected_mode_variant = variant_obj
+                update_fields += ['mode_variant', 'user_corrected_mode_variant']
+
+            if nr_passengers is not None:
                 obj.nr_passengers = nr_passengers
                 update_fields.append('nr_passengers')
 
@@ -180,6 +221,50 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.trip.update_carbon_footprint()
 
         return dict(ok=True, leg=obj)
+
+
+class SetDefaultTransportModeVariant(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        mode = graphene.ID(required=True)
+        variant = graphene.ID(required=False)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, mode, variant=None):
+        dev = info.context.device
+        try:
+            mode_obj = TransportMode.objects.get(identifier=mode)
+        except TransportMode.DoesNotExist:
+            available_modes = ', '.join(TransportMode.objects.values_list('identifier', flat=True))
+            raise GraphQLError('Transport mode does not exist. Available modes: %s' % available_modes, [info])
+
+        if not mode_obj.variants.exists():
+            raise GraphQLError('Transport mode %s does not support variants' % mode_obj.identifier)
+
+        default_obj = DeviceDefaultModeVariant.objects.filter(device=dev, mode=mode_obj).first()
+        if variant is None:
+            if default_obj is not None:
+                default_obj.delete()
+            return dict(ok=True)
+
+        try:
+            variant_obj = TransportModeVariant.objects.get(identifier=variant)
+        except TransportModeVariant.DoesNotExist:
+            available_variants = ', '.join(mode_obj.variants.all().values_list('identifier', flat=True))
+            raise GraphQLError(
+                'Variant %s for %s does not exist. Available variants: %s' % (
+                    variant, mode_obj.identifier, available_variants
+                ), [info]
+            )
+
+        if default_obj is None:
+            default_obj = DeviceDefaultModeVariant(device=dev, mode=mode_obj)
+        default_obj.variant = variant_obj
+        default_obj.save()
+
+        return dict(ok=True)
+
 
 
 class Query(graphene.ObjectType):
@@ -208,11 +293,19 @@ class Query(graphene.ObjectType):
         return qs.first()
 
     def resolve_transport_modes(root, info):
-        return gql_optimizer.query(TransportMode.objects.all(), info)
+        dev = info.context.device
+        modes = TransportMode.objects.all().prefetch_related('variants')
+        if dev is not None:
+            defaults = {x.mode_id: x.variant for x in dev.default_mode_variants.select_related('variant')}
+            for mode in modes:
+                mode.default_variant = defaults.get(mode.id)
+
+        return modes
 
 
 class Mutations(graphene.ObjectType):
     enable_mocaf = EnableMocafMutation.Field()
     disable_mocaf = DisableMocafMutation.Field()
     clear_user_data = ClearUserDataMutation.Field()
+    set_default_transport_mode_variant = SetDefaultTransportModeVariant.Field()
     update_leg = UpdateLeg.Field()

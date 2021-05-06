@@ -158,9 +158,19 @@ class TransportModeVariant(models.Model):
     class Meta:
         verbose_name = _('Transport mode variant')
         verbose_name_plural = _('Transport mode variants')
+        unique_together = (('mode', 'identifier'),)
 
     def __str__(self):
         return self.name
+
+
+class DeviceDefaultModeVariant(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='default_mode_variants')
+    mode = models.ForeignKey(TransportMode, on_delete=models.CASCADE, related_name='device_default_variants')
+    variant = models.ForeignKey(TransportModeVariant, on_delete=models.CASCADE, related_name='device_defaults')
+
+    class Meta:
+        unique_together = (('device', 'mode'),)
 
 
 class EnableEvent(models.Model):
@@ -331,7 +341,12 @@ class Leg(models.Model):
         ordering = ('trip', 'start_time')
 
     def update_carbon_footprint(self):
-        footprint = self.mode.emission_factor * self.length / 1000
+        if self.mode_variant:
+            emission_factor = self.mode_variant.emission_factor
+        else:
+            emission_factor = self.mode.emission_factor
+
+        footprint = emission_factor * self.length / 1000
         if self.mode.identifier == 'car' and self.nr_passengers:
             footprint /= (1 + self.nr_passengers)
         self.carbon_footprint = footprint

@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'wagtail.admin',
     'wagtail.core',
 
+    'modeltrans',
     'modelcluster',
     'taggit',
     'multigtfs',

@@ -73,7 +73,7 @@ class TripGenerator:
 
         pc.display('after insert')
 
-    def save_leg(self, trip, df, last_ts):
+    def save_leg(self, trip, df, last_ts, default_variants):
         start = df.iloc[0][['time', 'x', 'y']]
         end = df.iloc[-1][['time', 'x', 'y']]
         received_at = df.iloc[-1].created_at
@@ -84,10 +84,12 @@ class TripGenerator:
         assert start.time >= last_ts and end.time >= last_ts
 
         mode = self.atype_to_mode[df.iloc[0].atype]
+        variant = default_variants.get(mode)
 
         leg = Leg(
             trip=trip,
             mode=mode,
+            mode_variant=variant,
             length=leg_length,
             start_time=start.time,
             end_time=end.time,
@@ -102,13 +104,11 @@ class TripGenerator:
 
         return rows, end.time
 
-    def save_trip(self, uid, df):
+    def save_trip(self, device, df, default_variants):
         pc = PerfCounter('generate_trips', show_time_to_last=True)
         if not len(df):
             print('No samples, returning')
             return
-
-        device = Device.objects.filter(uuid=uid).first()
 
         pc.display('start')
 
@@ -142,7 +142,7 @@ class TripGenerator:
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
-            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts)
+            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants)
             all_rows += leg_rows
 
         pc.display('after leg location generation')
@@ -156,6 +156,8 @@ class TripGenerator:
         device = Device.objects.filter(uuid=uuid).first()
         if device is None:
             raise Exception('Device %s not found' % uuid)
+
+        default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
 
         pc = PerfCounter('update trips for %s' % uuid, show_time_to_last=True)
         df = read_trips(connection, uuid, start_time=start_time, end_time=end_time)
@@ -179,7 +181,7 @@ class TripGenerator:
             trip_df = split_trip_legs(connection, trip_df)
             pc.display('legs split')
             with transaction.atomic():
-                self.save_trip(uuid, trip_df)
+                self.save_trip(uuid, trip_df, default_variants)
             pc.display('trip saved')
         transaction.commit()
 
