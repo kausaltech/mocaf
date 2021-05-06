@@ -171,7 +171,7 @@ class TripGenerator:
             try:
                 trip_df = filter_trips(trip_df)
             except Exception as e:
-                logger.warn(e)
+                logger.info(e, exc_info=True)
                 continue
             pc.display('filter done')
             trip_df['atype'] = trip_df['atypef']
