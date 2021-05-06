@@ -84,7 +84,7 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
 
 class EnableMocafMutation(graphene.Mutation):
     class Arguments:
-        uuid = graphene.UUID(required=False)
+        uuid = graphene.String(required=False)
 
     ok = graphene.Boolean()
     token = graphene.String(required=False)
