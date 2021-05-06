@@ -12,7 +12,8 @@ register(trips_factories.TripFactory)
 @pytest.fixture
 def graphql_client_query(client):
     def func(*args, **kwargs):
-        return graphql_query(*args, **kwargs, client=client, graphql_url='/v1/graphql/')
+        response = graphql_query(*args, **kwargs, client=client, graphql_url='/v1/graphql/')
+        return json.loads(response.content)
     return func
 
 
@@ -21,9 +22,8 @@ def graphql_client_query_data(graphql_client_query):
     """Make a GraphQL request, make sure the `error` field is not present and return the `data` field."""
     def func(*args, **kwargs):
         response = graphql_client_query(*args, **kwargs)
-        content = json.loads(response.content)
-        assert 'errors' not in content
-        return content['data']
+        assert 'errors' not in response
+        return response['data']
     return func
 
 
@@ -33,19 +33,75 @@ def uuid(device):
 
 
 @pytest.fixture
-def token(graphql_client_query_data, uuid):
-    data = graphql_client_query_data(
-        '''
-        mutation($uuid: UUID!) {
-          enableMocaf(uuid: $uuid) {
-            ok
-            token
-          }
+def contains_error():
+    def func(response, code=None, message=None):
+        if 'errors' not in response:
+            return False
+        expected_parts = {}
+        if code is not None:
+            expected_parts['extensions'] = {'code': code}
+        if message is not None:
+            expected_parts['message'] = message
+        return any(expected_parts.items() <= error.items() for error in response['errors'])
+    return func
+
+
+@pytest.fixture
+def disable_mocaf(graphql_client_query_data):
+    def func(uuid, token):
+        data = graphql_client_query_data(
+            '''
+            mutation($uuid: String!, $token: String!) @device(uuid: $uuid, token: $token) {
+              disableMocaf {
+                ok
+              }
+            }
+            ''',
+            variables={'uuid': str(uuid), 'token': token}
+        )
+        expected = {
+            'disableMocaf': {
+                'ok': True,
+            }
         }
-        ''',
-        variables={'uuid': uuid}
-    )
-    data = data['enableMocaf']
-    assert data['ok']
-    token = data['token']
-    return token
+        assert data == expected
+    return func
+
+
+@pytest.fixture
+def enable_mocaf(graphql_client_query_data):
+    def func(uuid, token=None):
+        if token is None:
+            data = graphql_client_query_data(
+                '''
+                mutation($uuid: String!) {
+                  enableMocaf(uuid: $uuid) {
+                    ok
+                    token
+                  }
+                }
+                ''',
+                variables={'uuid': str(uuid)}
+            )
+        else:
+            data = graphql_client_query_data(
+                '''
+                mutation($uuid: String!, $token: String!) @device(uuid: $uuid, token: $token) {
+                  enableMocaf {
+                    ok
+                    token
+                  }
+                }
+                ''',
+                variables={'uuid': str(uuid), 'token': token}
+            )
+        data = data['enableMocaf']
+        assert data['ok']
+        # assert data['token']  # if we ran enableMocaf with the @device directive, this will be None
+        return data['token']
+    return func
+
+
+@pytest.fixture
+def token(enable_mocaf, uuid):
+    return enable_mocaf(uuid)
