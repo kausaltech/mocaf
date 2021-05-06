@@ -65,7 +65,22 @@ SECRET_KEY = env('SECRET_KEY')
 
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
-
+CELERY_BEAT_SCHEDULE = {
+    'ingest-received-data': {
+        'task': 'trips_ingest.tasks.ingest_events',
+        'schedule': 120,
+        'options': {
+            'expires': 30,
+        }
+    },
+    'generate-new-trips': {
+        'task': 'trips.tasks.generate_new_trips',
+        'schedule': 240,
+        'options': {
+            'expires': 30,
+        }
+    }
+}
 
 # Application definition
 
