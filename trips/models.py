@@ -50,6 +50,14 @@ class Device(models.Model):
 
             dev.enable_events.create(time=timezone.now(), enabled=enabled)
 
+    @property
+    def enabled(self):
+        try:
+            latest_event = self.enable_events.latest()
+            return latest_event.enabled
+        except EnableEvent.DoesNotExist:
+            return False
+
     def update_carbon_footprint(self, start_time: datetime, end_time: datetime):
         # from budget.models import DeviceDailyCarbonFootprint
         # DeviceDailyCarbonFootprint.update_for_period(self.device, start_time, end_time)
