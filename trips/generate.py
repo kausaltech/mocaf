@@ -181,7 +181,7 @@ class TripGenerator:
             trip_df = split_trip_legs(connection, trip_df)
             pc.display('legs split')
             with transaction.atomic():
-                self.save_trip(uuid, trip_df, default_variants)
+                self.save_trip(device, trip_df, default_variants)
             pc.display('trip saved')
         transaction.commit()
 

@@ -1,6 +1,10 @@
+import pytz
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+
+
+LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 class ReceiveData(models.Model):
@@ -12,6 +16,12 @@ class ReceiveData(models.Model):
     class Meta:
         ordering = ('received_at',)
 
+    def __str__(self):
+        received_at = self.received_at.astimezone(LOCAL_TZ)
+        imported_at = self.imported_at.astimezone(LOCAL_TZ) if self.imported_at else None
+        return 'Received: %s | Imported: %s | Failed: %s' % (
+            received_at, imported_at, self.import_failed
+        )
 
 class LocationImport(models.Model):
     id = models.IntegerField(primary_key=True)

@@ -66,7 +66,7 @@ class EventProcessor:
             raise InvalidEventError("location missing or invalid")
 
         DICT_KEYS = ['activity', 'coords', 'extras']
-
+        last_uuid = None
         for loc in locs:
             for key in DICT_KEYS:
                 if not isinstance(loc.get(key), dict):
@@ -81,6 +81,12 @@ class EventProcessor:
 
             obj.time = sane_time_or_bye(dt)
             obj.uuid = uuid_or_bye(loc['extras'].get('uid'))
+
+            if Location.objects.filter(time=obj.time, uuid=obj.uuid).exists():
+                logger.warning('Location for %s at %s already exists' % (obj.uuid, obj.time))
+                return
+
+            last_uuid = obj.uuid
 
             atype = loc['activity'].get('type')
             if atype not in ACTIVITY_TYPES:
@@ -111,7 +117,7 @@ class EventProcessor:
             obj.battery_charging = loc.get('battery', {}).get('is_charging')
             obj.save()
 
-        logger.info('%d location samples saved' % len(locs))
+        logger.info('%d location samples saved for %s' % (len(locs), last_uuid))
 
     def process_device_info_event(self, event):
         data = event.data
@@ -131,6 +137,11 @@ class EventProcessor:
         data = event.data
         dt = datetime.fromtimestamp(data.get('time') / 1000, pytz.utc)
         uid = uuid_or_bye(data.get('userId'))
+        time = sane_time_or_bye(dt)
+        if DeviceHeartbeat.objects.filter(time=time, uuid=uid).exists():
+            logger.warning('Heartbeat for %s at %s already exists' % (uid, time))
+            return
+
         obj = DeviceHeartbeat(time=sane_time_or_bye(dt), uuid=uid, created_at=event.received_at)
         obj.save()
 
