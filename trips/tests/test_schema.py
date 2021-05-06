@@ -1,6 +1,6 @@
 import pytest
 
-from trips.tests.factories import LegFactory
+from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -100,6 +100,30 @@ def test_leg_node(graphql_client_query_data, uuid, token, trip):
                 'deletedAt': leg.deleted_at,
                 'canUpdate': leg.can_user_update(),
             }],
+        }]
+    }
+    assert data == expected
+
+
+def test_only_list_own_trips(graphql_client_query_data, uuid, token, trip):
+    other_device = DeviceFactory()
+    assert other_device.uuid != uuid
+    TripFactory(device=other_device)
+    data = graphql_client_query_data(
+        '''
+        query($uuid: String!, $token: String!)
+        @device(uuid: $uuid, token: $token)
+        {
+          trips {
+            id
+          }
+        }
+        ''',
+        variables={'uuid': uuid, 'token': token}
+    )
+    expected = {
+        'trips': [{
+            'id': str(trip.id),
         }]
     }
     assert data == expected
@@ -218,7 +242,7 @@ def test_enable_mocaf_with_token(disable_mocaf, enable_mocaf, device):
 
 
 def test_enable_mocaf_device_directive_missing(graphql_client_query, contains_error, uuid, token):
-    # We want enableMocaf to complayn when the device already has a token but it's not supplied via the @device
+    # We want enableMocaf to complain when the device already has a token but it's not supplied via the @device
     # directive.
     response = graphql_client_query(
         '''

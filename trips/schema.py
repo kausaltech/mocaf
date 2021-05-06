@@ -21,7 +21,6 @@ def resolve_i18n_field(obj: Any, field_name: str, info):
     return getattr(obj, field_name)
 
 
-
 class TransportModeVariantNode(DjangoNode):
     def resolve_name(root: TransportModeVariant, info):
         return resolve_i18n_field(root, 'name', info)
@@ -264,7 +263,6 @@ class SetDefaultTransportModeVariant(graphene.Mutation, AuthenticatedDeviceNode)
         default_obj.save()
 
         return dict(ok=True)
-
 
 
 class Query(graphene.ObjectType):

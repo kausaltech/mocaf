@@ -1,5 +1,5 @@
 from django.utils.timezone import make_aware, utc
-from factory import SubFactory
+from factory import Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from datetime import datetime
 from uuid import UUID
@@ -9,7 +9,7 @@ class DeviceFactory(DjangoModelFactory):
     class Meta:
         model = 'trips.Device'
 
-    uuid = UUID('f8d65ee8-4b3c-40d0-83fa-8351997120a3')
+    uuid = Sequence(lambda i: UUID(int=i))
     token = None
     platform = None
     system_version = None
