@@ -115,7 +115,7 @@ class EventProcessor:
             obj.debug = bool(loc['extras'].get('debug', 0))
             obj.is_moving = loc.get('is_moving')
             obj.battery_charging = loc.get('battery', {}).get('is_charging')
-            obj.save()
+            obj.save(force_insert=True)
 
         logger.info('%d location samples saved for %s' % (len(locs), last_uuid))
 
@@ -143,7 +143,7 @@ class EventProcessor:
             return
 
         obj = DeviceHeartbeat(time=sane_time_or_bye(dt), uuid=uid, created_at=event.received_at)
-        obj.save()
+        obj.save(force_insert=True)
 
     def process_sensor_event(self, event):
         # Discard for now
