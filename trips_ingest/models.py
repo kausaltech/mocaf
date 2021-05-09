@@ -23,6 +23,7 @@ class ReceiveData(models.Model):
             received_at, imported_at, self.import_failed
         )
 
+
 class LocationImport(models.Model):
     id = models.IntegerField(primary_key=True)
     time = models.IntegerField(null=False)

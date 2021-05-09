@@ -2,7 +2,7 @@ import logging
 import geopandas as gpd
 
 from calc.trips import (
-    LOCAL_2D_CRS, LOCAL_TZ, read_trips, read_uuids, split_trip_legs, filter_trips
+    LOCAL_2D_CRS, read_trips, read_uuids, split_trip_legs, filter_trips
 )
 
 from utils.perf import PerfCounter
@@ -198,7 +198,7 @@ class TripGenerator:
         }
         uuids = (
             Location.objects.values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
-                .values('uuid', 'newest_created_at')
+            .values('uuid', 'newest_created_at')
         )
         uuids_to_process = []
         for row in uuids:

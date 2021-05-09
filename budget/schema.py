@@ -1,11 +1,10 @@
-from datetime import date, timedelta
+from datetime import date
 from trips.schema import TransportModeNode
 import graphene
 from graphql.error import GraphQLError
-from django.utils import timezone
 from .models import EmissionBudgetLevel
 from .enums import TimeResolution, EmissionUnit
-from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
+from mocaf.graphql_types import DjangoNode
 
 
 class EmissionUnitEnum(graphene.Enum):

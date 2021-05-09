@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.db import connection
 from trips.models import Device
 from trips.generate import TripGenerator
@@ -17,8 +17,8 @@ class Command(BaseCommand):
         generator = TripGenerator()
         uuid = options['uuid']
         start_uuid = options['start_after_uuid']
-        #start_time = datetime(2021, 4, 28, 0)
-        #end_time = start_time + timedelta(days=1)
+        # start_time = datetime(2021, 4, 28, 0)
+        # end_time = start_time + timedelta(days=1)
         start_time = None
         end_time = None
 

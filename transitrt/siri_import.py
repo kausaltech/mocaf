@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 import pytz
 import requests
 from psycopg2.extras import execute_values
-from django.db.models import Max
 from django.db import transaction, connection
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -25,6 +24,7 @@ LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 coord_transform = ct = CoordTransform(
     SpatialReference('WGS84'), SpatialReference(settings.LOCAL_SRS)
 )
+
 
 def js_to_dt(ts):
     return LOCAL_TZ.localize(datetime.fromtimestamp(ts / 1000))
@@ -118,7 +118,6 @@ class SiriImporter:
 
         with connection.cursor() as cursor:
             execute_values(cursor, query, objs, template=template, page_size=2048)
-
 
     def commit(self):
         self.update_cached_locs(self._batch_vids)

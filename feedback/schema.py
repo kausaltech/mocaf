@@ -1,6 +1,6 @@
 import graphene
 
-from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
+from mocaf.graphql_types import AuthenticatedDeviceNode
 from trips.models import Leg
 from .models import DeviceFeedback
 

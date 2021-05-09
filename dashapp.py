@@ -15,10 +15,10 @@ import geopandas as gpd
 from sqlalchemy import create_engine
 
 from utils.perf import PerfCounter
-from calc.trips import LOCAL_TZ, read_trips, read_uuids, filter_trips
+from calc.trips import read_trips, read_uuids
 
 
-import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()
+import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()  # noqa
 from trips.models import Device
 
 
@@ -30,7 +30,6 @@ DEFAULT_UUID = os.getenv('DEFAULT_UUID')
 
 LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 
-from sqlalchemy import create_engine
 eng = create_engine(os.getenv('DATABASE_URL'))
 
 
@@ -74,7 +73,7 @@ if DEFAULT_UUID and DEFAULT_UUID not in uuids:
 
 
 def make_map_component(xstart=None, xend=None):
-    pc = PerfCounter('make_map_fig')
+    PerfCounter('make_map_fig')
 
     df = time_filtered_locations_df.copy()
 
@@ -119,7 +118,7 @@ def make_map_component(xstart=None, xend=None):
 
 def hex_to_rgb(h):
     h = h.lstrip("#")
-    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(h[i: i + 2], 16) for i in (0, 2, 4))
 
 
 def make_trip_component():
@@ -230,46 +229,46 @@ def display_hover_data(click_data, relayout_data):
     data_table_component = make_data_table()
     return map_component, trip_component, data_table_component
 
-    if not hover_data and not click_data:
-        return map_fig
-
-    if click_data:
-        click = True
-    else:
-        click = False
-
-    layers = []
-    df = locations_df
-    for p in hover_data['points']:
-        trace = map_fig['data'][p['curveNumber']]
-        r = df.loc[df.time == p['x']].iloc[0]
-        layer = dict(
-            sourcetype='geojson',
-            source={
-                'type': 'Feature',
-                "properties": {},
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [float(r.lon), float(r.lat)]
-                },
-            },
-            type='circle',
-            circle=dict(radius=10),
-            color='#00f',
-            # opacity=0.8,
-            symbol=dict(icon='marker', iconsize=10),
-        )
-        layers.append(layer)
-
-    update_args = dict(center=dict(lat=r.lat, lon=r.lon), layers=layers)
-    if click:
-        update_args['zoom'] = 15
-    else:
-        update_args['zoom'] = DEFAULT_ZOOM
-
-    map_fig.update_mapboxes(**update_args)
-
-    return map_fig
+    # if not hover_data and not click_data:
+    #     return map_fig
+    #
+    # if click_data:
+    #     click = True
+    # else:
+    #     click = False
+    #
+    # layers = []
+    # df = locations_df
+    # for p in hover_data['points']:
+    #     trace = map_fig['data'][p['curveNumber']]
+    #     r = df.loc[df.time == p['x']].iloc[0]
+    #     layer = dict(
+    #         sourcetype='geojson',
+    #         source={
+    #             'type': 'Feature',
+    #             "properties": {},
+    #             "geometry": {
+    #                 "type": "Point",
+    #                 "coordinates": [float(r.lon), float(r.lat)]
+    #             },
+    #         },
+    #         type='circle',
+    #         circle=dict(radius=10),
+    #         color='#00f',
+    #         # opacity=0.8,
+    #         symbol=dict(icon='marker', iconsize=10),
+    #     )
+    #     layers.append(layer)
+    #
+    # update_args = dict(center=dict(lat=r.lat, lon=r.lon), layers=layers)
+    # if click:
+    #     update_args['zoom'] = 15
+    # else:
+    #     update_args['zoom'] = DEFAULT_ZOOM
+    #
+    # map_fig.update_mapboxes(**update_args)
+    #
+    # return map_fig
 
 
 def generate_containers(uid, time_fig=None, map_component=None, trip_component=None):
@@ -317,10 +316,10 @@ def render_output(new_path, new_uid, filtered):
     if locations_uuid is None or locations_uuid != new_uid:
         df = read_trips(eng, new_uid)
         df.time = pd.to_datetime(df.time, utc=True)
-        #print('filtering')
-        #df = filter_trips(df)
+        # print('filtering')
+        # df = filter_trips(df)
         # df['speed'] *= 3.6
-        #print('done')
+        # print('done')
         df['local_time'] = df.time.dt.tz_convert(LOCAL_TZ)
         df['distance'] = df.distance.round(1)
         df['x'] = df.x.round(1)

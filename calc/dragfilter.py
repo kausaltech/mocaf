@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from filterpy.kalman import update
 from scipy.linalg import expm
 from filterpy.stats import logpdf as mvnormlogpdf
@@ -41,16 +40,18 @@ S0 = np.diag([location_std**2, location_std**2, speed_std**2, speed_std**2])
 # speeds and bearings are just estimated from the samples. Measurement variance
 # is given in the measurements, so no need to assume values for that.
 H = np.array([
-    [1, 0, 0, 0,],
-    [0, 1, 0, 0,]
+    [1, 0, 0, 0],
+    [0, 1, 0, 0]
     ])
 
 float_eps = np.finfo(float).eps
 
+
 # Sympy generated mess for solving the "Qd" for the Fc and Q above
 def Qd(dt, force, drag):
     exp = np.exp
-    return np.array([[dt*force/drag**2 - 3*force/(2*drag**3) + 2*force*exp(-drag*dt)/drag**3 - force*exp(-2*drag*dt)/(2*drag**3), 0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0], [0, dt*force/drag**2 - 3*force/(2*drag**3) + 2*force*exp(-drag*dt)/drag**3 - force*exp(-2*drag*dt)/(2*drag**3), 0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2)], [force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0, force/(2*drag) - force*exp(-2*drag*dt)/(2*drag), 0], [0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0, force/(2*drag) - force*exp(-2*drag*dt)/(2*drag)]])
+    return np.array([[dt*force/drag**2 - 3*force/(2*drag**3) + 2*force*exp(-drag*dt)/drag**3 - force*exp(-2*drag*dt)/(2*drag**3), 0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0], [0, dt*force/drag**2 - 3*force/(2*drag**3) + 2*force*exp(-drag*dt)/drag**3 - force*exp(-2*drag*dt)/(2*drag**3), 0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2)], [force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0, force/(2*drag) - force*exp(-2*drag*dt)/(2*drag), 0], [0, force*(exp(2*drag*dt) - 2*exp(drag*dt) + 1)*exp(-2*drag*dt)/(2*drag**2), 0, force/(2*drag) - force*exp(-2*drag*dt)/(2*drag)]])  # noqa: E501
+
 
 def predict(dt, m, S, F, Qd):
     # TODO: Optimize later. Probably not necessary to take expms here, but
@@ -59,15 +60,16 @@ def predict(dt, m, S, F, Qd):
     # See https://en.wikipedia.org/wiki/Discretization#Discretization_of_linear_state_space_models
     expFT = expm(F*dt)
     m = expFT@m
-    
+
     # See https://sci-hub.st/https://www.sciencedirect.com/science/article/pii/S0076539206800767
     # for solving the differential lypuanov equation that governs the covariance matrix.
     # No general analytical solution is known, but it's relatively simple to solve for
     # special cases. Here Qt should be the integral part of the known solution for a time-invariant
     # F.
     S = expFT@S@expFT.T + Qd
-    
+
     return m, S
+
 
 class DragFilter:
     def __init__(self, force, drag, x, P):
@@ -90,8 +92,8 @@ class DragFilter:
         # speeds and bearings are just estimated from the samples. Measurement variance
         # is given in the measurements, so no need to assume values for that.
         self.H = np.array([
-            [1, 0, 0, 0,],
-            [0, 1, 0, 0,]
+            [1, 0, 0, 0],
+            [0, 1, 0, 0]
         ])
 
         self.likelihood = 1.0
@@ -100,7 +102,6 @@ class DragFilter:
         # a cleaner solution.
         self.x0 = np.copy(x)
         self.P0 = np.copy(P)
-
 
     def predict(self, dt):
         # Hack to avoid over/underflows: cap "effective" dt to 300 seconds
@@ -112,11 +113,11 @@ class DragFilter:
         # Just a standard Kalman update with varying R
         # IMM needs the likelihood of the previous sample. This is
         # mostly computed in update below again, but optimize later
-        
+
         predicted_z = self.H@self.x
         z_cov = self.H@self.P@self.H.T + R
         residual = z - predicted_z
-        
+
         self.likelihood = np.exp(mvnormlogpdf(x=residual, cov=z_cov))
         self.likelihood = max(self.likelihood, float_eps)
         self.x, self.P = update(self.x, self.P, z, R, self.H)
@@ -136,31 +137,30 @@ def filter_trajectory(traj):
             prev_time = z.time
         dt = z.time - prev_time
         prev_time = z.time
-        
+
         with np.errstate(all="raise"):
             # Qd(dt) overflows when the dt is too high. Just revert
             # to initial in these cases
             try:
                 m, S = predict(dt, m, S, F, Qd(dt))
             except FloatingPointError:
-                #m = m0.copy()
+                # m = m0.copy()
                 S = S0.copy()
 
         measurement = np.array([z.x, z.y])
-        
+
         R = float(z.location_std)
         if R <= 0:
             # There are some negative values, just input something for them.
             # Should be fixed at client end.
             R = 10.0
-        
+
         # TODO: Check that this is correct. The location_std is the
         # 68% prob (ie std of) radius of the error
         R = np.diag([R**2, R**2])
-        
+
         m, S = update(m, S, measurement, R, H)
         ms.append(m)
         Ss.append(S)
 
     return np.array(ms), np.array(Ss)
-        

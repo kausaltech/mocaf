@@ -254,7 +254,7 @@ def read_uuids(conn):
 
 def get_vehicle_locations(conn, start: datetime, end: datetime):
     query = """
-        SELECT 
+        SELECT
             vehicle_ref,
             journey_ref,
             extract(epoch from time) as time,
@@ -324,7 +324,7 @@ if __name__ == '__main__':
     if False:
         pd.set_option("max_rows", None)
         pd.set_option("min_rows", None)
-        df = read_trips(conn, default_uid)
+        df = read_trips(eng, default_uid)
         trip_ids = df.trip_id.unique()
         for trip in trip_ids:
             print(trip)

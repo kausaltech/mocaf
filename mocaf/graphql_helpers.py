@@ -1,4 +1,3 @@
-from typing import Optional
 from graphql import ResolveInfo
 from graphql.error import GraphQLError
 from graphene.utils.str_converters import to_snake_case

@@ -1,7 +1,6 @@
 import uuid
 import pytz
 from datetime import datetime, timedelta
-from pprint import pprint
 import logging
 
 from dateutil.parser import isoparse
@@ -76,7 +75,7 @@ class EventProcessor:
 
             try:
                 dt = isoparse(loc.get('timestamp'))
-            except Exception as e:
+            except Exception:
                 raise InvalidEventError("location has invalid time")
 
             obj.time = sane_time_or_bye(dt)
@@ -188,8 +187,7 @@ class EventProcessor:
                                 else:
                                     logger.error(e, exc_info=True)
                                 raise
-                    except Exception as e:
+                    except Exception:
                         self.mark_imported(event, failed=True)
                     else:
                         self.mark_imported(event, failed=False)
-

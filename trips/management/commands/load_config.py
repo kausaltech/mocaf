@@ -1,5 +1,5 @@
 import yaml
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from trips.models import TransportMode, TransportModeVariant
 from budget.models import EmissionBudgetLevel
 
@@ -38,7 +38,7 @@ class Command(BaseCommand):
             variant.name = item['name']
             variant.name_fi = item['name']
             if 'name_en' in item:
-                variant.name_en  = item['name_en']
+                variant.name_en = item['name_en']
             variant.emission_factor = item['emission_factor']
             variant.save()
             print('\tSaved variant: %s' % variant)

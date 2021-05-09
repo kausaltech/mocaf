@@ -134,7 +134,6 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
     def mutate(root, info):
-        dev = info.context.device
         return dict(ok=False)
 
 

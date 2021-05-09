@@ -174,10 +174,10 @@ class IMMEstimator(object):
             measurement for this update.
         R: measurement covariance
         """
-        
+
         # Apply "external" estimates.
         # TODO: Verify this. _compute_mixing probabilities rewrites
-        # cbar 
+        # cbar
         if state_prob_ests is not None:
             self.cbar *= state_prob_ests
 
