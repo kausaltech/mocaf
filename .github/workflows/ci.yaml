@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build_and_test:
+    name: Build Docker container and run tests
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: test
+    # TODO: Do we want a flake8 step? Github Action's python-app.yml template contains some potentially interesting options.
+    steps:
+      - uses: actions/checkout@v2
+      - name: Building Docker containers
+        run: |
+          docker-compose build
+      - name: Starting Postgres and Redis
+        run: |
+          docker-compose up -d db redis
+      - name: Running pytest unit tests
+        run: docker-compose run --rm --entrypoint '' app pytest
+      - name: Stopping Postgres and Redis
+        run: |
+          docker-compose down db redis

@@ -39,3 +39,9 @@ wheels/
 *.egg
 
 /data
+
+/.env
+/.env.*
+/db.sqlite3
+/local_settings.py
+**/__pycache__/
