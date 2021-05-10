@@ -1,10 +1,19 @@
+import logging
 import sentry_sdk
 from graphene_django.views import GraphQLView
+
+
+logger = logging.getLogger(__name__)
 
 
 class MocafGraphQLView(GraphQLView):
     def execute_graphql_request(self, request, data, query, variables, operation_name, *args, **kwargs):
         transaction = sentry_sdk.Hub.current.scope.transaction
+
+        query_str = query.strip()
+        if variables:
+            query_str += '\nVariables: %s' % variables
+        logger.info("GraphQL query:\n%s" % query_str)
 
         with sentry_sdk.push_scope() as scope:
             scope.set_context('graphql_variables', variables)
