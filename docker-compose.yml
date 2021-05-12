@@ -6,6 +6,7 @@ x-django-environment: &django-environment
   - CELERY_RESULT_BACKEND=redis://redis:6379
   - STATIC_ROOT=/srv/static
   - MEDIA_ROOT=/srv/media
+  - MEDIA_URL
   - LC_CTYPE=C.UTF-8
   - DEBUG
   - ALLOWED_HOSTS
