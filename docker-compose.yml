@@ -83,9 +83,7 @@ services:
     image: ovalmoney/celery-exporter
     restart: always
     depends_on:
-      - app
-      - celery-worker
-      - celery-beat
+      - redis
     ports:
       - "${CELERY_EXPORTER_PORT:-127.0.0.1:9540}:9540"
 
