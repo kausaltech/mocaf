@@ -79,6 +79,12 @@ services:
       - redis
     command: celery beat
 
+  celery-exporter:
+    image: ovalmoney/celery-exporter
+    restart: always
+    ports:
+      - "${CELERY_EXPORTER_PORT:-127.0.0.1:9540}:9540"
+
 volumes:
   db_data:
   mocaf_media:

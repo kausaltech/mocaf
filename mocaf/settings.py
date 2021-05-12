@@ -81,6 +81,10 @@ CELERY_BEAT_SCHEDULE = {
         }
     }
 }
+# Required for Celery exporter: https://github.com/OvalMoney/celery-exporter
+# For configuration, see also another exporter: https://github.com/danihodovic/celery-exporter
+CELERY_WORKER_SEND_TASK_EVENTS = True
+# CELERY_TASK_SEND_SENT_EVENT = True  # required only for danihodovic/celery-exporter
 
 # Application definition
 

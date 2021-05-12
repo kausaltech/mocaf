@@ -9,6 +9,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from trips_ingest.api import ingest_view
 from .graphql_views import MocafGraphQLView
+from .views import health_view
 
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
 
     path('admin/', include(wagtailadmin_urls)),
     path('documents/', include(wagtaildocs_urls)),
+    path('v1/health/', csrf_exempt(health_view)),
     path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True))),
     path('v1/ingest/', csrf_exempt(ingest_view))
 ]
