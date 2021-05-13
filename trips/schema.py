@@ -275,6 +275,10 @@ class SetDefaultTransportModeVariant(graphene.Mutation, AuthenticatedDeviceNode)
 
 
 def set_emission_budget_levels(info, qs):
+    if not qs:
+        info.context.monthly_budget = {}
+        return
+
     min_time = min([x.start_time for x in qs])
     max_time = max([x.start_time for x in qs])
     level = (EmissionBudgetLevel.objects.filter(year__lte=min_time.year)
