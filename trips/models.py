@@ -83,11 +83,13 @@ class Device(models.Model):
             trunc_kind = 'year'
             if end_date is None:
                 end_date = start_date.replace(month=12, day=31)
+                start_date = start_date.replace(month=1, day=1)
         elif time_resolution == TimeResolution.MONTH:
             trunc_kind = 'month'
             if end_date is None:
                 last_day = calendar.monthrange(start_date.year, start_date.month)[1]
                 end_date = start_date.replace(day=last_day)
+                start_date = start_date.replace(day=1)
         elif time_resolution == TimeResolution.DAY:
             trunc_kind = 'day'
             if end_date is None:
