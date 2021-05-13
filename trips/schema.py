@@ -1,3 +1,4 @@
+import random
 from typing import Any
 from django.utils import timezone
 from django.db.models import Q
@@ -66,6 +67,7 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
     start_time = graphene.DateTime()
     end_time = graphene.DateTime()
     carbon_footprint = graphene.Float()
+    budget_level_impact = graphene.Float(description='How much does this trip reduce the remaining carbon budget for the month?')
     length = graphene.Float()
 
     class Meta:
@@ -79,6 +81,10 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
         qs = root.legs.active()
         qs = paginate_queryset(qs, info, kwargs, orderable_fields=['start_time'])
         return qs
+
+    def resolve_budget_level_impact(root, info, **kwargs):
+        val = round(random.random() / 100, 3)
+        return -val
 
 
 class EnableMocafMutation(graphene.Mutation):
