@@ -66,3 +66,20 @@ transport_modes:
     name: Juna
     name_en: Train
     emission_factor: 5.2
+  - identifier: other
+    name: Muu
+    name_en: Other
+    emission_factor: 5
+    variants:
+      - identifier: rollerskates
+        name: Rullaluistimet
+        name_en: Roller skates
+        emission_factor: 3
+      - identifier: skateboard
+        name: Skeittilauta
+        name_en: skateboard
+        emission_factor: 3
+      - identifier: escooter
+        name: Sähköpotkulauta
+        name_en: Electric scooter
+        emission_factor: 7
