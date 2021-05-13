@@ -286,7 +286,7 @@ class Trip(models.Model):
             self.save(update_fields=['deleted_at'])
 
     def __str__(self):
-        legs = list(self.legs.all())
+        legs = list(self.legs.order_by('start_time'))
         if legs:
             length = 0
             for leg in legs:
@@ -371,8 +371,10 @@ class Leg(models.Model):
         if self.mode_variant:
             mode_str += ' (%s)' % self.mode_variant.identifier
 
-        return '%sLeg [%s]: Started at %s (duration %.1s min), length %.1f km' % (
-            deleted, mode_str, self.start_time, duration, self.length / 1000
+        start_time = self.start_time.astimezone(LOCAL_TZ)
+
+        return '%sLeg [%s]: Started at %s (duration %.1f min), length %.1f km' % (
+            deleted, mode_str, start_time, duration, self.length / 1000
         )
 
 
