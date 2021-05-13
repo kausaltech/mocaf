@@ -133,7 +133,7 @@ class TripGenerator:
             logger.info('Legs have user corrected elements, not deleting')
             return
 
-        if device.trips.filter(legs__in=legs).filter(feedbacks__inull=False):
+        if device.trips.filter(legs__in=legs).filter(feedbacks__isnull=False):
             logger.info('Trips have user corrected elements, not deleting')
             return
 
