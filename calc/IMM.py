@@ -161,6 +161,10 @@ class IMMEstimator(object):
         self.P_prior = self.P.copy()
         self.x_post = self.x.copy()
         self.P_post = self.P.copy()
+        
+        # Total cumulative loglikelihood of the data. A bit shaky
+        # grond on whether this is computed correctly...
+        self.total_loglikelihood = 0.0
 
     def update(self, z, R, M, state_prob_ests):
         """
@@ -174,10 +178,10 @@ class IMMEstimator(object):
             measurement for this update.
         R: measurement covariance
         """
-
+        
         # Apply "external" estimates.
         # TODO: Verify this. _compute_mixing probabilities rewrites
-        # cbar
+        # cbar 
         if state_prob_ests is not None:
             self.cbar *= state_prob_ests
 
@@ -188,7 +192,9 @@ class IMMEstimator(object):
 
         # update mode probabilities from total probability * likelihood
         self.mu = self.cbar * self.likelihood
-        self.mu /= np.sum(self.mu)  # normalize
+        weighted_likelihood = np.sum(self.mu)
+        self.mu /= weighted_likelihood  # normalize
+        self.total_loglikelihood += np.log(weighted_likelihood)
 
         self._compute_mixing_probabilities(M)
 
