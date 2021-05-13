@@ -1,4 +1,6 @@
-import random
+from budget.enums import EmissionUnit, TimeResolution
+from datetime import timedelta
+from budget.models import EmissionBudgetLevel
 from typing import Any
 from django.utils import timezone
 from django.db.models import Q
@@ -83,8 +85,10 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
         return qs
 
     def resolve_budget_level_impact(root, info, **kwargs):
-        val = round(random.random() / 100, 3)
-        return -val
+        monthly_budget = info.context.monthly_budget[root.start_time.date()]
+        footprint = root.carbon_footprint
+        val = -footprint / monthly_budget
+        return val
 
 
 class EnableMocafMutation(graphene.Mutation):
@@ -270,6 +274,23 @@ class SetDefaultTransportModeVariant(graphene.Mutation, AuthenticatedDeviceNode)
         return dict(ok=True)
 
 
+def set_emission_budget_levels(info, qs):
+    min_time = min([x.start_time for x in qs])
+    max_time = max([x.start_time for x in qs])
+    level = (EmissionBudgetLevel.objects.filter(year__lte=min_time.year)
+        .order_by('-year', '-carbon_footprint').first())
+    date = min_time.date()
+    end_date = max_time.date()
+    levels = {}
+    while date <= end_date:
+        amount = level.calculate_for_date(
+            date, time_resolution=TimeResolution.MONTH, units=EmissionUnit.G
+        )
+        levels[date] = amount
+        date += timedelta(days=1)
+    info.context.monthly_budget = levels
+
+
 class Query(graphene.ObjectType):
     trips = graphene.List(
         TripNode, offset=graphene.Int(), limit=graphene.Int(),
@@ -285,6 +306,7 @@ class Query(graphene.ObjectType):
         qs = dev.trips.active().annotate_times()
         qs = paginate_queryset(qs, info, kwargs, orderable_fields=['start_time'])
         qs = gql_optimizer.query(qs, info)
+        set_emission_budget_levels(info, qs)
         return qs
 
     def resolve_trip(root, info, id):
@@ -293,7 +315,11 @@ class Query(graphene.ObjectType):
             raise GraphQLError("Authentication required", [info])
         qs = dev.trips.active().annotate_times().filter(id=id)
         qs = gql_optimizer.query(qs, info)
-        return qs.first()
+        obj = qs.first()
+        if obj is None:
+            return None
+        set_emission_budget_levels(info, [obj])
+        return obj
 
     def resolve_transport_modes(root, info):
         dev = info.context.device
