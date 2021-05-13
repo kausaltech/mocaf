@@ -26,3 +26,4 @@ pyyaml
 factory-boy
 pytest-factoryboy
 pytest-django
+numba

@@ -90,6 +90,7 @@ class TripGenerator:
             trip=trip,
             mode=mode,
             mode_variant=variant,
+            estimated_mode=mode,
             length=leg_length,
             start_time=start.time,
             end_time=end.time,
@@ -126,6 +127,16 @@ class TripGenerator:
         overlap = Q(end_time__gte=min_time) & Q(end_time__lte=max_time)
         overlap |= Q(start_time__gte=min_time) & Q(start_time__lte=max_time)
         legs = Leg.objects.filter(trip__device=device).filter(overlap)
+        if legs.filter(
+            Q(feedbacks__isnull=False) | Q(user_corrected_mode__isnull=False) | Q(user_corrected_mode_variant__isnull=False)
+        ).exists():
+            logger.info('Legs have user corrected elements, not deleting')
+            return
+
+        if device.trips.filter(legs__in=legs).filter(feedbacks__inull=False):
+            logger.info('Trips have user corrected elements, not deleting')
+            return
+
         count = device.trips.filter(legs__in=legs).delete()
         print(count)
         pc.display('deleted')

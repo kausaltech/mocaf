@@ -16,7 +16,7 @@ DAYS_TO_FETCH = 30
 LOCAL_2D_CRS = 3067
 
 
-def read_trips(conn, uid, start_time=None, end_time=None):
+def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     print('Selected UID %s. Reading dataframe.' % uid)
     pc = PerfCounter('read_locations', show_time_to_last=True)
 
@@ -41,6 +41,7 @@ def read_trips(conn, uid, start_time=None, end_time=None):
             l.aconf,
             l.speed,
             l.heading,
+            l.manual_atype,
             l.created_at AS created_at
         FROM
             {TABLE_NAME} AS l
@@ -124,7 +125,9 @@ def read_trips(conn, uid, start_time=None, end_time=None):
     loc_count = d[d['mean_distance'] > MIN_DISTANCE_MOVED_IN_TRIP].groupby('trip_id')['time'].count()
     trips_to_keep = loc_count.index[loc_count > 10]
 
-    df = df[df.trip_id.isin(trips_to_keep)]
+    if not include_all:
+        df = df[df.trip_id.isin(trips_to_keep)]
+
     df = df.drop(columns=['timediff', 'new_trip'])
 
     '''
@@ -206,7 +209,7 @@ def filter_trips(df):
     out['aconf'] = df['aconf'] / 100
     out.loc[out.aconf == 1, 'aconf'] /= 2
 
-    ms, Ss, state_probs, most_likely_path = filter_trajectory((r for i, r in out.iterrows()))
+    ms, Ss, state_probs, most_likely_path, _ = filter_trajectory((r for i, r in out.iterrows()))
 
     x = ms[:, 0]
     y = ms[:, 1]

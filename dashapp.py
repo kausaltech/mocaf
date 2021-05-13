@@ -5,6 +5,7 @@ import dash_table
 import pydeck
 import pytz
 import dash_bootstrap_components as dbc
+from dateutil.parser import parse
 from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
@@ -15,7 +16,7 @@ import geopandas as gpd
 from sqlalchemy import create_engine
 
 from utils.perf import PerfCounter
-from calc.trips import read_trips, read_uuids
+from calc.trips import filter_trips, read_trips, read_uuids
 
 
 import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()  # noqa
@@ -41,6 +42,9 @@ COLOR_MAP = {
     'running': '#f77f00',
     'on_bicycle': '#06d6a0',
     'unknown': '#cccccc',
+    'tram': '#ef476f',
+    'bus': '#ef476f',
+    'car': '#ef476f',
 }
 
 TRANSPORT_COLOR_MAP = {
@@ -67,7 +71,8 @@ map_component = None
 trip_component = None
 data_table_component = None
 
-uuids = read_uuids(eng)
+conn = eng.connect()
+uuids = read_uuids(conn.connection)
 if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
 
@@ -180,6 +185,8 @@ def make_trip_component():
 
 
 def make_data_table():
+    if len(time_filtered_locations_df) > 200:
+        return None
     df = time_filtered_locations_df.copy()
     cols = list(df.columns)
     cols.remove('time')
@@ -199,7 +206,7 @@ def make_data_table():
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 px.set_mapbox_access_token(os.getenv('MAPBOX_ACCESS_TOKEN'))
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 
 
 @app.callback(
@@ -271,6 +278,60 @@ def display_hover_data(click_data, relayout_data):
     # return map_fig
 
 
+selected_start_time = None
+selected_end_time = None
+
+
+@app.callback(
+    [Output('label-button-output', 'children')],
+    [Input('label-buttons', 'value')],
+)
+def label_values(value):
+    if value is None:
+        return ['']
+
+    if value == 'none':
+        value = None
+
+    with eng.connect() as conn:
+        print('Updating to %s' % value)
+        ret = conn.execute('''
+            UPDATE trips_ingest_location
+                SET manual_atype = %(label)s
+                WHERE time >= %(start_time)s AND time <= %(end_time)s
+                AND uuid = %(uid)s :: uuid
+        ''', dict(label=value, start_time=selected_start_time, end_time=selected_end_time, uid=locations_uuid))
+        print('done')
+
+    return ['']
+
+
+@app.callback(
+    [Output('label-button-container', 'children')],
+    [Input('time-graph', 'selectedData')],
+)
+def handle_selection(selection):
+    global selected_start_time, selected_end_time
+
+    if not selection:
+        return [html.Div(id='label-buttons')]
+
+    start, end = selection['range']['x']
+    selected_start_time = LOCAL_TZ.localize(parse(start))
+    selected_end_time = LOCAL_TZ.localize(parse(end))
+
+    modes = ['none', 'still', 'on_foot', 'in_vehicle', 'on_bicycle', 'tram', 'bus', 'car']
+    label_buttons = dbc.FormGroup([
+        dbc.RadioItems(
+            options=[dict(label=x, value=x) for x in modes],
+            id='label-buttons',
+            inline=True,
+            value=None,
+        ),
+    ])
+    return [html.Div([label_buttons, html.Div(id='label-button-output')])]
+
+
 def generate_containers(uid, time_fig=None, map_component=None, trip_component=None):
     graph_kwargs = {}
     if time_fig is not None:
@@ -288,7 +349,14 @@ def generate_containers(uid, time_fig=None, map_component=None, trip_component=N
         html.Div('%s – %s' % (uid, dev_str)),
         dbc.Row([
             dbc.Col([map_component], md=6, id='map-container'),
-            dbc.Col(dcc.Graph(id='time-graph', **graph_kwargs), md=6),
+            dbc.Col([
+                dbc.Row(
+                    dbc.Col([dcc.Graph(id='time-graph', **graph_kwargs)], md=12),
+                ),
+                dbc.Row(
+                    dbc.Col(id='label-button-container', md=12)
+                ),
+            ], md=6),
         ]),
         dbc.Row([
             dbc.Col([trip_component], id='trip-container', md=6, style={'height': '450px'}),
@@ -305,6 +373,8 @@ def render_output(new_path, new_uid, filtered):
     global map_component, trip_component, locations_df, locations_uuid
     global time_filtered_locations_df
 
+    pc = PerfCounter('render_output')
+
     if not new_uid:
         if new_path:
             new_path = new_path.strip('/')
@@ -314,10 +384,11 @@ def render_output(new_path, new_uid, filtered):
         return None
 
     if locations_uuid is None or locations_uuid != new_uid:
-        df = read_trips(eng, new_uid)
+        df = read_trips(eng, new_uid, include_all=True)
+        pc.display('trips read')
         df.time = pd.to_datetime(df.time, utc=True)
-        # print('filtering')
-        # df = filter_trips(df)
+        print('filtering')
+        df = filter_trips(df)
         # df['speed'] *= 3.6
         # print('done')
         df['local_time'] = df.time.dt.tz_convert(LOCAL_TZ)
@@ -339,24 +410,38 @@ def render_output(new_path, new_uid, filtered):
     df['lon'] = geo.x
     df['lat'] = geo.y
 
+    pc.display('samples processed')
     time_fig = make_subplots(specs=[[{"secondary_y": True}]])
     time_fig.update_yaxes(rangemode='tozero', fixedrange=True)
 
     time_fig.update_traces(marker=dict(opacity=0.5))
     for mode in COLOR_MAP.keys():
         mdf = df[df.atype == mode]
+        if not len(df):
+            continue
+
         time_fig.add_trace(dict(
-            type='scatter', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
-            marker=dict(color=COLOR_MAP[mode])
+            type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
+            marker=dict(color=COLOR_MAP[mode], symbol='circle')
         ))
+
+        #mandf = df[df.manual_atype == mode]
+        #time_fig.add_trace(dict(
+        #    type='scattergl', x=mandf.local_time, y=mandf.speed * 3.6, mode='markers', name=mode,
+        #    marker=dict(color=COLOR_MAP[mode], symbol='x-open')
+        #))
         if mode in df:
             time_fig.add_trace(dict(
-                type='scatter', x=df.local_time, y=df[mode], mode='lines', name=mode,
-                line=dict(color=COLOR_MAP[mode])
+                type='scattergl', x=df.local_time, y=df[mode], mode='lines', name=mode,
+                connectgaps=False, line=dict(color=COLOR_MAP[mode])
             ), secondary_y=True)
 
+    pc.display('traces generated')
+
     map_component = make_map_component()
+    pc.display('map component done')
     trip_component = make_trip_component()
+    pc.display('trip component done')
 
     return generate_containers(new_uid, time_fig, map_component, trip_component)
 
