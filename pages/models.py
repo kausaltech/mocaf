@@ -14,3 +14,13 @@ class BlogPost(Page):
     ]
 
     subpage_types = []
+
+
+class InfoPage(Page):
+    body = RichTextField()
+
+    content_panels = Page.content_panels + [
+        FieldPanel('body'),
+    ]
+
+    subpage_types = []
