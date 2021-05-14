@@ -1,4 +1,5 @@
 import logging
+import sentry_sdk
 import geopandas as gpd
 
 from calc.trips import (
@@ -40,6 +41,10 @@ def generate_leg_location_rows(leg, df):
         row.speed,
     ), axis=1)
     return list(rows.values)
+
+
+class GeneratorError(Exception):
+    pass
 
 
 class TripGenerator:
@@ -166,7 +171,7 @@ class TripGenerator:
     def generate_trips(self, uuid, start_time, end_time):
         device = Device.objects.filter(uuid=uuid).first()
         if device is None:
-            raise Exception('Device %s not found' % uuid)
+            raise GeneratorError('Device %s not found' % uuid)
 
         default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
 
@@ -238,7 +243,11 @@ class TripGenerator:
             else:
                 start_time = None
                 end_time = None
-            self.generate_trips(uuid, start_time=start_time, end_time=end_time)
+
+            try:
+                self.generate_trips(uuid, start_time=start_time, end_time=end_time)
+            except GeneratorError as e:
+                sentry_sdk.capture_exception(e)
 
     def end(self):
         transaction.commit()
