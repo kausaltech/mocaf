@@ -106,9 +106,11 @@ def test_leg_node(graphql_client_query_data, uuid, token, trip):
 
 
 def test_only_list_own_trips(graphql_client_query_data, uuid, token, trip):
+    LegFactory(trip=trip)
     other_device = DeviceFactory()
     assert other_device.uuid != uuid
-    TripFactory(device=other_device)
+    other_trip = TripFactory(device=other_device)
+    LegFactory(trip=other_trip)
     data = graphql_client_query_data(
         '''
         query($uuid: String!, $token: String!)

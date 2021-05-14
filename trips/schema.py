@@ -281,8 +281,14 @@ def set_emission_budget_levels(info, qs):
 
     min_time = min([x.start_time for x in qs])
     max_time = max([x.start_time for x in qs])
-    level = (EmissionBudgetLevel.objects.filter(year__lte=min_time.year)
-        .order_by('-year', '-carbon_footprint').first())
+    level = (
+        EmissionBudgetLevel.objects.filter(year__lte=min_time.year)
+        .order_by('-year', '-carbon_footprint').first()
+    )
+    if level is None:
+        info.context.monthly_budget = {}
+        return
+
     date = min_time.date()
     end_date = max_time.date()
     levels = {}
