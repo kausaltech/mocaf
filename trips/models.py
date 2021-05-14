@@ -31,7 +31,7 @@ class Device(models.Model):
     platform = models.CharField(max_length=20, null=True)
     system_version = models.CharField(max_length=20, null=True)
     brand = models.CharField(max_length=20, null=True)
-    model = models.CharField(max_length=20, null=True)
+    model = models.CharField(max_length=40, null=True)
     created_at = models.DateTimeField(null=True)
 
     def generate_token(self):
