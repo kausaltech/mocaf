@@ -189,6 +189,7 @@ ATYPE_MAPPING = {
     'walking': 'walking',
     'on_bicycle': 'cycling',
     'in_vehicle': 'driving',
+    'unknown': None,
 }
 ATYPE_REVERSE = {
     'still': 'still',
