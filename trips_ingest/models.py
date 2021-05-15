@@ -1,4 +1,5 @@
 import pytz
+from django.db.models import Q
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -7,11 +8,20 @@ from django.conf import settings
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 
 
+class ReceiveDataQuerySet(models.QuerySet):
+    def for_uuid(self, uid):
+        qs = Q(data__location__0__extras__uid=uid)
+        qs |= Q(data__userId=uid)
+        return self.filter(qs)
+
+
 class ReceiveData(models.Model):
     data = models.JSONField()
     received_at = models.DateTimeField(db_index=True)
     imported_at = models.DateTimeField(null=True, db_index=True)
     import_failed = models.BooleanField(null=True)
+
+    objects = ReceiveDataQuerySet.as_manager()
 
     class Meta:
         ordering = ('received_at',)
@@ -19,9 +29,50 @@ class ReceiveData(models.Model):
     def __str__(self):
         received_at = self.received_at.astimezone(LOCAL_TZ)
         imported_at = self.imported_at.astimezone(LOCAL_TZ) if self.imported_at else None
-        return 'Received: %s | Imported: %s | Failed: %s' % (
+        return '%s: %s (Received: %s | Imported: %s | Failed: %s)' % (
+            self.get_uuid(), self.get_event_type(),
             received_at, imported_at, self.import_failed
         )
+
+    def get_event_type(self):
+        if 'location' in self.data:
+            return 'location'
+
+        data_type = self.data.get('dataType')
+        if not isinstance(data_type, str):
+            return 'unknown'
+        if data_type == 'sensor2':
+            return 'sensor'
+        elif data_type == 'device_info':
+            return 'device_info'
+        elif data_type == 'heartbeat':
+            return 'heartbeat'
+
+    def get_uuid(self):
+        loc = self.data.get('location')
+        if loc and isinstance(loc, list):
+            return loc[0].get('extras', {}).get('uid')
+        if 'userId' in self.data:
+            return self.data['userId']
+
+    def process_event(self):
+        from .processor import EventProcessor
+
+        processor = EventProcessor()
+        processor.process_event(self)
+
+
+class ReceiveDebugLog(models.Model):
+    data = models.JSONField(null=True)
+    log = models.BinaryField(max_length=5*1024*1024, null=True)
+    uuid = models.UUIDField()
+    received_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        ordering = ('received_at',)
+
+    def __str__(self):
+        return 'Received: %s' % self.received_at.astimezone(LOCAL_TZ)
 
 
 class LocationImport(models.Model):
