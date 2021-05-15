@@ -44,6 +44,7 @@ def modify_for_debug_logs(request, data, resp):
             endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
             abs_path = request.build_absolute_uri(endpoint_path)
             c.append(['uploadLog', abs_path])
+            c.append(['destroyLog'])
             logger.info('Requesting log upload for %s' % uid)
     else:
         if dev.debugging_enabled_at:
