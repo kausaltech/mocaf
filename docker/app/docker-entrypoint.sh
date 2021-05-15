@@ -13,6 +13,7 @@ if [ "$1" = 'uwsgi' ]; then
     exec uwsgi --http-socket :8000 --socket :8001 --processes 4 \
         --enable-threads \
         --buffer-size=32768 \
+        --log-master \
         --static-map /static=/srv/static \
         --static-map /media=/srv/media \
         --module mocaf.wsgi
