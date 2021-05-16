@@ -44,7 +44,15 @@ def modify_for_debug_logs(request, data, resp):
         abs_path = request.build_absolute_uri(endpoint_path)
         c.append(['uploadLog', abs_path])
         c.append(['destroyLog'])
-        c.append(['setConfig', {'logLevel': dev.debug_log_level}])
+        c.append(['setConfig', {
+            'logLevel': dev.debug_log_level,
+            'autoSyncThreshold': 500,
+            'desiredOdometerAccuracy': 10,
+            'deferTime': 60000,
+            'elasticityMultiplier': 2,
+            'motionTriggerDelay': 30000,
+            'maxBatchSize': 500,
+        }])
         logger.info('Requesting log upload for %s' % uid)
     else:
         if dev.debugging_enabled_at:
