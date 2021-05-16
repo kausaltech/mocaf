@@ -402,3 +402,7 @@ class LegLocation(models.Model):
 
     class Meta:
         ordering = ('leg', 'time')
+
+    def __str__(self):
+        time = self.time.astimezone(LOCAL_TZ)
+        return '%s: %s (%.1f km/h)' % (time, self.loc, self.speed * 3.6)

@@ -1,3 +1,4 @@
+import gzip
 import pytz
 from django.db.models import Q
 from django.contrib.gis.db import models
@@ -72,7 +73,15 @@ class ReceiveDebugLog(models.Model):
         ordering = ('received_at',)
 
     def __str__(self):
-        return 'Received: %s' % self.received_at.astimezone(LOCAL_TZ)
+        return '%s, len %d (Received: %s)' % (
+            self.uuid,
+            len(self.log) if self.log else -1,
+            self.received_at.astimezone(LOCAL_TZ)
+        )
+
+    def print(self):
+        data = gzip.decompress(self.log)
+        print(data.decode('utf8'))
 
 
 class LocationImport(models.Model):
