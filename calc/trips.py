@@ -47,6 +47,7 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
             l.aconf,
             l.speed,
             l.heading,
+            l.is_moving,
             l.manual_atype,
             l.created_at AS created_at
         FROM
@@ -112,9 +113,18 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     d = ((df.x - df.x.shift()) ** 2 + (df.y - df.y.shift()) ** 2).pow(.5).fillna(0)
     df['distance'] = d
 
-    # Filter out the latest burst of samples, because a trip might
-    # still be ongoing
-    df = df[df.created_at < df.created_at.max()]
+    # Filter out everything after the latest "not moving" event,
+    # because a trip might still be ongoing
+    if not include_all:
+        not_moving = df[df.is_moving == False]
+        if not len(not_moving):
+            # If we don't have any "not moving" samples, just filter
+            # out the last burst.
+            df = df[df.created_at < df.created_at.max()]
+        else:
+            last_not_moving = not_moving.time.max()
+            print(last_not_moving)
+            df = df[df.time <= last_not_moving]
 
     # Filter out trips that do not have enough low location error samples
     # far enough from the trip center point.
@@ -298,7 +308,8 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
     # First calculate how long same atype stretches we have
     for i in range(1, n_rows):
         if atype[i] == atype[i - 1]:
-            atype_count += 1
+            if loc_error[i] < 100:
+                atype_count += 1
         else:
             for j in range(last_atype_start, i):
                 atype_counts[j] = atype_count
