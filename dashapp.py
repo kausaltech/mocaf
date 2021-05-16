@@ -70,6 +70,8 @@ time_filtered_locations_df = None
 map_component = None
 trip_component = None
 data_table_component = None
+filters_enabled = False
+
 
 conn = eng.connect()
 uuids = read_uuids(conn.connection)
@@ -87,8 +89,8 @@ def make_map_component(xstart=None, xend=None):
     df.aconf = df.aconf.fillna(value=-1)
     df['time_str'] = df.local_time.astype(str)
     df.speed = df.speed.fillna(value=-1)
-    df = df.dropna()
     df = df[['lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype']]
+    df = df.dropna()
     layer = pydeck.Layer(
         'PointCloudLayer',
         df,
@@ -128,21 +130,23 @@ def hex_to_rgb(h):
 
 def make_trip_component():
     device = Device.objects.filter(uuid=locations_uuid).first()
-    print(device)
     if not device:
         return None
 
-    trips = device.trips.all()
+    pc = PerfCounter('make trip_component')
+    pc.display('fetching trips')
     df = time_filtered_locations_df
     start = df['local_time'].min()
     end = df['local_time'].max()
-    trips = trips.started_during(start, end)
-    print('%d trips' % len(trips))
+
+    trips = device.trips.all()
+    trips = trips.started_during(start, end).prefetch_related('legs', 'legs__locations')
+    pc.display('fetched %d trips' % len(trips))
 
     recs = []
     for trip in trips:
         for leg in trip.legs.all():
-            path = [[p.x, p.y] for p in leg.locations.values_list('loc', flat=True)]
+            path = [[p.loc.x, p.loc.y] for p in leg.locations.all()]
             name = 'Trip %d - %s' % (trip.id, leg.mode.name)
             color = hex_to_rgb(TRANSPORT_COLOR_MAP.get(leg.mode.identifier, '#aaaaaa'))
             recs.append(dict(
@@ -150,6 +154,8 @@ def make_trip_component():
                 start_time=leg.start_time.astimezone(LOCAL_TZ).isoformat(),
                 end_time=leg.end_time.astimezone(LOCAL_TZ).isoformat(),
             ))
+
+    pc.display('%d legs created' % len(recs))
 
     initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df[['lon', 'lat']])
 
@@ -180,6 +186,8 @@ def make_trip_component():
         data=r.to_json(), id="deck-gl-trips", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
         tooltip=TOOLTIP_TEXT, enableEvents=['click'],
     )
+
+    pc.display('deckgl created')
 
     return dc
 
@@ -222,7 +230,11 @@ def display_hover_data(click_data, relayout_data):
     global time_filtered_locations_df
 
     if not relayout_data or 'xaxis.range[0]' not in relayout_data:
+        print('no relayout changes')
         return map_component, trip_component, data_table_component
+
+    print('relayout changed')
+
 
     start = relayout_data['xaxis.range[0]']
     end = relayout_data['xaxis.range[1]']
@@ -369,9 +381,10 @@ def generate_containers(uid, time_fig=None, map_component=None, trip_component=N
     Output('output-container', 'children'),
     [Input('path', 'pathname'), Input('uuid-selector', 'value'), Input('filtered-switch', 'value')]
 )
-def render_output(new_path, new_uid, filtered):
+def render_output(new_path, new_uid, new_filtered):
     global map_component, trip_component, locations_df, locations_uuid
     global time_filtered_locations_df
+    global filters_enabled
 
     pc = PerfCounter('render_output')
 
@@ -383,12 +396,15 @@ def render_output(new_path, new_uid, filtered):
     if not new_uid:
         return None
 
-    if locations_uuid is None or locations_uuid != new_uid:
+    if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
+        print('reading trips for %s' % locations_uuid)
         df = read_trips(eng, new_uid, include_all=True)
         pc.display('trips read')
         df.time = pd.to_datetime(df.time, utc=True)
-        print('filtering')
-        df = filter_trips(df)
+        if new_filtered:
+            print('filtering')
+            df = filter_trips(df)
+        filters_enabled = new_filtered
         # df['speed'] *= 3.6
         # print('done')
         df['local_time'] = df.time.dt.tz_convert(LOCAL_TZ)
@@ -401,9 +417,7 @@ def render_output(new_path, new_uid, filtered):
     else:
         df = locations_df
 
-    print(df.tail(20))
-
-    if filtered is not None and len(filtered):
+    if new_filtered is not None and len(new_filtered):
         geo = gpd.points_from_xy(df.xf, df.yf, crs=3067).to_crs(4326)
     else:
         geo = gpd.points_from_xy(df.x, df.y, crs=3067).to_crs(4326)
@@ -424,6 +438,14 @@ def render_output(new_path, new_uid, filtered):
             type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
             marker=dict(color=COLOR_MAP[mode], symbol='circle')
         ))
+
+        if filters_enabled:
+            mdf = df[df.atypef == mode]
+            if len(mdf):
+                time_fig.add_trace(dict(
+                   type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
+                    marker=dict(color=COLOR_MAP[mode], symbol='x-open')
+                ))
 
         #mandf = df[df.manual_atype == mode]
         #time_fig.add_trace(dict(
