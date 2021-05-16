@@ -36,20 +36,22 @@ def modify_for_debug_logs(request, data, resp):
     c = []
     if dev.debug_log_level:
         if not dev.debugging_enabled_at:
-            c.append(['setConfig', {'logLevel': dev.debug_log_level}])
             dev.debugging_enabled_at = timezone.now()
             dev.save(update_fields=['debugging_enabled_at'])
             logger.info('Enabling debug logs for %s' % uid)
-        else:
-            endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
-            abs_path = request.build_absolute_uri(endpoint_path)
-            c.append(['uploadLog', abs_path])
-            c.append(['destroyLog'])
-            logger.info('Requesting log upload for %s' % uid)
+
+        endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
+        abs_path = request.build_absolute_uri(endpoint_path)
+        c.append(['uploadLog', abs_path])
+        c.append(['destroyLog'])
+        c.append(['setConfig', {'logLevel': dev.debug_log_level}])
+        logger.info('Requesting log upload for %s' % uid)
     else:
         if dev.debugging_enabled_at:
             c.append(['setConfig', {'logLevel': 0}])
             c.append(['destroyLog'])
+            dev.debugging_enabled_at = None
+            dev.save(update_fields=['debugging_enabled_at'])
 
     if c:
         resp.clear()
