@@ -1,3 +1,5 @@
+import numba
+import numpy as np
 from datetime import datetime, timedelta
 import pandas as pd
 from utils.perf import PerfCounter
@@ -11,6 +13,7 @@ LOCAL_TZ = 'Europe/Helsinki'
 
 MINS_BETWEEN_TRIPS = 20
 MIN_DISTANCE_MOVED_IN_TRIP = 200
+MIN_SAMPLES_PER_LEG = 20
 
 DAYS_TO_FETCH = 30
 LOCAL_2D_CRS = 3067
@@ -197,6 +200,12 @@ ATYPE_REVERSE = {
     'cycling': 'on_bicycle',
     'driving': 'in_vehicle',
 }
+ALL_ATYPES = [
+    'still', 'on_foot', 'on_bicycle', 'in_vehicle', 'car', 'bus', 'tram', 'train', 'other', 'unknown',
+]
+ATYPE_STILL = ALL_ATYPES.index('still')
+ATYPE_UNKNOWN = ALL_ATYPES.index('unknown')
+
 IDX_MAPPING = {idx: ATYPE_REVERSE[x] for idx, x in enumerate(transport_modes.keys())}
 
 
@@ -274,21 +283,86 @@ def get_vehicle_locations(conn, start: datetime, end: datetime):
     return df
 
 
-def split_trip_legs(conn, df):
-    df['atype_changed'] = df.atype.ne(df.atype.shift()) | df.trip_id.ne(df.trip_id.shift())
-    df['leg_id'] = df['atype_changed'].cumsum()
+@numba.njit(cache=True)
+def filter_legs(time, x, y, atype, distance, loc_error, speed):
+    n_rows = len(time)
+    last_atype_start = 0
+    atype_count = 0
+    atype_counts = np.zeros(n_rows, dtype='int64')
+    leg_ids = np.zeros(n_rows, dtype='int64')
 
+    # First calculate how long same atype stretches we have
+    for i in range(1, n_rows):
+        if atype[i] == atype[i - 1]:
+            atype_count += 1
+        else:
+            for j in range(last_atype_start, i):
+                atype_counts[j] = atype_count
+            atype_count = 0
+            last_atype_start = i
+
+    max_leg_id = 0
+    current_leg = -1
+    prev = 0
+    for i in range(1, n_rows):
+        # If we're in the middle of a trip and we have only a couple of atypes
+        # for a different mode, change them to match the others.
+        if i < n_rows - MIN_SAMPLES_PER_LEG:
+            if atype_counts[i] <= 3 and atype_counts[i - 1] > MIN_SAMPLES_PER_LEG:
+                atype[i] = atype[i - 1]
+                atype_counts[i] = atype_counts[i - 1]
+
+        if i == 0 or atype[i] != atype[i - 1]:
+            if atype_counts[i] >= MIN_SAMPLES_PER_LEG and atype[i] != ATYPE_STILL and atype[i] != ATYPE_UNKNOWN:
+                # Enough good samples in this leg? We'll keep it.
+                if i > 0:
+                    max_leg_id += 1
+                    current_leg = max_leg_id
+                distance[i] = 0
+                prev = i
+            else:
+                # Not enough? Amputation.
+                current_leg = -1
+            leg_ids[i] = current_leg
+            continue
+        elif current_leg == -1 or loc_error[i] > 100:
+            leg_ids[i] = -1
+            continue
+
+        dist = ((x[prev] - x[i]) ** 2 + (y[prev] - y[i]) ** 2) ** 0.5
+        timediff = time[i] - time[prev]
+        calc_speed = dist / timediff
+
+        # If the speed based on (x, y) differs too much from speeds reported by GPS,
+        # drop the previous sample as invalid.
+        if not np.isnan(speed[i]) and abs(calc_speed - speed[i]) > 30:
+            leg_ids[i - 1] = -1
+            distance[i] = 0
+        else:
+            distance[i] = dist
+        leg_ids[i] = current_leg
+        prev = i
+
+    return leg_ids
+
+
+def split_trip_legs(conn, df):
+    assert len(df.trip_id.unique()) == 1
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
     df['epoch_ts'] = s / pd.Timedelta('1s')
+    df['calc_speed'] = df.speed
+    df['int_atype'] = df.atype.map(ALL_ATYPES.index).astype(int)
+    df['leg_id'] = filter_legs(
+        time=df.epoch_ts.to_numpy(), x=df.x.to_numpy(), y=df.y.to_numpy(), atype=df.int_atype.to_numpy(),
+        distance=df.distance.to_numpy(), loc_error=df.loc_error.to_numpy(), speed=df.speed.to_numpy()
+    )
+    df.atype = df.int_atype.map(lambda x: ALL_ATYPES[x])
 
-    leg_locations = df[df.loc_error < 100].groupby('leg_id')['time'].count()
-    legs_to_keep = leg_locations.index[leg_locations > 10]
-    df = df[df.leg_id.isin(legs_to_keep)]
-    df = df.drop(columns=['atype_changed'])
-    df = df[~df.atype.isin(['still', 'unknown'])]
+    # pd.set_option("max_rows", None)
+    # pd.set_option("min_rows", None)
+    # print(df)
 
-    d = ((df.x - df.x.shift()) ** 2 + (df.y - df.y.shift()) ** 2).pow(.5).fillna(0)
-    df['distance'] = d
+    df = df[df.leg_id != -1]
 
     """
     for leg in df.leg_id.unique():
