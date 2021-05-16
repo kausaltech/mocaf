@@ -1,3 +1,4 @@
+import logging
 import numba
 import numpy as np
 from datetime import datetime, timedelta
@@ -13,10 +14,12 @@ LOCAL_TZ = 'Europe/Helsinki'
 
 MINS_BETWEEN_TRIPS = 20
 MIN_DISTANCE_MOVED_IN_TRIP = 200
-MIN_SAMPLES_PER_LEG = 20
+MIN_SAMPLES_PER_LEG = 15
 
 DAYS_TO_FETCH = 30
 LOCAL_2D_CRS = 3067
+
+logger = logging.getLogger(__name__)
 
 
 def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
@@ -286,6 +289,7 @@ def get_vehicle_locations(conn, start: datetime, end: datetime):
 @numba.njit(cache=True)
 def filter_legs(time, x, y, atype, distance, loc_error, speed):
     n_rows = len(time)
+
     last_atype_start = 0
     atype_count = 0
     atype_counts = np.zeros(n_rows, dtype='int64')
@@ -304,10 +308,10 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
     max_leg_id = 0
     current_leg = -1
     prev = 0
-    for i in range(1, n_rows):
+    for i in range(n_rows):
         # If we're in the middle of a trip and we have only a couple of atypes
         # for a different mode, change them to match the others.
-        if i < n_rows - MIN_SAMPLES_PER_LEG:
+        if i > 0 and i < n_rows - MIN_SAMPLES_PER_LEG:
             if atype_counts[i] <= 3 and atype_counts[i - 1] > MIN_SAMPLES_PER_LEG:
                 atype[i] = atype[i - 1]
                 atype_counts[i] = atype_counts[i - 1]
@@ -325,7 +329,7 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
                 current_leg = -1
             leg_ids[i] = current_leg
             continue
-        elif current_leg == -1 or loc_error[i] > 100:
+        elif current_leg == -1 or loc_error[i] > 100 or atype[i] == ATYPE_STILL or atype[i] == ATYPE_UNKNOWN:
             leg_ids[i] = -1
             continue
 
@@ -363,6 +367,8 @@ def split_trip_legs(conn, df):
     # print(df)
 
     df = df[df.leg_id != -1]
+    if not len(df):
+        return None
 
     """
     for leg in df.leg_id.unique():

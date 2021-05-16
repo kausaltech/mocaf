@@ -48,7 +48,8 @@ class GeneratorError(Exception):
 
 
 class TripGenerator:
-    def __init__(self):
+    def __init__(self, force=False):
+        self.force = force
         transport_modes = {x.identifier: x for x in TransportMode.objects.all()}
         self.atype_to_mode = {
             'walking': transport_modes['walk'],
@@ -78,7 +79,7 @@ class TripGenerator:
 
         pc.display('after insert')
 
-    def save_leg(self, trip, df, last_ts, default_variants):
+    def save_leg(self, trip, df, last_ts, default_variants, pc):
         start = df.iloc[0][['time', 'x', 'y']]
         end = df.iloc[-1][['time', 'x', 'y']]
         received_at = df.iloc[-1].created_at
@@ -105,8 +106,8 @@ class TripGenerator:
         )
         leg.update_carbon_footprint()
         leg.save()
-
         rows = generate_leg_location_rows(leg, df)
+        pc.display(str(leg))
 
         return rows, end.time
 
@@ -132,15 +133,18 @@ class TripGenerator:
         overlap = Q(end_time__gte=min_time) & Q(end_time__lte=max_time)
         overlap |= Q(start_time__gte=min_time) & Q(start_time__lte=max_time)
         legs = Leg.objects.filter(trip__device=device).filter(overlap)
-        if legs.filter(
-            Q(feedbacks__isnull=False) | Q(user_corrected_mode__isnull=False) | Q(user_corrected_mode_variant__isnull=False)
-        ).exists():
-            logger.info('Legs have user corrected elements, not deleting')
-            return
 
-        if device.trips.filter(legs__in=legs).filter(feedbacks__isnull=False):
-            logger.info('Trips have user corrected elements, not deleting')
-            return
+        if not self.force:
+            if legs.filter(
+                Q(feedbacks__isnull=False) | Q(user_corrected_mode__isnull=False) | Q(user_corrected_mode_variant__isnull=False)
+            ).exists():
+                logger.info('Legs have user corrected elements, not deleting')
+                return
+
+        if not self.force:
+            if device.trips.filter(legs__in=legs).filter(feedbacks__isnull=False):
+                logger.info('Trips have user corrected elements, not deleting')
+                return
 
         count = device.trips.filter(legs__in=legs).delete()
         print(count)
@@ -153,27 +157,48 @@ class TripGenerator:
 
         trip = Trip(device=device)
         trip.save()
-        pc.display('trip save')
+        pc.display('trip %d saved' % trip.id)
 
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
-            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants)
+            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
             all_rows += leg_rows
 
-        pc.display('after leg location generation')
+        pc.display('generated %d legs' % len(leg_ids))
         self.insert_leg_locations(all_rows)
-        pc.display('after leg location insert')
+        pc.display('trip %d save done' % trip.id)
 
     def begin(self):
         transaction.set_autocommit(False)
+
+    def process_trip(self, device, df):
+        pc = PerfCounter('process_trip')
+        logger.info('%s: trip with %d samples' % (str(device), len(df)))
+        df = filter_trips(df)
+        pc.display('filter done')
+
+        # Use the fixed versions of columns
+        df['atype'] = df['atypef']
+        df['x'] = df['xf']
+        df['y'] = df['yf']
+
+        df = split_trip_legs(connection, df)
+        pc.display('legs split')
+        if df is None:
+            logger.info('%s: No legs for trip' % str(device))
+            return
+        with transaction.atomic():
+            self.save_trip(device, df, device._default_variants)
+        pc.display('trip saved')
 
     def generate_trips(self, uuid, start_time, end_time):
         device = Device.objects.filter(uuid=uuid).first()
         if device is None:
             raise GeneratorError('Device %s not found' % uuid)
 
-        default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
+        sentry_sdk.set_tag('uuid', uuid)
+        device._default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
 
         pc = PerfCounter('update trips for %s' % uuid, show_time_to_last=True)
         df = read_trips(connection, uuid, start_time=start_time, end_time=end_time)
@@ -183,23 +208,14 @@ class TripGenerator:
 
         for trip_id in df.trip_id.unique():
             trip_df = df[df.trip_id == trip_id].copy()
-            print('trip with %d samples' % len(trip_df))
-            try:
-                trip_df = filter_trips(trip_df)
-            except Exception as e:
-                logger.info(e, exc_info=True)
-                continue
-            pc.display('filter done')
-            trip_df['atype'] = trip_df['atypef']
-            trip_df['x'] = trip_df['xf']
-            trip_df['y'] = trip_df['yf']
-            # Use the fixed versions of columns
-            trip_df = split_trip_legs(connection, trip_df)
-            pc.display('legs split')
-            with transaction.atomic():
-                self.save_trip(device, trip_df, default_variants)
-            pc.display('trip saved')
+            with sentry_sdk.configure_scope() as scope:
+                scope.set_tag('start_time', trip_df.time.min().isoformat())
+                scope.set_tag('end_time', trip_df.time.max().isoformat())
+                self.process_trip(device, df)
+                scope.clear()
         transaction.commit()
+        pc.display('trips generated')
+        sentry_sdk.set_tag('uuid', None)
 
     def find_uuids_with_new_samples(self):
         devices = (
