@@ -1,6 +1,10 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from dateutil.parser import parse
+from datetime import datetime
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
-from trips.models import Device
+from django.utils.timezone import localdate
+from trips.models import Device, LOCAL_TZ
 from trips.generate import TripGenerator
 from calc.trips import read_uuids
 
@@ -12,15 +16,24 @@ class Command(BaseCommand):
         parser.add_argument('--uuid', type=str)
         parser.add_argument('--start-after-uuid', type=str)
         parser.add_argument('--new', action='store_true')
+        parser.add_argument('--start-time', type=str)
+        parser.add_argument('--end-time', type=str)
+        parser.add_argument('--force', action='store_true')
 
     def handle(self, *args, **options):
-        generator = TripGenerator()
+        generator = TripGenerator(force=options['force'])
         uuid = options['uuid']
         start_uuid = options['start_after_uuid']
-        # start_time = datetime(2021, 4, 28, 0)
-        # end_time = start_time + timedelta(days=1)
-        start_time = None
-        end_time = None
+        start_time = options['start_time']
+        end_time = options['end_time']
+        if start_time:
+            start_time = parse(start_time)
+            if not start_time.tzinfo:
+                start_time = LOCAL_TZ.localize(start_time)
+        if end_time:
+            end_time = parse(end_time)
+            if not end_time.tzinfo:
+                end_time = LOCAL_TZ.localize(end_time)
 
         generator.begin()
         if options['new']:
