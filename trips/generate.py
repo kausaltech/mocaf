@@ -211,7 +211,7 @@ class TripGenerator:
             with sentry_sdk.configure_scope() as scope:
                 scope.set_tag('start_time', trip_df.time.min().isoformat())
                 scope.set_tag('end_time', trip_df.time.max().isoformat())
-                self.process_trip(device, df)
+                self.process_trip(device, trip_df)
                 scope.clear()
         transaction.commit()
         pc.display('trips generated')
