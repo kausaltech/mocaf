@@ -35,6 +35,7 @@ class Device(models.Model):
 
     debug_log_level = models.PositiveIntegerField(null=True)
     debugging_enabled_at = models.DateTimeField(null=True)
+    custom_config = models.JSONField(null=True)
 
     created_at = models.DateTimeField(null=True)
 

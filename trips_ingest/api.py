@@ -1,3 +1,4 @@
+import json
 import logging
 from django.utils import timezone
 from django.urls import reverse
@@ -34,26 +35,36 @@ def modify_for_debug_logs(request, data, resp):
         return
 
     c = []
-    if dev.debug_log_level:
+    if dev.debug_log_level or dev.custom_config:
         if not dev.debugging_enabled_at:
             dev.debugging_enabled_at = timezone.now()
             dev.save(update_fields=['debugging_enabled_at'])
-            logger.info('Enabling debug logs for %s' % uid)
+            logger.info('Enabling debug logs or custom config for %s' % uid)
 
-        endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
-        abs_path = request.build_absolute_uri(endpoint_path)
-        c.append(['uploadLog', abs_path])
-        c.append(['destroyLog'])
-        c.append(['setConfig', {
-            'logLevel': dev.debug_log_level,
+        config = {
             'autoSyncThreshold': 500,
             'desiredOdometerAccuracy': 10,
-            'deferTime': 60000,
+            'deferTime': 120000,
             'elasticityMultiplier': 2,
             'motionTriggerDelay': 30000,
             'maxBatchSize': 500,
-        }])
-        logger.info('Requesting log upload for %s' % uid)
+            'locationUpdateInterval': 5000,
+            'heartbeatInterval': 120 * 60,
+            'preventSuspend': False,
+        }
+
+        if dev.custom_config and isinstance(dev.custom_config, dict):
+            config.update(dev.custom_config)
+
+        if dev.debug_log_level:
+            endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
+            abs_path = request.build_absolute_uri(endpoint_path)
+            c.append(['uploadLog', abs_path])
+            c.append(['destroyLog'])
+            config['logLevel'] = dev.debug_log_level
+            logger.info('Requesting log upload for %s' % uid)
+
+        c.append(['setConfig', config])
     else:
         if dev.debugging_enabled_at:
             c.append(['setConfig', {'logLevel': 0}])
@@ -96,6 +107,16 @@ def upload_log_view(request, uuid):
 
     received_at = timezone.now()
     data = dict(request.POST) if request.POST else {}
+    for key, val in list(data.items()):
+        if isinstance(val, list) and len(val) == 1:
+            val = val[0]
+        if key == 'state' and isinstance(val, str):
+            try:
+                val = json.loads(val)
+            except Exception:
+                pass
+        data[key] = val
+
     obj = ReceiveDebugLog(data=data, received_at=received_at, uuid=uuid)
 
     if request.FILES:
