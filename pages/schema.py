@@ -28,13 +28,17 @@ class InfoPage(DjangoObjectType):
 
 
 class Query(graphene.ObjectType):
-    blog_post = graphene.Field(BlogPost, id=graphene.Int(required=True))
+    blog_post = graphene.Field(BlogPost, id=graphene.ID(required=True))
     blog_posts = graphene.List(BlogPost)
-    info_page = graphene.Field(InfoPage, id=graphene.Int(required=True))
+    info_page = graphene.Field(InfoPage, id=graphene.ID(required=True))
     info_pages = graphene.List(InfoPage)
 
     def resolve_blog_post(root, info, id, **kwargs):
-        return models.BlogPost.objects.get(id=id)
+        return (models.BlogPost.objects
+                .live()
+                .public()
+                .specific()
+                .get(id=id))
 
     def resolve_blog_posts(root, info, **kwargs):
         return (models.BlogPost.objects
@@ -45,7 +49,11 @@ class Query(graphene.ObjectType):
                 .order_by('-first_published_at'))
 
     def resolve_info_page(root, info, id, **kwargs):
-        return models.InfoPage.objects.get(id=id)
+        return (models.InfoPage.objects
+                .live()
+                .public()
+                .specific()
+                .get(id=id))
 
     def resolve_info_pages(root, info, **kwargs):
         return (models.InfoPage.objects
