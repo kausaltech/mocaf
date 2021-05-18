@@ -60,5 +60,4 @@ class Query(graphene.ObjectType):
                 .live()
                 .public()
                 .filter(locale__language_code=info.context.language)
-                .specific()
-                .order_by('-first_published_at'))
+                .specific())
