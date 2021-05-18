@@ -3,6 +3,7 @@ import pytz
 from django.db.models import Q
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
+from django.contrib.postgres.fields import ArrayField
 from django.conf import settings
 
 
@@ -14,6 +15,16 @@ class ReceiveDataQuerySet(models.QuerySet):
         qs = Q(data__location__0__extras__uid=uid)
         qs |= Q(data__userId=uid)
         return self.filter(qs)
+
+    def by_type(self, data_type):
+        if data_type == 'location':
+            return self.filter(data__location__isnull=False)
+        elif data_type == 'sensor':
+            return self.filter(data__dataType='sensor2')
+        elif data_type == 'device_info':
+            return self.filter(data__dataType='device_info')
+        elif data_type == 'heartbeat':
+            return self.filter(data__dataType='heartbeat')
 
 
 class ReceiveData(models.Model):
@@ -185,13 +196,16 @@ class SensorTypeChoices(models.TextChoices):
 
 
 class SensorSample(models.Model):
-    time = models.DateTimeField(null=False, primary_key=True)
-    uuid = models.UUIDField(null=False)
-    x = models.FloatField(null=False)
-    y = models.FloatField(null=False)
-    z = models.FloatField(null=False)
-    type = models.CharField(null=False, max_length=20, choices=SensorTypeChoices.choices)
+    time = models.DateTimeField()
+    uuid = models.UUIDField()
+    x = ArrayField(models.FloatField())
+    y = ArrayField(models.FloatField())
+    z = ArrayField(models.FloatField())
+    t = ArrayField(models.FloatField())
+    type = models.CharField(max_length=20, choices=SensorTypeChoices.choices)
 
     class Meta:
-        managed = False
         db_table = 'trips_ingest_sensorsample'
+        unique_together = (('uuid', 'time', 'type',),)
+        ordering = ('uuid', 'time')
+        managed = True

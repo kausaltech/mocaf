@@ -36,23 +36,4 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE UNIQUE INDEX on "trips_ingest_location" (time, uuid);
         """),
-        migrations.RunSQL("""
-            CREATE TABLE "trips_ingest_sensorsample" (
-                "time" timestamp with time zone NOT NULL,
-                "uuid" uuid NOT NULL,
-                "x" double precision NOT NULL,
-                "y" double precision NOT NULL,
-                "z" double precision NOT NULL,
-                "type" varchar(20) NOT NULL
-            );
-        """, reverse_sql="""
-            DROP TABLE "trips_ingest_sensorsample" CASCADE;
-        """),
-        migrations.RunSQL("""
-            SELECT create_hypertable('trips_ingest_sensorsample', 'time', 'uuid', 8);
-        """),
-        migrations.RunSQL("""
-            CREATE UNIQUE INDEX on "trips_ingest_sensorsample" (time, uuid);
-        """),
-        # CREATE INDEX "trips_ingest_location_loc_id" ON "trips_ingest_location" USING GIST ("loc");
     ]

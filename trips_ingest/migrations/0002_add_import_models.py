@@ -32,21 +32,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='SensorSample',
-            fields=[
-                ('time', models.DateTimeField(primary_key=True, serialize=False)),
-                ('uuid', models.UUIDField()),
-                ('x', models.FloatField()),
-                ('y', models.FloatField()),
-                ('z', models.FloatField()),
-                ('type', models.CharField(choices=[('acce', 'Accelerometer'), ('gyro', 'Gyroscope')], max_length=20)),
-            ],
-            options={
-                'db_table': 'trips_ingest_sensorsample',
-                'managed': False,
-            },
-        ),
-        migrations.CreateModel(
             name='LocationImport',
             fields=[
                 ('id', models.IntegerField(primary_key=True, serialize=False)),

@@ -5,13 +5,13 @@ import logging
 
 from dateutil.parser import isoparse
 import sentry_sdk
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.utils import timezone
 from django.contrib.gis.geos import Point
 from django.contrib.gis.gdal import SpatialReference, CoordTransform
 from calc.trips import LOCAL_2D_CRS
 from trips.models import Device
-from .models import ReceiveData, Location, DeviceHeartbeat, ActivityTypeChoices
+from .models import ReceiveData, Location, DeviceHeartbeat, ActivityTypeChoices, SensorSample
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,10 @@ class EventProcessor:
             obj.time = sane_time_or_bye(dt)
             obj.uuid = uuid_or_bye(loc['extras'].get('uid'))
 
-            if Location.objects.filter(time=obj.time, uuid=obj.uuid).exists():
+            if Location.objects.filter(
+                time__gte=obj.time - timedelta(seconds=0.5), time__lte=obj.time + timedelta(seconds=0.5),
+                uuid=obj.uuid
+            ).exists():
                 logger.warning('Location for %s at %s already exists' % (obj.uuid, obj.time))
                 return
 
@@ -145,8 +148,29 @@ class EventProcessor:
         obj.save(force_insert=True)
 
     def process_sensor_event(self, event):
-        # Discard for now
-        pass
+        data = event.data
+        uid = uuid_or_bye(data.get('userId'))
+        assert data.get('sensorType') in ('acce', 'gyro')
+        t0 = data['data'][0]['time']
+        x = [r['x'] for r in data['data']]
+        y = [r['y'] for r in data['data']]
+        z = [r['z'] for r in data['data']]
+        time = [(r['time'] - t0) / 1000 for r in data['data']]
+
+        dt = datetime.fromtimestamp(t0 / 1000, pytz.utc)
+        dt = sane_time_or_bye(dt)
+
+        sensor_type = data['sensorType']
+
+        if SensorSample.objects.filter(
+            time__gte=dt - timedelta(seconds=1), time__lte=dt + timedelta(seconds=1),
+            uuid=uid, type=sensor_type
+        ).exists():
+            logger.warning('Sensor data for %s at %s already exists' % (uid, dt))
+            return
+
+        obj = SensorSample(time=dt, uuid=uid, x=x, y=y, z=z, t=time, type=data['sensorType'])
+        obj.save(force_insert=True)
 
     def process_event(self, event):
         data = event.data
