@@ -16,7 +16,7 @@ MINS_BETWEEN_TRIPS = 20
 MIN_DISTANCE_MOVED_IN_TRIP = 200
 MIN_SAMPLES_PER_LEG = 15
 
-DAYS_TO_FETCH = 30
+DAYS_TO_FETCH = 10
 LOCAL_2D_CRS = 3067
 
 logger = logging.getLogger(__name__)
@@ -27,10 +27,12 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     pc = PerfCounter('read_locations', show_time_to_last=True)
 
     params = dict(uuid=uid)
-    if start_time and end_time:
-        time_filter = 'AND l.time > %(start_time)s AND l.time <= %(end_time)s'
+    if start_time:
+        time_filter = 'AND l.time > %(start_time)s'
         params['start_time'] = start_time
-        params['end_time'] = end_time
+        if end_time:
+            time_filter += ' AND l.time <= %(end_time)s'
+            params['end_time'] = end_time
     else:
         # time_filter = f"l.time >= now() - interval '{DAYS_TO_FETCH} days'"
         time_filter = ''
@@ -49,6 +51,8 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
             l.heading,
             l.is_moving,
             l.manual_atype,
+            l.odometer,
+            l.battery_charging,
             l.created_at AS created_at
         FROM
             {TABLE_NAME} AS l
@@ -332,7 +336,7 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
                 # Enough good samples in this leg? We'll keep it.
                 if i > 0:
                     max_leg_id += 1
-                    current_leg = max_leg_id
+                current_leg = max_leg_id
                 distance[i] = 0
                 prev = i
             else:
@@ -361,7 +365,7 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
     return leg_ids
 
 
-def split_trip_legs(conn, df):
+def split_trip_legs(conn, df, include_all=False):
     assert len(df.trip_id.unique()) == 1
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
     df['epoch_ts'] = s / pd.Timedelta('1s')
@@ -373,13 +377,17 @@ def split_trip_legs(conn, df):
     )
     df.atype = df.int_atype.map(lambda x: ALL_ATYPES[x])
 
-    # pd.set_option("max_rows", None)
-    # pd.set_option("min_rows", None)
-    # print(df)
+    if False:
+        pd.set_option("max_rows", None)
+        pd.set_option("min_rows", None)
+        print(df.set_index(df.time.dt.tz_convert(LOCAL_TZ)).drop(columns=['time']))
 
-    df = df[df.leg_id != -1]
+    if not include_all:
+        df = df[df.leg_id != -1]
     if not len(df):
         return None
+
+    df = df.drop(columns=['epoch_ts', 'calc_speed', 'int_atype'])
 
     """
     for leg in df.leg_id.unique():
