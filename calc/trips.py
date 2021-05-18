@@ -10,6 +10,7 @@ from .dragimm import filter_trajectory, filters as transport_modes
 
 TABLE_NAME = 'trips_ingest_location'
 TRANSIT_TABLE = 'transitrt_vehiclelocation'
+OSM_ROADS_TABLE = 'planet_osm_line'
 LOCAL_TZ = 'Europe/Helsinki'
 
 MINS_BETWEEN_TRIPS = 20
@@ -53,9 +54,26 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
             l.manual_atype,
             l.odometer,
             l.battery_charging,
+            closest_car_way_dist,
+            closest_car_way_name,
             l.created_at AS created_at
         FROM
             {TABLE_NAME} AS l
+        LEFT JOIN LATERAL (
+            SELECT
+                name AS closest_car_way_name,
+                ST_Distance(w.way, l.loc) AS closest_car_way_dist
+                FROM planet_osm_line AS w
+                WHERE
+                    highway IN (
+                        'minor', 'road', 'unclassified', 'residential', 'tertiary_link', 'tertiary',
+                        'secondary_link', 'secondary', 'primary_link', 'primary', 'trunk_link',
+                        'trunk', 'motorway_link', 'motorway'
+                    )
+                    AND w.way && ST_Expand(l.loc, 50)
+                ORDER BY ST_Distance(w.way, l.loc) ASC
+                LIMIT 1
+        ) AS cw ON true
         WHERE
             l.uuid = %(uuid)s::uuid
             {time_filter}
@@ -424,10 +442,11 @@ if __name__ == '__main__':
         out = get_vehicle_locations(eng, start, end)
         exit()
 
-    if False:
+    if True:
+        from dateutil.parser import parse
         pd.set_option("max_rows", None)
         pd.set_option("min_rows", None)
-        df = read_trips(eng, default_uid)
+        df = read_trips(eng.connect().connection, default_uid, start_time='2021-05-18T12:00')
         trip_ids = df.trip_id.unique()
         for trip in trip_ids:
             print(trip)
