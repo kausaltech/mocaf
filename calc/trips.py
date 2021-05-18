@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
-    print('Selected UID %s. Reading dataframe.' % uid)
-    pc = PerfCounter('read_locations', show_time_to_last=True)
+    pc = PerfCounter('read %s' % uid, show_time_to_last=True)
 
     params = dict(uuid=uid)
     if start_time:
@@ -54,8 +53,8 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
             l.manual_atype,
             l.odometer,
             l.battery_charging,
-            closest_car_way_dist,
-            closest_car_way_name,
+            cw.closest_car_way_dist,
+            cw.closest_car_way_name,
             l.created_at AS created_at
         FROM
             {TABLE_NAME} AS l
@@ -68,7 +67,8 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
                     highway IN (
                         'minor', 'road', 'unclassified', 'residential', 'tertiary_link', 'tertiary',
                         'secondary_link', 'secondary', 'primary_link', 'primary', 'trunk_link',
-                        'trunk', 'motorway_link', 'motorway'
+                        'trunk', 'motorway_link', 'motorway',
+                        'service'
                     )
                     AND w.way && ST_Expand(l.loc, 50)
                 ORDER BY ST_Distance(w.way, l.loc) ASC
@@ -83,6 +83,18 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     """
 
     '''
+        LEFT JOIN LATERAL (
+            SELECT
+                (SELECT trip_headsign FROM gtfs.trips
+                    WHERE gtfs.trips.shape_id = g.shape_id LIMIT 1
+                ),
+                ST_Distance(g.the_geom, l.loc) AS closest_transit_line_dist
+                FROM gtfs.shape_geoms AS g
+                WHERE
+                    g.the_geom && ST_Expand(l.loc, 100)
+                ORDER BY ST_Distance(g.the_geom, l.loc) ASC
+                LIMIT 1
+        ) AS transit ON true
     query = f"""
         SELECT
             l.time AS time,
@@ -126,7 +138,7 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     '''
 
     df = pd.read_sql_query(query, conn, params=params)
-    pc.display('queried')
+    pc.display('queried, got %d rows' % len(df))
 
     df['time'] = pd.to_datetime(df.time, utc=True)
     df['timediff'] = df['time'].diff().dt.total_seconds().fillna(value=0)
@@ -145,7 +157,6 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
             df = df[df.created_at < df.created_at.max()]
         else:
             last_not_moving = not_moving.time.max()
-            print(last_not_moving)
             df = df[df.time <= last_not_moving]
 
     # Filter out trips that do not have enough low location error samples
@@ -163,8 +174,10 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
     loc_count = d[d['mean_distance'] > MIN_DISTANCE_MOVED_IN_TRIP].groupby('trip_id')['time'].count()
     trips_to_keep = loc_count.index[loc_count > 10]
 
+    df.loc[~df.trip_id.isin(trips_to_keep), 'trip_id'] = -1
+
     if not include_all:
-        df = df[df.trip_id.isin(trips_to_keep)]
+        df = df[df.trip_id >= 0]
 
     df = df.drop(columns=['timediff', 'new_trip'])
 
@@ -446,7 +459,11 @@ if __name__ == '__main__':
         from dateutil.parser import parse
         pd.set_option("max_rows", None)
         pd.set_option("min_rows", None)
-        df = read_trips(eng.connect().connection, default_uid, start_time='2021-05-18T12:00')
+        df = read_trips(
+            eng.connect().connection, default_uid,
+            start_time=parse('2021-05-17T08:00+03:00'),
+            end_time=parse('2021-05-17T09:00+03:00'),
+        )
         trip_ids = df.trip_id.unique()
         for trip in trip_ids:
             print(trip)
