@@ -14,6 +14,7 @@ class BlogPost(Page):
     ]
 
     subpage_types = []
+    parent_page_types = ['pages.BlogPostIndex']
 
 
 class InfoPage(Page):
@@ -24,3 +25,14 @@ class InfoPage(Page):
     ]
 
     subpage_types = []
+    parent_page_types = ['pages.InfoPageIndex']
+
+
+class BlogPostIndex(Page):
+    max_count = 1
+    subpage_types = [BlogPost]
+
+
+class InfoPageIndex(Page):
+    max_count = 1
+    subpage_types = [InfoPage]
