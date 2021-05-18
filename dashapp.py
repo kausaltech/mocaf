@@ -1,7 +1,9 @@
 import os
 import dash
+from dash.exceptions import PreventUpdate
 import dash_deck
 import dash_table
+from numpy import result_type
 import pydeck
 import pytz
 import dash_bootstrap_components as dbc
@@ -16,7 +18,7 @@ import geopandas as gpd
 from sqlalchemy import create_engine
 
 from utils.perf import PerfCounter
-from calc.trips import filter_trips, read_trips, read_uuids
+from calc.trips import filter_trips, read_trips, read_uuids, split_trip_legs
 
 
 import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()  # noqa
@@ -42,9 +44,11 @@ COLOR_MAP = {
     'running': '#f77f00',
     'on_bicycle': '#06d6a0',
     'unknown': '#cccccc',
-    'tram': '#ef476f',
-    'bus': '#ef476f',
+    'tram': '#251b5f',
+    'bus': '#354bb7',
     'car': '#ef476f',
+    'train': '#7db93e',
+    'other': '#aaaaaa',
 }
 
 TRANSPORT_COLOR_MAP = {
@@ -58,7 +62,7 @@ def hex_to_rgba(value):
     value = value.lstrip('#')
     lv = len(value)
     colors = list(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
-    return colors + [250]
+    return colors
 
 
 COLOR_MAP_RGB = {atype: hex_to_rgba(color) for atype, color in COLOR_MAP.items()}
@@ -79,42 +83,56 @@ if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
 
 
+map_view = pydeck.View("MapView", width="100%", height="100%", controller=True)
+
+
 def make_map_component(xstart=None, xend=None):
     PerfCounter('make_map_fig')
 
     df = time_filtered_locations_df.copy()
 
-    df['color'] = df['atype'].map(COLOR_MAP_RGB)
+    df['opacity'] = (df.time - df.time.min()) / (df.time.max() - df.time.min())
+    df['color'] = df[['atype', 'opacity']].apply(
+        lambda x: [*COLOR_MAP_RGB[x.atype], int(150 + x.opacity * 50)],
+        axis=1, result_type='reduce',
+    )
     df.loc_error = df.loc_error.fillna(value=-1)
     df.aconf = df.aconf.fillna(value=-1)
     df['time_str'] = df.local_time.astype(str)
-    df.speed = df.speed.fillna(value=-1)
-    df = df[['lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype']]
+    df.speed = (df.speed * 3.6).fillna(value=-1)
+    df = df[[
+        'lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype',
+        'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist'
+    ]]
+    df.atypef = df.atypef.fillna(value='')
     df = df.dropna()
     layer = pydeck.Layer(
         'PointCloudLayer',
         df,
-        # get_position=['lon', 'lat', 'speed'],
-        get_position=['lon', 'lat'],
+        get_position=['lon', 'lat', 'loc_error'],
+        # get_position=['lon', 'lat'],
         auto_highlight=True,
         get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
         get_color='color',
         pickable=True,
-        point_size=5,
+        point_size=8,
     )
 
     initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df)
 
     TOOLTIP_TEXT = {
-        'html': '{time_str}<br />{atype}<br />Speed: {speed} km/h'
+        'html': '{time_str}<br />{atype} -> {atypef}<br />Speed: {speed} km/h<br />' +
+            'Loc. error: {loc_error} m<br />' +
+            'Battery charging: {battery_charging}<br />'
     }
 
     r = pydeck.Deck(
         layers=[layer],
         initial_view_state=initial_view_state,
         # map_provider='mapbox',
-        map_style='road')
-    # print(r.to_json())
+        map_style='road',
+    )
+
     dc = dash_deck.DeckGL(
         data=r.to_json(), id="deck-gl", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
         tooltip=TOOLTIP_TEXT
@@ -145,9 +163,10 @@ def make_trip_component():
 
     recs = []
     for trip in trips:
-        for leg in trip.legs.all():
+        legs = list(trip.legs.all())
+        for idx, leg in enumerate(legs):
             path = [[p.loc.x, p.loc.y] for p in leg.locations.all()]
-            name = 'Trip %d - %s' % (trip.id, leg.mode.name)
+            name = 'Trip %d, leg %d/%d: %s' % (trip.id, idx + 1, len(legs), leg.mode.name)
             color = hex_to_rgb(TRANSPORT_COLOR_MAP.get(leg.mode.identifier, '#aaaaaa'))
             recs.append(dict(
                 name=name, color=color, path=path,
@@ -167,7 +186,7 @@ def make_trip_component():
         pickable=True,
         get_color='color',
         # width_scale=20,
-        width_min_pixels=2,
+        width_min_pixels=8,
         get_path='path',
         get_width=4,
         auto_highlight=True,
@@ -180,7 +199,7 @@ def make_trip_component():
     r = pydeck.Deck(
         layers=[layer],
         initial_view_state=initial_view_state,
-        map_style='road'
+        map_style='road',
     )
     dc = dash_deck.DeckGL(
         data=r.to_json(), id="deck-gl-trips", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
@@ -234,7 +253,6 @@ def display_hover_data(click_data, relayout_data):
         return map_component, trip_component, data_table_component
 
     print('relayout changed')
-
 
     start = relayout_data['xaxis.range[0]']
     end = relayout_data['xaxis.range[1]']
@@ -332,7 +350,7 @@ def handle_selection(selection):
     selected_start_time = LOCAL_TZ.localize(parse(start))
     selected_end_time = LOCAL_TZ.localize(parse(end))
 
-    modes = ['none', 'still', 'on_foot', 'in_vehicle', 'on_bicycle', 'tram', 'bus', 'car']
+    modes = ['none', 'still', 'on_foot', 'in_vehicle', 'on_bicycle', 'tram', 'bus', 'car', 'train', 'other']
     label_buttons = dbc.FormGroup([
         dbc.RadioItems(
             options=[dict(label=x, value=x) for x in modes],
@@ -379,31 +397,46 @@ def generate_containers(uid, time_fig=None, map_component=None, trip_component=N
 
 @app.callback(
     Output('output-container', 'children'),
-    [Input('path', 'pathname'), Input('uuid-selector', 'value'), Input('filtered-switch', 'value')]
+    [Input('path', 'pathname'), Input('filtered-switch', 'value'), Input('show-probs-switch', 'value')]
 )
-def render_output(new_path, new_uid, new_filtered):
+def render_output(new_path, disable_filters, show_probs):
     global map_component, trip_component, locations_df, locations_uuid
     global time_filtered_locations_df
     global filters_enabled
 
+    new_filtered = not disable_filters
     pc = PerfCounter('render_output')
 
-    if not new_uid:
-        if new_path:
-            new_path = new_path.strip('/')
+    if new_path:
+        new_path = new_path.strip('/')
         new_uid = new_path
 
     if not new_uid:
         return None
 
     if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
-        print('reading trips for %s' % locations_uuid)
-        df = read_trips(eng, new_uid, include_all=True)
-        pc.display('trips read')
+        pc.display('reading trips for %s' % locations_uuid)
+        df = read_trips(eng, new_uid, include_all=True, start_time='2021-05-12')
+        pc.display('trips read (%d rows)' % len(df))
         df.time = pd.to_datetime(df.time, utc=True)
-        if new_filtered:
-            print('filtering')
-            df = filter_trips(df)
+
+        trip_dfs = []
+
+        for trip_id in df.trip_id.unique():
+            print(trip_id)
+            trip_df = df[df.trip_id == trip_id].copy()
+            if new_filtered:
+                pc.display('filtering')
+                trip_df = filter_trips(trip_df)
+                pc.display('filtering done')
+            #trip_df = split_trip_legs(conn, trip_df)
+            trip_dfs.append(trip_df)
+
+        print('after loop')
+
+        df = pd.concat(trip_dfs)
+        print(df)
+
         filters_enabled = new_filtered
         # df['speed'] *= 3.6
         # print('done')
@@ -417,7 +450,7 @@ def render_output(new_path, new_uid, new_filtered):
     else:
         df = locations_df
 
-    if new_filtered is not None and len(new_filtered):
+    if new_filtered:
         geo = gpd.points_from_xy(df.xf, df.yf, crs=3067).to_crs(4326)
     else:
         geo = gpd.points_from_xy(df.x, df.y, crs=3067).to_crs(4326)
@@ -428,34 +461,58 @@ def render_output(new_path, new_uid, new_filtered):
     time_fig = make_subplots(specs=[[{"secondary_y": True}]])
     time_fig.update_yaxes(rangemode='tozero', fixedrange=True)
 
-    time_fig.update_traces(marker=dict(opacity=0.5))
+    # time_fig.update_traces(marker=dict(opacity=0.8))
+
+    mandf = df.copy()
+    # [~df.manual_atype.isna()].copy()
+    mandf['manual_atype_changed'] = mandf.manual_atype.shift(1) != mandf.manual_atype
+    mandf['shape_id'] = mandf['manual_atype_changed'].cumsum()
+    mandf = mandf[~mandf.manual_atype.isna()]
+    pc.display('about to generate shapes')
+    for shape_id in mandf.shape_id.unique():
+        sdf = mandf[mandf.shape_id == shape_id]
+        if not sdf.iloc[0].manual_atype:
+            continue
+        color = COLOR_MAP[sdf.iloc[0].manual_atype]
+        d1 = sdf.local_time.min().to_pydatetime()
+        d2 = sdf.local_time.max().to_pydatetime()
+        time_fig.add_shape(
+            type='line', x0=d1, x1=d2, y0=-.2, y1=-.25,
+            xref='x', yref='paper',
+            line=dict(
+                color=color,
+                width=4,
+            )
+        )
+
+    pc.display('shapes generated')
+
     for mode in COLOR_MAP.keys():
         mdf = df[df.atype == mode]
-        if not len(df):
+        if len(mdf):
+            time_fig.add_trace(dict(
+                type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
+                marker=dict(color=COLOR_MAP[mode], size=8, symbol='circle')
+            ))
+
+    for mode in COLOR_MAP.keys():
+        if 'atypef' not in df:
             continue
+        cdf = df[df.atypef == mode]
+        if len(cdf):
+            time_fig.add_trace(dict(
+                type='scattergl', x=cdf.local_time, y=cdf.speed * 3.6, mode='markers', name='%s (fix)' % mode,
+                marker=dict(color=COLOR_MAP[mode], size=4, symbol='circle')
+            ))
+    if show_probs:
+        for mode in COLOR_MAP.keys():
+            if mode not in df:
+                continue
 
-        time_fig.add_trace(dict(
-            type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
-            marker=dict(color=COLOR_MAP[mode], symbol='circle')
-        ))
-
-        if filters_enabled:
-            mdf = df[df.atypef == mode]
-            if len(mdf):
-                time_fig.add_trace(dict(
-                   type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
-                    marker=dict(color=COLOR_MAP[mode], symbol='x-open')
-                ))
-
-        #mandf = df[df.manual_atype == mode]
-        #time_fig.add_trace(dict(
-        #    type='scattergl', x=mandf.local_time, y=mandf.speed * 3.6, mode='markers', name=mode,
-        #    marker=dict(color=COLOR_MAP[mode], symbol='x-open')
-        #))
-        if mode in df:
             time_fig.add_trace(dict(
                 type='scattergl', x=df.local_time, y=df[mode], mode='lines', name=mode,
-                connectgaps=False, line=dict(color=COLOR_MAP[mode])
+                connectgaps=False, line=dict(color=COLOR_MAP[mode]),
+                opacity=0.7,
             ), secondary_y=True)
 
     pc.display('traces generated')
@@ -468,14 +525,30 @@ def render_output(new_path, new_uid, new_filtered):
     return generate_containers(new_uid, time_fig, map_component, trip_component)
 
 
+@app.callback(
+    Output('path', 'pathname'),
+    [Input('uuid-selector', 'value')]
+)
+def select_uuid(new_uuid):
+    print('new uuid: %s' % new_uuid)
+    if new_uuid == locations_uuid:
+        raise PreventUpdate
+    return new_uuid
+
+
 app.layout = dbc.Container([
     dcc.Location(id='path', refresh=False),
     dbc.Row([
         dbc.Col([
             dbc.FormGroup([
                 dbc.Checklist(
-                    options=[{"label": "Filtered", "value": 0}],
+                    options=[{"label": "Disable filters", "value": 0}],
                     id='filtered-switch',
+                    switch=True,
+                ),
+                dbc.Checklist(
+                    options=[{"label": "Show probabilities", "value": 0}],
+                    id='show-probs-switch',
                     switch=True,
                 ),
             ]),
@@ -486,12 +559,12 @@ app.layout = dbc.Container([
             dbc.Select(
                 id="uuid-selector",
                 options=[{'label': x, 'value': x} for x in uuids],
-                value=DEFAULT_UUID or None,
+                value=None,
             )
         ], md=4)
     ]),
     html.Div(
-        generate_containers(DEFAULT_UUID),
+        generate_containers(None),
         id='output-container'
     ),
 ], fluid=True)
