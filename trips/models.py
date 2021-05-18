@@ -25,6 +25,11 @@ class InvalidStateError(Exception):
     pass
 
 
+class DeviceQuerySet(models.QuerySet):
+    def by_name(self, name):
+        return self.filter(friendly_name__iexact=name)
+
+
 class Device(models.Model):
     uuid = models.UUIDField(null=False, unique=True, db_index=True)
     token = models.CharField(max_length=50, null=True)
@@ -33,11 +38,14 @@ class Device(models.Model):
     brand = models.CharField(max_length=20, null=True)
     model = models.CharField(max_length=40, null=True)
 
+    friendly_name = models.CharField(max_length=40, null=True)
     debug_log_level = models.PositiveIntegerField(null=True)
     debugging_enabled_at = models.DateTimeField(null=True)
     custom_config = models.JSONField(null=True)
 
     created_at = models.DateTimeField(null=True)
+
+    objects = DeviceQuerySet.as_manager()
 
     def generate_token(self):
         assert not self.token
