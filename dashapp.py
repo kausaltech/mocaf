@@ -79,6 +79,7 @@ filters_enabled = False
 
 conn = eng.connect()
 uuids = read_uuids(conn.connection)
+device_by_uuid = {str(dev.uuid): dev for dev in Device.objects.filter(uuid__in=uuids)}
 if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
 
@@ -93,7 +94,7 @@ def make_map_component(xstart=None, xend=None):
 
     df['opacity'] = (df.time - df.time.min()) / (df.time.max() - df.time.min())
     df['color'] = df[['atype', 'opacity']].apply(
-        lambda x: [*COLOR_MAP_RGB[x.atype], int(150 + x.opacity * 50)],
+        lambda x: [*COLOR_MAP_RGB[x.atype], int(50 + x.opacity * 200)],
         axis=1, result_type='reduce',
     )
     df.loc_error = df.loc_error.fillna(value=-1)
@@ -105,11 +106,14 @@ def make_map_component(xstart=None, xend=None):
         'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist'
     ]]
     df.atypef = df.atypef.fillna(value='')
+    df.closest_car_way_name = df.closest_car_way_name.fillna(value='')
+    df.closest_car_way_dist = df.closest_car_way_dist.round(1).fillna(value=-1)
+    df.battery_charging = df.battery_charging.fillna(value=False)
     df = df.dropna()
     layer = pydeck.Layer(
         'PointCloudLayer',
         df,
-        get_position=['lon', 'lat', 'loc_error'],
+        get_position=['lon', 'lat', 'speed'],
         # get_position=['lon', 'lat'],
         auto_highlight=True,
         get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
@@ -118,19 +122,23 @@ def make_map_component(xstart=None, xend=None):
         point_size=8,
     )
 
-    initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df)
+    initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df[['lon', 'lat']])
+    if initial_view_state.zoom > 15:
+        initial_view_state.zoom = 15
 
     TOOLTIP_TEXT = {
         'html': '{time_str}<br />{atype} -> {atypef}<br />Speed: {speed} km/h<br />' +
             'Loc. error: {loc_error} m<br />' +
             'Battery charging: {battery_charging}<br />'
+            'Closest car way: {closest_car_way_name}<br />'
+            'Closest car way distance: {closest_car_way_dist} m'
     }
 
     r = pydeck.Deck(
         layers=[layer],
         initial_view_state=initial_view_state,
         # map_provider='mapbox',
-        map_style='road',
+        map_style='mapbox://styles/mapbox/streets-v11',
     )
 
     dc = dash_deck.DeckGL(
@@ -167,6 +175,8 @@ def make_trip_component():
         for idx, leg in enumerate(legs):
             path = [[p.loc.x, p.loc.y] for p in leg.locations.all()]
             name = 'Trip %d, leg %d/%d: %s' % (trip.id, idx + 1, len(legs), leg.mode.name)
+            if leg.user_corrected_mode:
+                name += ' [%s -> %s]' % (leg.estimated_mode.name, leg.user_corrected_mode.name)
             color = hex_to_rgb(TRANSPORT_COLOR_MAP.get(leg.mode.identifier, '#aaaaaa'))
             recs.append(dict(
                 name=name, color=color, path=path,
@@ -199,7 +209,7 @@ def make_trip_component():
     r = pydeck.Deck(
         layers=[layer],
         initial_view_state=initial_view_state,
-        map_style='road',
+        map_style='mapbox://styles/mapbox/satellite-streets-v11',
     )
     dc = dash_deck.DeckGL(
         data=r.to_json(), id="deck-gl-trips", mapboxKey=os.getenv('MAPBOX_ACCESS_TOKEN'),
@@ -415,35 +425,36 @@ def render_output(new_path, disable_filters, show_probs):
         return None
 
     if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
-        pc.display('reading trips for %s' % locations_uuid)
-        df = read_trips(eng, new_uid, include_all=True, start_time='2021-05-12')
+        pc.display('reading trips for %s' % new_uid)
+        df = read_trips(eng, new_uid, include_all=True, start_time='2021-05-10')
         pc.display('trips read (%d rows)' % len(df))
         df.time = pd.to_datetime(df.time, utc=True)
 
         trip_dfs = []
 
         for trip_id in df.trip_id.unique():
-            print(trip_id)
             trip_df = df[df.trip_id == trip_id].copy()
-            if new_filtered:
-                pc.display('filtering')
+            if new_filtered and trip_id >= 0:
+                pc.display('filtering trip %d' % trip_id)
                 trip_df = filter_trips(trip_df)
                 pc.display('filtering done')
             #trip_df = split_trip_legs(conn, trip_df)
             trip_dfs.append(trip_df)
 
-        print('after loop')
-
         df = pd.concat(trip_dfs)
         print(df)
 
         filters_enabled = new_filtered
-        # df['speed'] *= 3.6
-        # print('done')
+
         df['local_time'] = df.time.dt.tz_convert(LOCAL_TZ)
         df['distance'] = df.distance.round(1)
+        df['closest_car_way_dist'] = df['closest_car_way_dist'].round(1)
         df['x'] = df.x.round(1)
         df['y'] = df.y.round(1)
+        if 'xf' in df:
+            df['xf'] = df.xf.round(1)
+        if 'yf' in df:
+            df['yf'] = df.yf.round(1)
         locations_df = df
         time_filtered_locations_df = df
         locations_uuid = new_uid
@@ -451,7 +462,7 @@ def render_output(new_path, disable_filters, show_probs):
         df = locations_df
 
     if new_filtered:
-        geo = gpd.points_from_xy(df.xf, df.yf, crs=3067).to_crs(4326)
+        geo = gpd.points_from_xy(df.xf.fillna(df.x), df.yf.fillna(df.y), crs=3067).to_crs(4326)
     else:
         geo = gpd.points_from_xy(df.x, df.y, crs=3067).to_crs(4326)
     df['lon'] = geo.x
@@ -464,7 +475,6 @@ def render_output(new_path, disable_filters, show_probs):
     # time_fig.update_traces(marker=dict(opacity=0.8))
 
     mandf = df.copy()
-    # [~df.manual_atype.isna()].copy()
     mandf['manual_atype_changed'] = mandf.manual_atype.shift(1) != mandf.manual_atype
     mandf['shape_id'] = mandf['manual_atype_changed'].cumsum()
     mandf = mandf[~mandf.manual_atype.isna()]
@@ -494,6 +504,8 @@ def render_output(new_path, disable_filters, show_probs):
                 type='scattergl', x=mdf.local_time, y=mdf.speed * 3.6, mode='markers', name=mode,
                 marker=dict(color=COLOR_MAP[mode], size=8, symbol='circle')
             ))
+        if mode in df:
+            df[mode] = df[mode].round(2)
 
     for mode in COLOR_MAP.keys():
         if 'atypef' not in df:
@@ -536,6 +548,13 @@ def select_uuid(new_uuid):
     return new_uuid
 
 
+def label_for_uuid(uid):
+    dev = device_by_uuid.get(uid)
+    if not dev:
+        return uid
+    return '%s (%s %s, %s %s)' % (uid, dev.platform, dev.system_version, dev.brand, dev.model)
+
+
 app.layout = dbc.Container([
     dcc.Location(id='path', refresh=False),
     dbc.Row([
@@ -558,7 +577,7 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Select(
                 id="uuid-selector",
-                options=[{'label': x, 'value': x} for x in uuids],
+                options=[{'label': label_for_uuid(x), 'value': x} for x in uuids],
                 value=None,
             )
         ], md=4)
