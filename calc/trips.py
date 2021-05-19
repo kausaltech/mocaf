@@ -1,3 +1,4 @@
+import os
 import logging
 import numba
 import numpy as np
@@ -23,122 +24,30 @@ LOCAL_2D_CRS = 3067
 logger = logging.getLogger(__name__)
 
 
-def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
+def prepare_sql_statements(conn):
+    path = os.path.dirname(__file__)
+    fn = os.path.join(path, 'sql', 'read_locations.sql')
+    query = open(fn, 'r').read()
+    with conn.cursor() as curs:
+        curs.execute(query)
+
+
+def read_locations(conn, uid, start_time=None, end_time=None, include_all=False):
+    if not getattr(conn, 'read_locations_prepared', None):
+        prepare_sql_statements(conn)
+        conn.read_locations_prepared = True
+
     pc = PerfCounter('read %s' % uid, show_time_to_last=True)
 
-    params = dict(uuid=uid)
-    if start_time:
-        time_filter = 'AND l.time > %(start_time)s'
-        params['start_time'] = start_time
-        if end_time:
-            time_filter += ' AND l.time <= %(end_time)s'
-            params['end_time'] = end_time
-    else:
-        # time_filter = f"l.time >= now() - interval '{DAYS_TO_FETCH} days'"
-        time_filter = ''
+    if start_time is None:
+        start_time = '2010-01-01'
+    if end_time is None:
+        end_time = 'NOW()'
 
-    query = f"""
-        SELECT
-            l.time AS time,
-            -- ST_X(ST_Transform(l.loc, 4326)) AS lon,
-            -- ST_Y(ST_Transform(l.loc, 4326)) AS lat,
-            ST_X(l.loc) AS x,
-            ST_Y(l.loc) AS y,
-            l.loc_error,
-            l.atype,
-            l.aconf,
-            l.speed,
-            l.heading,
-            l.is_moving,
-            l.manual_atype,
-            l.odometer,
-            l.battery_charging,
-            cw.closest_car_way_dist,
-            cw.closest_car_way_name,
-            l.created_at AS created_at
-        FROM
-            {TABLE_NAME} AS l
-        LEFT JOIN LATERAL (
-            SELECT
-                name AS closest_car_way_name,
-                ST_Distance(w.way, l.loc) AS closest_car_way_dist
-                FROM planet_osm_line AS w
-                WHERE
-                    highway IN (
-                        'minor', 'road', 'unclassified', 'residential', 'tertiary_link', 'tertiary',
-                        'secondary_link', 'secondary', 'primary_link', 'primary', 'trunk_link',
-                        'trunk', 'motorway_link', 'motorway',
-                        'service'
-                    )
-                    AND w.way && ST_Expand(l.loc, 50)
-                ORDER BY ST_Distance(w.way, l.loc) ASC
-                LIMIT 1
-        ) AS cw ON true
-        WHERE
-            l.uuid = %(uuid)s::uuid
-            {time_filter}
-            AND l.loc_error >= 0
-        ORDER BY
-            l.time
-    """
-
-    '''
-        LEFT JOIN LATERAL (
-            SELECT
-                (SELECT trip_headsign FROM gtfs.trips
-                    WHERE gtfs.trips.shape_id = g.shape_id LIMIT 1
-                ),
-                ST_Distance(g.the_geom, l.loc) AS closest_transit_line_dist
-                FROM gtfs.shape_geoms AS g
-                WHERE
-                    g.the_geom && ST_Expand(l.loc, 100)
-                ORDER BY ST_Distance(g.the_geom, l.loc) ASC
-                LIMIT 1
-        ) AS transit ON true
-    query = f"""
-        SELECT
-            l.time AS time,
-            --ST_X(ST_Transform(l.loc, 4326)) AS lon,
-            --ST_Y(ST_Transform(l.loc, 4326)) AS lat,
-            --ST_X(ST_Transform(l.loc, {LOCAL_2D_CRS})) AS x,
-            --ST_Y(ST_Transform(l.loc, {LOCAL_2D_CRS})) AS y,
-            l.loc_error,
-            l.atype,
-            l.aconf,
-            l.speed,
-            l.heading,
-            cv.vehicle_ref,
-            cv.journey_ref,
-            cv.timediff,
-            cv.dist
-        FROM
-            {TABLE_NAME} AS l
-        LEFT JOIN LATERAL (
-            SELECT
-                vehicle_ref,
-                journey_ref,
-                EXTRACT(EPOCH FROM l.time - v.time) AS timediff,
-                ST_Distance(v.loc, l.loc) AS dist
-                FROM {TRANSIT_TABLE} AS v
-                WHERE
-                    abs(EXTRACT(EPOCH FROM l.time - v.time)) < 10
-                    AND ST_DWithin(v.loc, l.loc, 100)
-                ORDER BY v.loc <-> l.loc
-                LIMIT 1
-        ) AS cv ON true
-        WHERE
-            l.uuid = '%s'::uuid
-            -- AND l.time >= now() - interval '{DAYS_TO_FETCH} days'
-            AND l.time >= '2021-02-15'
-            -- AND l.time <= '2021-02-16'
-            AND l.loc_error >= 0
-        ORDER BY
-            l.time
-    """ % uid
-    '''
-
+    params = dict(uuid=uid, start_time=start_time, end_time=end_time)
+    query = 'EXECUTE read_locations(%(uuid)s, %(start_time)s, %(end_time)s)'
     df = pd.read_sql_query(query, conn, params=params)
-    pc.display('queried, got %d rows' % len(df))
+    pc.display('query done, got %d rows' % len(df))
 
     df['time'] = pd.to_datetime(df.time, utc=True)
     df['timediff'] = df['time'].diff().dt.total_seconds().fillna(value=0)
@@ -180,55 +89,7 @@ def read_trips(conn, uid, start_time=None, end_time=None, include_all=False):
         df = df[df.trip_id >= 0]
 
     df = df.drop(columns=['timediff', 'new_trip'])
-
-    '''
-    for trip_id in trips_to_keep:
-        print(trip_id)
-        tdf = df[df.trip_id == trip_id]
-        min_time = tdf.time.min()
-        max_time = tdf.time.max()
-        query = f"""
-            SELECT
-                l.time AT TIME ZONE '{LOCAL_TZ}' AS time,
-                cv.vehicle_ref,
-                cv.journey_ref,
-                cv.timediff,
-                cv.dist
-            FROM
-                {TABLE_NAME} AS l
-            CROSS JOIN LATERAL
-                (SELECT
-                    vehicle_ref,
-                    journey_ref,
-                    EXTRACT(EPOCH FROM l.time - v.time) AS timediff,
-                    ST_Distance(v.loc, l.loc) AS dist
-                    FROM {TRANSIT_TABLE} AS v
-                    WHERE
-                        v.time >= %(min_time)s AND v.time <= %(max_time)s
-                        AND abs(EXTRACT(EPOCH FROM l.time - v.time)) < 10
-                        AND ST_DWithin(v.loc, l.loc, 100)
-                    ORDER BY ST_Distance(v.loc, l.loc)
-                    LIMIT 1
-                ) AS cv
-            WHERE
-                l.uuid = %(uid)s::uuid
-                AND l.time >= %(min_time)s AND l.time <= %(max_time)s
-            ORDER BY l.time
-        """
-
-        print('querying')
-        with eng.connect() as conn:
-            vdf = pd.read_sql_query(query, conn, params=dict(
-                min_time=min_time,
-                max_time=max_time,
-                uid=uid,
-            ))
-        if len(vdf):
-            pd.set_option("max_rows", 100)
-            pd.set_option("min_rows", 100)
-            print(tdf)
-            print(vdf)
-        '''
+    pc.display('returning %d trips (%d rows)' % (len(trips_to_keep), len(df)))
 
     return df
 
@@ -446,7 +307,7 @@ if __name__ == '__main__':
     from sqlalchemy import create_engine
 
     load_dotenv()
-    eng = create_engine(os.getenv('DATABASE_URL'))
+    eng = create_engine(os.getenv('DATABASE_URL'), echo=True)
     default_uid = os.getenv('DEFAULT_UUID')
 
     if False:
@@ -459,11 +320,11 @@ if __name__ == '__main__':
         from dateutil.parser import parse
         pd.set_option("max_rows", None)
         pd.set_option("min_rows", None)
-        df = read_trips(
+        df = read_locations(
             eng.connect().connection, default_uid,
-            start_time=parse('2021-05-17T08:00+03:00'),
-            end_time=parse('2021-05-17T09:00+03:00'),
+            start_time='2021-05-12',
         )
+        exit()
         trip_ids = df.trip_id.unique()
         for trip in trip_ids:
             print(trip)
@@ -471,7 +332,7 @@ if __name__ == '__main__':
 
     if True:
         for uid in read_uuids(eng):
-            df = read_trips(eng, uid)
+            df = read_locations(eng, uid)
             print(df)
             exit()
     # split_trip_legs(df)

@@ -3,7 +3,7 @@ import sentry_sdk
 import geopandas as gpd
 
 from calc.trips import (
-    LOCAL_2D_CRS, read_trips, read_uuids, split_trip_legs, filter_trips
+    LOCAL_2D_CRS, read_locations, read_uuids, split_trip_legs, filter_trips
 )
 
 from utils.perf import PerfCounter
@@ -201,7 +201,7 @@ class TripGenerator:
         device._default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
 
         pc = PerfCounter('update trips for %s' % uuid, show_time_to_last=True)
-        df = read_trips(connection, uuid, start_time=start_time, end_time=end_time)
+        df = read_locations(connection, uuid, start_time=start_time, end_time=end_time)
         if df is None or not len(df):
             return
         pc.display('read done, got %d rows' % len(df))
