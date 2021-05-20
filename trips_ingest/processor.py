@@ -74,9 +74,15 @@ class EventProcessor:
             obj = Location(created_at=event.received_at)
 
             try:
+                ts = loc.get('timestamp')
                 dt = isoparse(loc.get('timestamp'))
             except Exception:
                 raise InvalidEventError("location has invalid time")
+
+            # Sometimes we get individual timestamps from 1980s...
+            if dt.year < 2000:
+                logger.error('Invalid timestamp for location: %s' % ts)
+                continue
 
             obj.time = sane_time_or_bye(dt)
             obj.uuid = uuid_or_bye(loc['extras'].get('uid'))
