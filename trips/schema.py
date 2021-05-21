@@ -3,6 +3,7 @@ from datetime import timedelta
 from budget.models import EmissionBudgetLevel
 from typing import Any
 from django.utils import timezone
+from django.contrib.gis.geos import LineString
 from django.db.models import Q
 from django.db import transaction
 import graphene
@@ -10,8 +11,9 @@ from graphql.error import GraphQLError
 import graphene_django_optimizer as gql_optimizer
 from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
 from mocaf.graphql_helpers import paginate_queryset
+from mocaf.graphql_gis import PointScalar, LineStringScalar
 
-from .models import DeviceDefaultModeVariant, TransportModeVariant, Trip, Leg, Device, TransportMode, InvalidStateError
+from .models import DeviceDefaultModeVariant, LegLocation, TransportModeVariant, Trip, Leg, Device, TransportMode, InvalidStateError
 
 
 def resolve_i18n_field(obj: Any, field_name: str, info):
@@ -48,17 +50,32 @@ class TransportModeNode(DjangoNode):
         ]
 
 
+class LegLocationNode(DjangoNode, AuthenticatedDeviceNode):
+    loc = PointScalar()
+
+    class Meta:
+        model = LegLocation
+        fields = [
+            'loc', 'time'
+        ]
+
+
 class LegNode(DjangoNode, AuthenticatedDeviceNode):
     can_update = graphene.Boolean()
+    geometry = LineStringScalar()
 
     def resolve_can_update(root: Leg, info):
         return root.can_user_update()
+
+    def resolve_geometry(root: Leg, info):
+        points = list(root.locations.values_list('loc', flat=True).order_by('time'))
+        return LineString(points)
 
     class Meta:
         model = Leg
         fields = [
             'id', 'mode', 'mode_variant', 'mode_confidence', 'start_time', 'end_time', 'start_loc', 'end_loc',
-            'length', 'carbon_footprint', 'nr_passengers', 'deleted_at',
+            'length', 'carbon_footprint', 'nr_passengers', 'deleted_at', 'locations', 'geometry',
         ]
 
 
