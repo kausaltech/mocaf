@@ -85,7 +85,7 @@ class EventProcessor:
                 continue
 
             obj.time = sane_time_or_bye(dt)
-            obj.uuid = uuid_or_bye(loc['extras'].get('uid'))
+            obj.uuid = uuid_or_bye(event.data.get('uid') or loc['extras'].get('uid'))
 
             if Location.objects.filter(
                 time__gte=obj.time - timedelta(seconds=0.5), time__lte=obj.time + timedelta(seconds=0.5),
@@ -120,7 +120,7 @@ class EventProcessor:
                 raise InvalidEventError("invalid coords")
             obj.loc = point
 
-            obj.debug = bool(loc['extras'].get('debug', 0))
+            obj.debug = bool(event.data.get('debug') or loc['extras'].get('debug', 0))
             obj.is_moving = loc.get('is_moving')
             obj.battery_charging = loc.get('battery', {}).get('is_charging')
             obj.save(force_insert=True)
