@@ -90,7 +90,7 @@ class SiriImporter:
         for act_in in data:
             act = self.import_vehicle_activity(act_in)
             if abs((data_ts - act['time']).total_seconds()) > 60:
-                logger.error('Refusing too long time difference for %s (%s)' % (act['vehicle_ref'], act['time']))
+                logger.warn('Refusing too long time difference for %s (%s)' % (act['vehicle_ref'], act['time']))
                 continue
 
             vid = act['vehicle_ref']
