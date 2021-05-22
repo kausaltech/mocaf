@@ -25,24 +25,21 @@ logger = logging.getLogger(__name__)
 
 
 def prepare_sql_statements(conn):
-    # Check if we have prepared the statement for this DB session before.
-    # It gets a bit complicated because Django wraps the actual DB connection
-    # object with a proxy.
-    real_connection = getattr(conn, 'connection', None)
-    if real_connection is not None:
-        conn_id = getattr(conn, 'read_locations_prepared', None)
-        if conn_id is not None and conn_id == id(real_connection):
+    with conn.cursor() as curs:
+        # Check if we have prepared the statement for this DB session before.
+        curs.execute(
+            'SELECT COUNT(*) FROM pg_prepared_statements WHERE name = %(name)s',
+            dict(name='read_locations')
+        )
+        rows = curs.fetchall()
+        if rows[0][0]:
             return
 
-    path = os.path.dirname(__file__)
-    fn = os.path.join(path, 'sql', 'read_locations.sql')
-    query = open(fn, 'r').read()
-    with conn.cursor() as curs:
-        curs.execute(query)
-
-    real_connection = getattr(conn, 'connection', None)
-    assert real_connection is not None
-    setattr(conn, 'read_locations_prepared', id(real_connection))
+        path = os.path.dirname(__file__)
+        fn = os.path.join(path, 'sql', 'read_locations.sql')
+        query = open(fn, 'r').read()
+        with conn.cursor() as curs:
+            curs.execute(query)
 
 
 def read_locations(conn, uid, start_time=None, end_time=None, include_all=False):
