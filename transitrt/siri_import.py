@@ -2,7 +2,7 @@ import bz2
 import time
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytz
 import requests
@@ -29,7 +29,7 @@ coord_transform = ct = CoordTransform(
 
 
 def js_to_dt(ts):
-    return LOCAL_TZ.localize(datetime.fromtimestamp(ts / 1000))
+    return datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
 
 
 def make_vehicle_journey_id(act):
