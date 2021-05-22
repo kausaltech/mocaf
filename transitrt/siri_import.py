@@ -18,6 +18,8 @@ from transitrt.models import VehicleLocation
 
 logger = logging.getLogger(__name__)
 
+MIN_TIME_BETWEEN_LOCATIONS = 2  # in seconds
+
 
 LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 
@@ -30,12 +32,16 @@ def js_to_dt(ts):
     return LOCAL_TZ.localize(datetime.fromtimestamp(ts / 1000))
 
 
+def make_vehicle_journey_id(act):
+    return '%s:%s' % (act['journey_ref'], act['vehicle_ref'])
+
+
 class SiriImporter:
     def __init__(self):
         self.routes_by_ref = {r.route_id: r for r in Route.objects.all()}
-        self.cached_locs = {}
+        self.cached_journeys = {}
         self._batch = []
-        self._batch_vids = set()
+        self._batch_jids = set()
 
     def import_vehicle_activity(self, d):
         time = js_to_dt(d['RecordedAtTime'])
@@ -46,7 +52,7 @@ class SiriImporter:
         jr = d['FramedVehicleJourneyRef']
         journey_ref = '%s:%s' % (jr['DataFrameRef']['value'], jr['DatedVehicleJourneyRef'])
 
-        return dict(
+        act = dict(
             time=time,
             vehicle_ref=d['VehicleRef']['value'],
             route=route,
@@ -55,20 +61,29 @@ class SiriImporter:
             journey_ref=journey_ref,
             bearing=d['Bearing'],
         )
+        act['vehicle_journey_ref'] = make_vehicle_journey_id(act)
+        return act
 
-    def update_cached_locs(self, vehicle_ids):
-        to_fetch = set()
-        for vid in vehicle_ids:
-            if vid not in self.cached_locs:
-                to_fetch.add(vid)
-        if not to_fetch:
+    def update_cached_locs(self, journey_ids):
+        journey_refs = set()
+        for jid in journey_ids:
+            if jid not in self.cached_journeys:
+                journey_refs.add(jid)
+        if not journey_refs:
             return
 
-        locs = VehicleLocation.objects.filter(vehicle_ref__in=vehicle_ids)\
-            .values('vehicle_ref', 'time').distinct('vehicle_ref')\
-            .order_by('vehicle_ref', '-time')
+        # Find the latest data points we already have for these journeys
+        locs = (
+            VehicleLocation.objects.filter(vehicle_journey_ref__in=journey_refs)
+            .filter(time__lte=self.latest_data_time + timedelta(hours=24))
+            .filter(time__gte=self.latest_data_time - timedelta(hours=24))
+            .values('vehicle_journey_ref', 'time').distinct('vehicle_journey_ref')
+            .order_by('vehicle_journey_ref', '-time')
+        )
         for x in locs:
-            self.cached_locs[x['vehicle_ref']] = x['time']
+            self.cached_journeys[x['vehicle_journey_ref']] = dict(
+                time=x['time'],
+            )
 
     def update_from_siri(self, data):
         assert len(data) == 1
@@ -87,17 +102,26 @@ class SiriImporter:
             return
         data = data['VehicleActivity']
 
+        if not hasattr(self, 'latest_data_time'):
+            self.latest_data_time = data_ts
+        elif data_ts > self.latest_data_time:
+            self.latest_data_time = data_ts
+
         for act_in in data:
             act = self.import_vehicle_activity(act_in)
-            if abs((data_ts - act['time']).total_seconds()) > 60:
-                logger.warn('Refusing too long time difference for %s (%s)' % (act['vehicle_ref'], act['time']))
+            vjid = act['vehicle_journey_ref']
+            if act['time'] > data_ts + timedelta(seconds=5):
+                logger.warn('Vehicle time for %s is too much in the future (%s)' % (vjid, act['time']))
+                continue
+            if act['time'] < data_ts - timedelta(seconds=120):
+                logger.warn('Vehicle time for %s is too much in the past (%s)' % (vjid, act['time']))
                 continue
 
-            vid = act['vehicle_ref']
-            last_time = self.cached_locs.get(vid)
-            if last_time and last_time + timedelta(seconds=1) >= act['time']:
-                continue
-            self._batch_vids.add(act['vehicle_ref'])
+            j = self.cached_journeys.get(vjid)
+            if j is not None:
+                if act['time'] < j['time'] + timedelta(seconds=MIN_TIME_BETWEEN_LOCATIONS):
+                    continue
+            self._batch_jids.add(vjid)
             self._batch.append(act)
 
     def bulk_insert_locations(self, objs):
@@ -109,31 +133,32 @@ class SiriImporter:
 
         query = f"""
             INSERT INTO {table_name}
-                (route_id, direction_ref, vehicle_ref, journey_ref, time, loc, bearing)
+                (route_id, direction_ref, vehicle_ref, journey_ref, vehicle_journey_ref, time, loc, bearing)
             VALUES %s
         """
         template = "(%(route)s, %(direction_ref)s, %(vehicle_ref)s, "
-        template += "%(journey_ref)s, %(time)s, "
+        template += "%(journey_ref)s, %(vehicle_journey_ref)s, %(time)s, "
         template += f"ST_SetSRID(ST_MakePoint(%(x)s, %(y)s), {local_srs}), %(bearing)s)"
 
         with connection.cursor() as cursor:
             execute_values(cursor, query, objs, template=template, page_size=2048)
 
     def commit(self):
-        self.update_cached_locs(self._batch_vids)
+        self.update_cached_locs(self._batch_jids)
         new_objs = []
         for act in self._batch:
-            vid = act['vehicle_ref']
-            last_time = self.cached_locs.get(vid)
+            vjid = act['vehicle_journey_ref']
+            j = self.cached_journeys.get(vjid)
             # Ensure the new sample is fresh enough
-            if last_time and last_time + timedelta(seconds=1) >= act['time']:
-                continue
+            if j is not None:
+                if act['time'] < j['time'] + timedelta(seconds=MIN_TIME_BETWEEN_LOCATIONS):
+                    continue
 
             new_objs.append(act)
-            self.cached_locs[vid] = act['time']
+            self.cached_journeys[vjid] = dict(time=act['time'], vehicle_ref=act['vehicle_ref'])
 
         self._batch = []
-        self._batch_vids = set()
+        self._batch_jids = set()
 
         logger.info('Saving %d observations' % len(new_objs))
         if not new_objs:
