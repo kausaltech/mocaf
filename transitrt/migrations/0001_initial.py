@@ -23,7 +23,6 @@ class Migration(migrations.Migration):
                 "direction_ref" varchar(5) NULL,
                 "vehicle_ref" varchar(30) NOT NULL,
                 "journey_ref" varchar(30) NOT NULL,
-                "vehicle_journey_ref" varchar(50) NOT NULL,
                 "time" timestamp with time zone NOT NULL,
                 "loc" geometry(POINT,{settings.LOCAL_SRS}) NOT NULL,
                 "route_id" integer NULL,
@@ -33,10 +32,7 @@ class Migration(migrations.Migration):
             DROP TABLE "transitrt_vehiclelocation" CASCADE;
         """),
         migrations.RunSQL("""
-            SELECT create_hypertable(
-                'transitrt_vehiclelocation', 'time',
-                chunk_time_interval => INTERVAL '1 day'
-            );
+            SELECT create_hypertable('transitrt_vehiclelocation', 'time', 'vehicle_ref', 4);
         """, reverse_sql=""),
         migrations.RunSQL("""
             ALTER TABLE "transitrt_vehiclelocation" ADD CONSTRAINT "transitrt_vehiclelocation_route_id" FOREIGN KEY ("route_id") REFERENCES "route" ("id") DEFERRABLE INITIALLY DEFERRED;
@@ -45,6 +41,8 @@ class Migration(migrations.Migration):
             CREATE INDEX "transitrt_vehiclelocation_loc_id" ON "transitrt_vehiclelocation" USING GIST ("loc");
         """, reverse_sql=""),
         migrations.RunSQL("""
-            CREATE UNIQUE INDEX on "transitrt_vehiclelocation" (time, vehicle_journey_ref);
+            CREATE UNIQUE INDEX on "transitrt_vehiclelocation" (time, vehicle_ref);
         """, reverse_sql=""),
+        #CREATE INDEX "transitrt_vehiclelocation_route_id_84dac66e" ON "transitrt_vehiclelocation" ("route_id");
     ]
+

@@ -8,7 +8,6 @@ class VehicleLocation(models.Model):
     direction_ref = models.CharField(max_length=5, null=True)
     vehicle_ref = models.CharField(max_length=30)
     journey_ref = models.CharField(max_length=30)
-    vehicle_journey_ref = models.CharField(max_length=50)
     time = models.DateTimeField(primary_key=True)
     loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
     bearing = models.FloatField(null=True)
