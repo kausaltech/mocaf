@@ -10,10 +10,6 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-        ('multigtfs', '0003_auto_20180826_2041'),
-    ]
-
     operations = [
         migrations.RunSQL("""
             CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
@@ -26,8 +22,13 @@ class Migration(migrations.Migration):
                 "vehicle_journey_ref" varchar(50) NOT NULL,
                 "time" timestamp with time zone NOT NULL,
                 "loc" geometry(POINT,{settings.LOCAL_SRS}) NOT NULL,
-                "route_id" integer NULL,
-                "bearing" double precision NULL
+                "gtfs_feed_id" integer NULL,
+                "gtfs_route_id" text NULL,
+                "bearing" double precision NULL,
+                CONSTRAINT "transitrt_vehiclelocation_gtfs_route_id"
+                    FOREIGN KEY ("gtfs_feed_id", "gtfs_route_id")
+                        REFERENCES "gtfs"."routes" ("feed_index", "route_id")
+                        ON DELETE SET NULL
             );
         """, reverse_sql="""
             DROP TABLE "transitrt_vehiclelocation" CASCADE;
@@ -37,9 +38,6 @@ class Migration(migrations.Migration):
                 'transitrt_vehiclelocation', 'time',
                 chunk_time_interval => INTERVAL '1 day'
             );
-        """, reverse_sql=""),
-        migrations.RunSQL("""
-            ALTER TABLE "transitrt_vehiclelocation" ADD CONSTRAINT "transitrt_vehiclelocation_route_id" FOREIGN KEY ("route_id") REFERENCES "route" ("id") DEFERRABLE INITIALLY DEFERRED;
         """, reverse_sql=""),
         migrations.RunSQL("""
             CREATE INDEX "transitrt_vehiclelocation_loc_id" ON "transitrt_vehiclelocation" USING GIST ("loc");
