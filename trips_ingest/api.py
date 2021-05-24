@@ -48,7 +48,7 @@ def modify_for_debug_logs(request, data, resp):
             'autoSyncThreshold': 500,
             'desiredOdometerAccuracy': 10,
             'deferTime': 120000,
-            'elasticityMultiplier': 2,
+            'elasticityMultiplier': 4,
             'motionTriggerDelay': 30000,
             'maxBatchSize': 500,
             'locationUpdateInterval': 5000,
