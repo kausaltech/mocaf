@@ -21,13 +21,16 @@ def modify_for_debug_logs(request, data, resp):
         return
     if len(loc_data) < 1:
         return
-    extra_data = loc_data[0].get('extras')
-    if not isinstance(extra_data, dict):
-        return
 
-    uid = extra_data.get('uid', None)
+    uid = data.get('uid')
     if not isinstance(uid, str):
-        return
+        extra_data = loc_data[0].get('extras')
+        if not isinstance(extra_data, dict):
+            return
+
+        uid = extra_data.get('uid', None)
+        if not isinstance(uid, str):
+            return
 
     try:
         dev = Device.objects.get(uuid=uid)

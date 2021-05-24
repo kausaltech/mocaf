@@ -13,6 +13,7 @@ LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 class ReceiveDataQuerySet(models.QuerySet):
     def for_uuid(self, uid):
         qs = Q(data__location__0__extras__uid=uid)
+        qs |= Q(data__uid=uid)
         qs |= Q(data__userId=uid)
         return self.filter(qs)
 
