@@ -174,7 +174,7 @@ class TripGenerator:
 
     def process_trip(self, device, df):
         pc = PerfCounter('process_trip')
-        logger.info('%s: trip with %d samples' % (str(device), len(df)))
+        logger.info('%s: %s: trip with %d samples' % (str(device), df.time.min(), len(df)))
         df = filter_trips(df)
         pc.display('filter done')
 
@@ -183,7 +183,7 @@ class TripGenerator:
         df['x'] = df['xf']
         df['y'] = df['yf']
 
-        df = split_trip_legs(connection, df)
+        df = split_trip_legs(connection, str(device.uuid), df)
         pc.display('legs split')
         if df is None:
             logger.info('%s: No legs for trip' % str(device))

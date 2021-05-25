@@ -7,6 +7,7 @@ import pandas as pd
 from utils.perf import PerfCounter
 
 from .dragimm import filter_trajectory, filters as transport_modes
+from .transitest import is_transit_wild_guess_will_break
 
 
 TABLE_NAME = 'trips_ingest_location'
@@ -182,20 +183,34 @@ def read_uuids(conn):
     return uuids
 
 
-def get_vehicle_locations(conn, start: datetime, end: datetime):
+def get_transit_locations(conn, uid: str, start_time: datetime, end_time: datetime):
     query = """
         SELECT
+            vehicle_journey_ref,
             vehicle_ref,
-            journey_ref,
-            extract(epoch from time) as time,
+            time,
+            extract(epoch from time) AS epoch_time,
             ST_X(loc) AS x,
             ST_Y(loc) AS y,
-            (SELECT long_name FROM route WHERE id = transitrt_vehiclelocation.route_id) AS route_name
-        FROM transitrt_vehiclelocation
-        WHERE time >= %(start)s - interval '5 minutes' AND time <= %(end)s + interval '5 minutes'
+            (SELECT route_long_name FROM gtfs.routes
+                WHERE feed_index = vl.gtfs_feed_id AND route_id = vl.gtfs_route_id
+            ) AS route_name
+        FROM transitrt_vehiclelocation vl
+        WHERE
+            time >= %(start)s :: timestamp - interval '1 minute' AND time <= %(end)s :: timestamp + interval '1 minute'
+            AND loc && (
+                SELECT ST_Buffer(ST_MakeLine(l.loc ORDER BY l.time), 200)
+                FROM trips_ingest_location AS l
+                WHERE
+                    time >= %(start)s :: timestamp
+                    AND time <= %(end)s :: timestamp
+                    AND uuid = %(uuid)s
+                    AND loc_error <= 200
+            )
         ORDER BY time
     """
-    params = dict(start=start, end=end)
+    params = dict(start=start_time, end=end_time, uuid=uid)
+
     df = pd.read_sql_query(query, conn, params=params)
     return df
 
@@ -265,7 +280,7 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
     return leg_ids
 
 
-def split_trip_legs(conn, df, include_all=False):
+def split_trip_legs(conn, uid, df, include_all=False):
     assert len(df.trip_id.unique()) == 1
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
     df['epoch_ts'] = s / pd.Timedelta('1s')
@@ -287,33 +302,35 @@ def split_trip_legs(conn, df, include_all=False):
     if not len(df):
         return None
 
-    df = df.drop(columns=['epoch_ts', 'calc_speed', 'int_atype'])
+    df = df.copy()
 
-    """
-    for leg in df.leg_id.unique():
-        leg_df = df[df.leg_id == leg]
+    for leg_id in df.leg_id.unique():
+        leg_df = df[df.leg_id == leg_id].copy()
         if leg_df.iloc[0].atype != 'in_vehicle':
             continue
 
-        transit_locs = get_vehicle_locations(conn, leg_df.time.min(), leg_df.time.max())
+        transit_locs = get_transit_locations(conn, uid, leg_df.time.min(), leg_df.time.max())
+        if not len(transit_locs):
+            continue
+        transit_locs['time'] = transit_locs.epoch_time
+        leg_df['location_std'] = leg_df['loc_error']
         transit_loc_by_id = {vech: d for vech, d in transit_locs.groupby('vehicle_ref')}
-        print(leg_df)
-        out = transit_likelihoods(leg_df, transit_loc_by_id)
-        transit_df = pd.DataFrame(out.items(), columns=['vehicle_ref', 'dist']).dropna().sort_values('dist')
+        leg_df['time'] = df['epoch_ts'].astype(float)
+        is_transit = is_transit_wild_guess_will_break(leg_df, transit_loc_by_id)
+        print(is_transit)
+        if is_transit:
+            df.loc[df.leg_id == leg_id, 'atype'] = 'bus'
 
-        print(transit_df)
-        closest = transit_df.iloc[-1]
-        print(transit_locs[transit_locs.vehicle_ref == closest.vehicle_ref].iloc[0])
-    """
+    df = df.drop(columns=['epoch_ts', 'calc_speed', 'int_atype'])
 
     return df
 
 
 if __name__ == '__main__':
     import os
+
     from dotenv import load_dotenv
     from sqlalchemy import create_engine
-
     load_dotenv()
     eng = create_engine(os.getenv('DATABASE_URL'), echo=True)
     default_uid = os.getenv('DEFAULT_UUID')
