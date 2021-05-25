@@ -11,7 +11,7 @@ from django.db import transaction, connection
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.contrib.gis.gdal import CoordTransform, SpatialReference
-from multigtfs.models import Route
+from gtfs.models import Route, FeedInfo
 
 from transitrt.models import VehicleLocation
 
@@ -42,24 +42,28 @@ class SiriImporter:
         self.cached_journeys = {}
         self._batch = []
         self._batch_jids = set()
+        self.gtfs_feed = FeedInfo.objects.first()
 
     def import_vehicle_activity(self, d):
         time = js_to_dt(d['RecordedAtTime'])
         d = d['MonitoredVehicleJourney']
         loc = Point(d['VehicleLocation']['Longitude'], d['VehicleLocation']['Latitude'], srid=4326)
         loc.transform(coord_transform)
-        route = self.routes_by_ref[d['LineRef']['value']].id
+        route = self.routes_by_ref.get(d['LineRef']['value'])
+        if route is not None:
+            route = route.pk
         jr = d['FramedVehicleJourneyRef']
         journey_ref = '%s:%s' % (jr['DataFrameRef']['value'], jr['DatedVehicleJourneyRef'])
 
         act = dict(
             time=time,
             vehicle_ref=d['VehicleRef']['value'],
-            route=route,
+            gtfs_route=route,
             direction_ref=d['DirectionRef']['value'],
             loc=loc,
             journey_ref=journey_ref,
             bearing=d['Bearing'],
+            route=route,
         )
         act['vehicle_journey_ref'] = make_vehicle_journey_id(act)
         return act
@@ -116,7 +120,6 @@ class SiriImporter:
             if act['time'] < data_ts - timedelta(seconds=120):
                 logger.warn('Vehicle time for %s is too much in the past (%s)' % (vjid, act['time']))
                 continue
-
             j = self.cached_journeys.get(vjid)
             if j is not None:
                 if act['time'] < j['time'] + timedelta(seconds=MIN_TIME_BETWEEN_LOCATIONS):
@@ -130,18 +133,20 @@ class SiriImporter:
         for obj in objs:
             obj['x'] = obj['loc'].x
             obj['y'] = obj['loc'].y
+            obj['gtfs_feed'] = self.gtfs_feed.pk
 
         query = f"""
             INSERT INTO {table_name}
-                (route_id, direction_ref, vehicle_ref, journey_ref, vehicle_journey_ref, time, loc, bearing)
+                (gtfs_route_id, gtfs_feed_id, direction_ref, vehicle_ref, journey_ref, vehicle_journey_ref, time, loc, bearing)
             VALUES %s
         """
-        template = "(%(route)s, %(direction_ref)s, %(vehicle_ref)s, "
+        template = "(%(route)s, %(gtfs_feed)s, %(direction_ref)s, %(vehicle_ref)s, "
         template += "%(journey_ref)s, %(vehicle_journey_ref)s, %(time)s, "
         template += f"ST_SetSRID(ST_MakePoint(%(x)s, %(y)s), {local_srs}), %(bearing)s)"
 
         with connection.cursor() as cursor:
             execute_values(cursor, query, objs, template=template, page_size=2048)
+
 
     def commit(self):
         self.update_cached_locs(self._batch_jids)

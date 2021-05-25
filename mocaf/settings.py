@@ -104,7 +104,6 @@ INSTALLED_APPS = [
     'modeltrans',
     'modelcluster',
     'taggit',
-    'multigtfs',
     'graphene_django',
     'wagtail_localize',
     'wagtail_localize.locales',
@@ -118,6 +117,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
 
+    'gtfs',
     'transitrt',
     'trips_ingest',
     'trips',

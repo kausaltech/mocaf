@@ -1,10 +1,9 @@
 from django.conf import settings
 from django.contrib.gis.db import models
-from multigtfs.models import Route
+from gtfs.models import Route, FeedInfo
 
 
 class VehicleLocation(models.Model):
-    route = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL)
     direction_ref = models.CharField(max_length=5, null=True)
     vehicle_ref = models.CharField(max_length=30)
     journey_ref = models.CharField(max_length=30)
@@ -12,6 +11,8 @@ class VehicleLocation(models.Model):
     time = models.DateTimeField(primary_key=True)
     loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
     bearing = models.FloatField(null=True)
+    gtfs_route = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL)
+    gtfs_feed = models.ForeignKey(FeedInfo, null=True, on_delete=models.SET_NULL)
 
     class Meta:
         ordering = ('time',)
