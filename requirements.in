@@ -26,3 +26,4 @@ factory-boy
 pytest-factoryboy
 pytest-django
 numba
+orjson
