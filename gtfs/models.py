@@ -20,7 +20,7 @@ class Agency(models.Model):
     class Meta:
         managed = False
         db_table = 'gtfs\".\"agency'
-        unique_together = (('feed', 'agency_id'),)
+        unique_together = (('feed', 'id'),)
 
     def __str__(self):
         if self.agency_name:
