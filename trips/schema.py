@@ -209,6 +209,9 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
             if mode_obj:
                 obj.user_corrected_mode = mode_obj
                 obj.mode = mode_obj
+                if not mode_obj.variants.exists():
+                    obj.mode_variant = None
+                    update_fields += ['mode_variant']
                 update_fields += ['user_corrected_mode', 'mode']
             else:
                 mode_obj = obj.mode
