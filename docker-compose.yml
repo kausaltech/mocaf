@@ -60,15 +60,25 @@ services:
       - redis
     command: uwsgi
 
-  celery-worker:
-    container_name: mocaf_celery_worker
+  celery-trips-worker:
+    container_name: mocaf_celery_trips_worker
     build: *django-build
     restart: always
     environment: *django-environment
     depends_on:
       - db
       - redis
-    command: celery worker
+    command: celery worker trips
+
+  celery-transitrt-worker:
+    container_name: mocaf_celery_transitrt_worker
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery worker transitrt
 
   celery-beat:
     container_name: mocaf_celery_beat

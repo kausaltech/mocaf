@@ -52,7 +52,7 @@ ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 INTERNAL_IPS = env.list('INTERNAL_IPS',
                         default=(['127.0.0.1'] if DEBUG else []))
 DATABASES = {
-    'default': env.db()
+    'default': env.db(),
 }
 DATABASES['default']['ATOMIC_REQUESTS'] = True
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
@@ -63,8 +63,23 @@ CACHES = {
 
 SECRET_KEY = env('SECRET_KEY')
 
+SIRI_IMPORTS = {
+    'tampere': {
+        'agency_id': 'JOLI',
+        'url': 'http://data.itsfactory.fi/siriaccess/vm/json',
+    }
+}
+
+SIRI_TASKS = {'siri-import-%s' % key: dict(
+    task='transitrt.tasks.fetch_siri_locations',
+    schedule=3,
+    options=dict(expires=2),
+    args=(key,)
+) for key in SIRI_IMPORTS.keys()}
+
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+
 CELERY_BEAT_SCHEDULE = {
     'ingest-received-data': {
         'task': 'trips_ingest.tasks.ingest_events',
@@ -79,8 +94,15 @@ CELERY_BEAT_SCHEDULE = {
         'options': {
             'expires': 30,
         }
-    }
+    },
+    **SIRI_TASKS,
 }
+CELERY_TASK_ROUTES = {
+    'transitrt.tasks.*': {'queue': 'transitrt'},
+    'trips.tasks.*': {'queue': 'trips'},
+    'trips_ingest.tasks.*': {'queue': 'trips'},
+}
+
 # Required for Celery exporter: https://github.com/OvalMoney/celery-exporter
 # For configuration, see also another exporter: https://github.com/danihodovic/celery-exporter
 CELERY_WORKER_SEND_TASK_EVENTS = True

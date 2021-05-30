@@ -3,8 +3,11 @@ from django.conf import settings
 
 
 class Agency(models.Model):
-    feed_index = models.OneToOneField('FeedInfo', models.CASCADE, db_column='feed_index', primary_key=True)
-    agency_id = models.TextField()
+    feed = models.OneToOneField(
+        'FeedInfo', models.CASCADE, db_column='feed_index', primary_key=True,
+        related_name='agency'
+    )
+    id = models.TextField(db_column='agency_id')
     agency_name = models.TextField(blank=True, null=True)
     agency_url = models.TextField(blank=True, null=True)
     agency_timezone = models.TextField(blank=True, null=True)
@@ -17,7 +20,13 @@ class Agency(models.Model):
     class Meta:
         managed = False
         db_table = 'gtfs\".\"agency'
-        unique_together = (('feed_index', 'agency_id'),)
+        unique_together = (('feed', 'agency_id'),)
+
+    def __str__(self):
+        if self.agency_name:
+            return '%s [%s]' % (self.agency_name, self.agency_id)
+        else:
+            return '[%s]' % self.agency_id
 
 
 class Calendar(models.Model):
@@ -117,6 +126,9 @@ class FeedInfo(models.Model):
         managed = False
         db_table = 'gtfs\".\"feed_info'
 
+    def __str__(self):
+        return 'Feed %d: %s' % (self.feed_index, str(self.agency))
+
 
 class Frequency(models.Model):
     feed_index = models.ForeignKey('FeedInfo', models.CASCADE, db_column='feed_index')
@@ -162,22 +174,25 @@ class PickupDropoffType(models.Model):
 
 
 class RouteType(models.Model):
-    route_type = models.IntegerField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column='route_type')
     description = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'gtfs\".\"route_types'
 
+    def __str__(self):
+        return self.description
+
 
 class Route(models.Model):
-    feed_index = models.ForeignKey(FeedInfo, models.CASCADE, db_column='feed_index', related_name='routes')
-    route_id = models.TextField(primary_key=True)
+    feed = models.ForeignKey(FeedInfo, models.CASCADE, db_column='feed_index', related_name='routes')
+    id = models.TextField(primary_key=True, db_column='route_id')
     agency = models.ForeignKey(Agency, models.CASCADE)
-    route_short_name = models.TextField(blank=True, null=True)
-    route_long_name = models.TextField(blank=True, null=True)
-    route_desc = models.TextField(blank=True, null=True)
-    route_type = models.ForeignKey(RouteType, models.CASCADE, db_column='route_type', blank=True, null=True)
+    short_name = models.TextField(blank=True, null=True, db_column='route_short_name')
+    long_name = models.TextField(blank=True, null=True, db_column='route_long_name')
+    desc = models.TextField(blank=True, null=True, db_column='route_desc')
+    type = models.ForeignKey(RouteType, models.CASCADE, db_column='route_type', blank=True, null=True)
     route_url = models.TextField(blank=True, null=True)
     route_color = models.TextField(blank=True, null=True)
     route_text_color = models.TextField(blank=True, null=True)
@@ -186,10 +201,11 @@ class Route(models.Model):
     class Meta:
         managed = False
         db_table = 'gtfs\".\"routes'
-        unique_together = (('feed_index', 'route_id'),)
+        unique_together = (('feed', 'id'),)
+        ordering = ('feed', 'route_sort_order', 'id')
 
     def __str__(self):
-        return '%s – %s' % (self.route_short_name, self.route_long_name)
+        return '%s – %s' % (self.short_name, self.long_name)
 
 
 class ShapeGeometry(models.Model):
@@ -218,8 +234,8 @@ class Shape(models.Model):
 
 
 class StopTime(models.Model):
-    feed_index = models.ForeignKey(FeedInfo, models.CASCADE, db_column='feed_index')
-    trip = models.ForeignKey('Trip', models.CASCADE)
+    feed = models.ForeignKey(FeedInfo, models.CASCADE, db_column='feed_index')
+    trip = models.ForeignKey('Trip', models.CASCADE, related_name='stop_times', db_column='trip_id')
     arrival_time = models.DurationField(blank=True, null=True)
     departure_time = models.DurationField(blank=True, null=True)
     stop = models.ForeignKey('Stop', models.SET_NULL, null=True)
@@ -243,7 +259,7 @@ class StopTime(models.Model):
     class Meta:
         managed = False
         db_table = 'gtfs\".\"stop_times'
-        unique_together = (('feed_index', 'trip_id', 'stop_sequence'),)
+        unique_together = (('feed', 'trip', 'stop_sequence'),)
 
 
 class Stop(models.Model):
@@ -316,7 +332,7 @@ class Transfer(models.Model):
 
 class Trip(models.Model):
     feed_index = models.ForeignKey(FeedInfo, models.CASCADE, db_column='feed_index')
-    route_id = models.ForeignKey(Route, models.CASCADE)
+    route = models.ForeignKey(Route, models.CASCADE, db_column='route_id', related_name='trips')
     service_id = models.TextField()
     trip_id = models.TextField(primary_key=True)
     trip_headsign = models.TextField(blank=True, null=True)

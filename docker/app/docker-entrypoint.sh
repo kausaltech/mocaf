@@ -18,7 +18,11 @@ if [ "$1" = 'uwsgi' ]; then
         --static-map /media=/srv/media \
         --module mocaf.wsgi
 elif [ "$1" = 'celery' ]; then
-    exec celery -A mocaf "$2" -l INFO
+    if [ "$2" = 'worker' ]; then
+        exec celery -A mocaf worker -Q "$3" -l info
+    else
+        exec celery -A mocaf "$2" -l INFO
+    fi
 fi
 
 exec "$@"
