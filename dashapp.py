@@ -1,8 +1,10 @@
+from datetime import timedelta
 import os
 import dash
 from dash.exceptions import PreventUpdate
 import dash_deck
 import dash_table
+import psycopg2
 from numpy import result_type
 import pydeck
 import pytz
@@ -18,7 +20,9 @@ import geopandas as gpd
 from sqlalchemy import create_engine
 
 from utils.perf import PerfCounter
-from calc.trips import filter_trips, read_trips, read_uuids, split_trip_legs
+from calc.trips import (
+    filter_trips, read_locations, read_uuids, split_trip_legs, get_transit_locations, LOCAL_2D_CRS
+)
 
 
 import os; import django; os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mocaf.settings"); django.setup()  # noqa
@@ -77,8 +81,14 @@ data_table_component = None
 filters_enabled = False
 
 
-conn = eng.connect()
-uuids = read_uuids(conn.connection)
+def engine_connect() -> psycopg2.extensions.connection:
+    conn = eng.connect().connection
+    return conn
+
+
+conn = engine_connect()
+
+uuids = read_uuids(conn)
 device_by_uuid = {str(dev.uuid): dev for dev in Device.objects.filter(uuid__in=uuids)}
 if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
@@ -87,14 +97,47 @@ if DEFAULT_UUID and DEFAULT_UUID not in uuids:
 map_view = pydeck.View("MapView", width="100%", height="100%", controller=True)
 
 
+def make_transit_layer(df):
+    if df.time.max() - df.time.min() > timedelta(hours=1):
+        return None
+
+    print('reading transit')
+    trdf = get_transit_locations(conn, locations_uuid, df.time.min(), df.time.max())
+    print('transit rows:')
+    print(trdf)
+    if not len(trdf):
+        return None
+
+    trdf = gpd.GeoDataFrame(trdf, geometry=gpd.points_from_xy(trdf.x, trdf.y, crs=LOCAL_2D_CRS))
+    trdf['geometry'] = trdf['geometry'].to_crs(4326)
+    trdf['lon'] = trdf.geometry.x
+    trdf['lat'] = trdf.geometry.y
+    trdf['local_time'] = pd.to_datetime(trdf.time).dt.tz_convert(LOCAL_TZ).dt.round('1s')
+    trdf['time_str'] = trdf.local_time.astype(str)
+    trdf['description'] = trdf.vehicle_journey_ref
+
+    tr_layer = pydeck.Layer(
+        'PointCloudLayer',
+        trdf,
+        get_position=['lon', 'lat'],
+        auto_highlight=True,
+        get_color=[180, 0, 200, 140],
+        pickable=True,
+        point_size=12,
+    )
+    return tr_layer
+
+
 def make_map_component(xstart=None, xend=None):
     PerfCounter('make_map_fig')
 
     df = time_filtered_locations_df.copy()
 
     df['opacity'] = (df.time - df.time.min()) / (df.time.max() - df.time.min())
+    df['opacity'] = (150 + df.opacity * 100).astype(int)
+    df.loc[df.trip_id == -1, 'opacity'] = 50
     df['color'] = df[['atype', 'opacity']].apply(
-        lambda x: [*COLOR_MAP_RGB[x.atype], int(50 + x.opacity * 200)],
+        lambda x: [*COLOR_MAP_RGB[x.atype], x.opacity],
         axis=1, result_type='reduce',
     )
     df.loc_error = df.loc_error.fillna(value=-1)
@@ -103,17 +146,21 @@ def make_map_component(xstart=None, xend=None):
     df.speed = (df.speed * 3.6).fillna(value=-1)
     df = df[[
         'lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype',
-        'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist'
+        'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist',
     ]]
     df.atypef = df.atypef.fillna(value='')
     df.closest_car_way_name = df.closest_car_way_name.fillna(value='')
     df.closest_car_way_dist = df.closest_car_way_dist.round(1).fillna(value=-1)
     df.battery_charging = df.battery_charging.fillna(value=False)
+    df['description'] = df[['atype', 'atypef']].apply(
+        lambda x: '%s -> %s' % (x.atype, x.atypef),
+        axis=1
+        )
     df = df.dropna()
     layer = pydeck.Layer(
         'PointCloudLayer',
         df,
-        get_position=['lon', 'lat', 'speed'],
+        get_position=['lon', 'lat'], # , 'speed'
         # get_position=['lon', 'lat'],
         auto_highlight=True,
         get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
@@ -122,12 +169,18 @@ def make_map_component(xstart=None, xend=None):
         point_size=8,
     )
 
+    all_layers = [layer]
+
+    tr_layer = make_transit_layer(time_filtered_locations_df)
+    if tr_layer is not None:
+        all_layers.append(tr_layer)
+
     initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df[['lon', 'lat']])
     if initial_view_state.zoom > 15:
         initial_view_state.zoom = 15
 
     TOOLTIP_TEXT = {
-        'html': '{time_str}<br />{atype} -> {atypef}<br />Speed: {speed} km/h<br />' +
+        'html': '{time_str}<br />{description}<br />Speed: {speed} km/h<br />' +
             'Loc. error: {loc_error} m<br />' +
             'Battery charging: {battery_charging}<br />'
             'Closest car way: {closest_car_way_name}<br />'
@@ -135,7 +188,7 @@ def make_map_component(xstart=None, xend=None):
     }
 
     r = pydeck.Deck(
-        layers=[layer],
+        layers=all_layers,
         initial_view_state=initial_view_state,
         # map_provider='mapbox',
         map_style='mapbox://styles/mapbox/streets-v11',
@@ -175,7 +228,7 @@ def make_trip_component():
         for idx, leg in enumerate(legs):
             path = [[p.loc.x, p.loc.y] for p in leg.locations.all()]
             name = 'Trip %d, leg %d/%d: %s' % (trip.id, idx + 1, len(legs), leg.mode.name)
-            if leg.user_corrected_mode:
+            if leg.user_corrected_mode and leg.estimated_mode:
                 name += ' [%s -> %s]' % (leg.estimated_mode.name, leg.user_corrected_mode.name)
             color = hex_to_rgb(TRANSPORT_COLOR_MAP.get(leg.mode.identifier, '#aaaaaa'))
             recs.append(dict(
@@ -187,6 +240,8 @@ def make_trip_component():
     pc.display('%d legs created' % len(recs))
 
     initial_view_state = pydeck.data_utils.viewport_helpers.compute_view(df[['lon', 'lat']])
+    if initial_view_state.zoom > 15:
+        initial_view_state.zoom = 15
 
     paths_df = pd.DataFrame.from_records(recs)
 
@@ -243,8 +298,11 @@ def make_data_table():
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 px.set_mapbox_access_token(os.getenv('MAPBOX_ACCESS_TOKEN'))
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
-
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True
+)
 
 @app.callback(
     [
@@ -333,15 +391,35 @@ def label_values(value):
     if value == 'none':
         value = None
 
-    with eng.connect() as conn:
-        print('Updating to %s' % value)
-        ret = conn.execute('''
+    query = '''
+        WITH updated AS (
             UPDATE trips_ingest_location
                 SET manual_atype = %(label)s
                 WHERE time >= %(start_time)s AND time <= %(end_time)s
                 AND uuid = %(uid)s :: uuid
-        ''', dict(label=value, start_time=selected_start_time, end_time=selected_end_time, uid=locations_uuid))
-        print('done')
+                RETURNING time
+        )
+        SELECT
+            COUNT(updated.time) AS count,
+            MIN(updated.time) AS start_time,
+            MAX(updated.time) AS end_time
+        FROM updated
+    '''
+    print('Updating to %s' % value)
+    with conn.cursor() as cursor:
+        params = dict(
+            label=value,
+            start_time=selected_start_time,
+            end_time=selected_end_time,
+            uid=locations_uuid
+        )
+        cursor.execute(query, params)
+        count, start, end = cursor.fetchall()[0]
+        d = locations_df
+        d.loc[(d.time >= start) & (d.time <= end), 'manual_atype'] = value
+
+    conn.commit()
+    print('updated %d rows' % count)
 
     return ['']
 
@@ -426,7 +504,7 @@ def render_output(new_path, disable_filters, show_probs):
 
     if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
         pc.display('reading trips for %s' % new_uid)
-        df = read_trips(eng, new_uid, include_all=True, start_time='2021-05-10')
+        df = read_locations(conn, new_uid, include_all=True, start_time='2021-05-20')
         pc.display('trips read (%d rows)' % len(df))
         df.time = pd.to_datetime(df.time, utc=True)
 
@@ -441,8 +519,10 @@ def render_output(new_path, disable_filters, show_probs):
             #trip_df = split_trip_legs(conn, trip_df)
             trip_dfs.append(trip_df)
 
+        trip_dfs.append(df[df.trip_id == -1])
         df = pd.concat(trip_dfs)
-        print(df)
+        df = df.sort_values('time')
+        df.created_at = df.created_at.dt.tz_convert(LOCAL_TZ)
 
         filters_enabled = new_filtered
 
@@ -552,7 +632,11 @@ def label_for_uuid(uid):
     dev = device_by_uuid.get(uid)
     if not dev:
         return uid
-    return '%s (%s %s, %s %s)' % (uid, dev.platform, dev.system_version, dev.brand, dev.model)
+    if dev.friendly_name:
+        name_str = ': %s' % dev.friendly_name
+    else:
+        name_str = ''
+    return '%s%s (%s %s, %s %s)' % (uid, name_str, dev.platform, dev.system_version, dev.brand, dev.model)
 
 
 app.layout = dbc.Container([
