@@ -28,9 +28,8 @@ class Command(BaseCommand):
             )
         if len(agencies) != 1:
             raise CommandError("Specify agency name with --agency")
-        feed = agencies.first().feed
 
-        siri_importer = SiriImporter(gtfs_feed=feed)
+        siri_importer = SiriImporter(agency_id=agencies.first().id)
         if options['url']:
             siri_importer.update_from_url(options['url'])
         if options['files']:
