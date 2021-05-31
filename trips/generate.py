@@ -57,6 +57,9 @@ class TripGenerator:
             'in_vehicle': transport_modes['car'],
             'running': transport_modes['walk'],
             'on_bicycle': transport_modes['bicycle'],
+            'bus': transport_modes['bus'],
+            'tram': transport_modes['tram'],
+            'train': transport_modes['train'],
         }
 
     def insert_leg_locations(self, rows):
