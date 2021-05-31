@@ -45,7 +45,7 @@ CREATE TABLE feed_info (
 );
 
 CREATE TABLE agency (
-  feed_index integer REFERENCES feed_info (feed_index),
+  feed_index integer REFERENCES feed_info (feed_index) ON DELETE CASCADE,
   agency_id text default '',
   agency_name text default null,
   agency_url text default null,

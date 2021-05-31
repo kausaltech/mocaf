@@ -4,7 +4,7 @@ TABLES="agency calendar calendar_dates routes shapes stops trips stop_times tran
 # This script takes two arguments: 
 # A zip file containing gtfs files, and a schema name (defaults to gtfs)
 ZIP=$1
-SCHEMA=${2=gtfs}
+SCHEMA=$2
 FILES=$(unzip -l "${ZIP}" | awk '{print $NF}' | grep .txt)
 set -e
 
