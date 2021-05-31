@@ -63,19 +63,26 @@ CACHES = {
 
 SECRET_KEY = env('SECRET_KEY')
 
-SIRI_IMPORTS = {
+TRANSITRT_IMPORTERS = {
     'tampere': {
-        'agency_id': 'JOLI',
+        'agency_name': 'Nysse',
         'url': 'http://data.itsfactory.fi/siriaccess/vm/json',
+        'type': 'siri-rt',
+        'frequency': 3,
+    },
+    'rata': {
+        'feed_publisher_name': 'Traffic Management Finland',
+        'frequency': 5,
+        'type': 'rata',
     }
 }
 
-SIRI_TASKS = {'siri-import-%s' % key: dict(
-    task='transitrt.tasks.fetch_siri_locations',
-    schedule=3,
-    options=dict(expires=2),
-    args=(key,)
-) for key in SIRI_IMPORTS.keys()}
+TRANSITRT_TASKS = {'transitrt-import-%s' % key: dict(
+    task='transitrt.tasks.fetch_live_locations',
+    schedule=val['frequency'],
+    options=dict(expires=val['frequency'] - 1),
+    args=(key,),
+) for key, val in TRANSITRT_IMPORTERS.items()}
 
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
@@ -95,7 +102,7 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,
         }
     },
-    **SIRI_TASKS,
+    **TRANSITRT_TASKS,
 }
 CELERY_TASK_ROUTES = {
     'transitrt.tasks.*': {'queue': 'transitrt'},

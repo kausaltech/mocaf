@@ -1,36 +1,20 @@
-import bz2
-import time
 import logging
-import orjson
 from datetime import datetime, timedelta, timezone
 
+import orjson
 import pytz
-import requests
-from django.db import transaction
-from django.conf import settings
-from django.contrib.gis.gdal import CoordTransform, SpatialReference
 
 from .rt_import import TransitRTImporter
 
-logger = logging.getLogger(__name__)
 
 MIN_TIME_BETWEEN_LOCATIONS = 2  # in seconds
 
 
 LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 
-GPS_SRS = SpatialReference('WGS84')
-LOCAL_SRS = SpatialReference(settings.LOCAL_SRS)
-
-coord_transform = CoordTransform(GPS_SRS, LOCAL_SRS)
-
 
 def js_to_dt(ts):
     return datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
-
-
-def dt_to_str(dt):
-    return dt.astimezone(LOCAL_TZ).replace(microsecond=0).isoformat()
 
 
 def make_vehicle_journey_id(act):
@@ -44,8 +28,10 @@ class SiriImporter(TransitRTImporter):
 
         route = self.get_route(d['LineRef']['value'])
         if route is None:
-            logger.warn('Route not found')
+            self.logger.warn('Route not found')
+            route_type = self.ROUTE_TYPE_BUS  # assume bus if no route is found
         else:
+            route_type = route.type_id
             route = route.pk
 
         loc = dict(lon=d['VehicleLocation']['Longitude'], lat=d['VehicleLocation']['Latitude'])
@@ -61,6 +47,7 @@ class SiriImporter(TransitRTImporter):
             journey_ref=journey_ref,
             bearing=d['Bearing'],
             route=route,
+            route_type=route_type,
         )
         act['vehicle_journey_ref'] = make_vehicle_journey_id(act)
         return act
@@ -80,29 +67,12 @@ class SiriImporter(TransitRTImporter):
         resp_ts = js_to_dt(data['ResponseTimestamp'])
         assert data_ts == resp_ts
         if 'VehicleActivity' not in data:
-            logger.info('No vehicle data found')
+            self.logger.info('No vehicle data found')
             return
         data = data['VehicleActivity']
-
-        if not hasattr(self, 'latest_data_time'):
-            self.latest_data_time = data_ts
-        elif data_ts > self.latest_data_time:
-            self.latest_data_time = data_ts
 
         for act_in in data:
             act = self.import_vehicle_activity(act_in)
             if not act:
                 continue
-            vjid = act['vehicle_journey_ref']
-            if act['time'] > data_ts + timedelta(seconds=5):
-                logger.warn('Vehicle time for %s is too much in the future (%s)' % (vjid, dt_to_str(act['time'])))
-                continue
-            if act['time'] < data_ts - timedelta(seconds=120):
-                logger.warn('Vehicle time for %s is too much in the past (%s)' % (vjid, dt_to_str(act['time'])))
-                continue
-            j = self.cached_journeys.get(vjid)
-            if j is not None:
-                if act['time'] < j['time'] + timedelta(seconds=MIN_TIME_BETWEEN_LOCATIONS):
-                    continue
-            self._batch_jids.add(vjid)
-            self._batch.append(act)
+            self.add_vehicle_activity(act, data_ts)

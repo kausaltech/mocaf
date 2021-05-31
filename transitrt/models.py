@@ -10,7 +10,11 @@ class VehicleLocation(models.Model):
     vehicle_journey_ref = models.CharField(max_length=50)
     time = models.DateTimeField(primary_key=True)
     loc = models.PointField(null=False, srid=settings.LOCAL_SRS)
+    loc_error = models.FloatField(null=True)
     bearing = models.FloatField(null=True)
+    speed = models.FloatField(null=True)
+    route_type = models.PositiveBigIntegerField(null=True)  # matches gtfs route type
+
     gtfs_route = models.ForeignKey(Route, null=True, on_delete=models.SET_NULL)
     gtfs_feed = models.ForeignKey(FeedInfo, null=True, on_delete=models.SET_NULL)
 

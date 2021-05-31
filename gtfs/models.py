@@ -2,13 +2,36 @@ from django.contrib.gis.db import models
 from django.conf import settings
 
 
+class FeedInfo(models.Model):
+    feed_index = models.AutoField(primary_key=True)
+    feed_publisher_name = models.TextField(blank=True, null=True)
+    feed_publisher_url = models.TextField(blank=True, null=True)
+    feed_timezone = models.TextField(blank=True, null=True)
+    feed_lang = models.TextField(blank=True, null=True)
+    feed_version = models.TextField(blank=True, null=True)
+    feed_start_date = models.DateField(blank=True, null=True)
+    feed_end_date = models.DateField(blank=True, null=True)
+    feed_id = models.TextField(blank=True, null=True)
+    feed_contact_url = models.TextField(blank=True, null=True)
+    feed_contact_email = models.TextField(blank=True, null=True)
+    feed_download_date = models.DateField(blank=True, null=True)
+    feed_file = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'gtfs\".\"feed_info'
+
+    def __str__(self):
+        return 'Feed %d: %s' % (self.feed_index, str(self.agency))
+
+
 class Agency(models.Model):
-    feed = models.OneToOneField(
-        'FeedInfo', models.CASCADE, db_column='feed_index', primary_key=True,
-        related_name='agency'
+    feed = models.ForeignKey(
+        'FeedInfo', models.CASCADE, db_column='feed_index',
+        related_name='agencies'
     )
-    id = models.TextField(db_column='agency_id')
-    agency_name = models.TextField(blank=True, null=True)
+    id = models.TextField(db_column='agency_id', primary_key=True)  # not really unique
+    name = models.TextField(blank=True, null=True, db_column='agency_name')
     agency_url = models.TextField(blank=True, null=True)
     agency_timezone = models.TextField(blank=True, null=True)
     agency_lang = models.TextField(blank=True, null=True)
@@ -23,8 +46,8 @@ class Agency(models.Model):
         unique_together = (('feed', 'id'),)
 
     def __str__(self):
-        if self.agency_name:
-            return '%s [%s]' % (self.agency_name, self.agency_id)
+        if self.name:
+            return '%s [%s]' % (self.name, self.id)
         else:
             return '[%s]' % self.agency_id
 
@@ -105,29 +128,6 @@ class FareRule(models.Model):
     class Meta:
         managed = False
         db_table = 'gtfs\".\"fare_rules'
-
-
-class FeedInfo(models.Model):
-    feed_index = models.AutoField(primary_key=True)
-    feed_publisher_name = models.TextField(blank=True, null=True)
-    feed_publisher_url = models.TextField(blank=True, null=True)
-    feed_timezone = models.TextField(blank=True, null=True)
-    feed_lang = models.TextField(blank=True, null=True)
-    feed_version = models.TextField(blank=True, null=True)
-    feed_start_date = models.DateField(blank=True, null=True)
-    feed_end_date = models.DateField(blank=True, null=True)
-    feed_id = models.TextField(blank=True, null=True)
-    feed_contact_url = models.TextField(blank=True, null=True)
-    feed_contact_email = models.TextField(blank=True, null=True)
-    feed_download_date = models.DateField(blank=True, null=True)
-    feed_file = models.TextField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'gtfs\".\"feed_info'
-
-    def __str__(self):
-        return 'Feed %d: %s' % (self.feed_index, str(self.agency))
 
 
 class Frequency(models.Model):
