@@ -10,7 +10,7 @@ importer_instances = {}
 
 
 @shared_task(ignore_result=True)
-def fetch_siri_locations(importer_id):
+def fetch_live_locations(importer_id):
     rt_importer = importer_instances.get(importer_id)
     if rt_importer is None:
         logger.info('Initializing transitrt importer: %s' % rt_importer)
