@@ -63,6 +63,7 @@ def filter_trajectory(traj):
     state_probs = np.ones(N_states)
     state_probs /= np.sum(state_probs)
 
+    initial_state_probs = np.copy(state_probs)
     # The trellis with a less confusing name.
     # Note that state_probs is different from path_probs.
     # The latter refers to sort of "maximum likelihood attainable by selecting
@@ -147,13 +148,59 @@ def filter_trajectory(traj):
         path_probs /= np.sum(path_probs)
         most_likely_transitions.append(new_transitions)
     
+    state_probs = np.array(state_probs)
+
     most_likely_state = np.argmax(path_probs)
     most_likely_path = [most_likely_state]
     for states in most_likely_transitions[::-1]:
         most_likely_state = states[most_likely_state]
         most_likely_path.append(most_likely_state)
-
+    
+    # TODO FIXME: This seems to be broken ATM! Fix or remove the duplicate viterbi-attempt
     most_likely_path = most_likely_path[::-1][1:]
+
     # TODO FIXME: Temporary hack as the viterbi is a bit buggy ATM
-    most_likely_path = np.argmax(state_probs, axis=1)
+    #most_likely_path = np.argmax(state_probs, axis=1)
+    
+    # TODO FIXME: Hack to do "most likely path decoding" with IMM state probs. Theoretically HIDEOUS!
+    # TODO FIXME: Known to cause problems that time-variant transition probs will fix easily!
+    HACK_FIXED_DT_TRANSITIONS = expm(transition_rate*5)
+    most_likely_path = viterbi(initial_state_probs, HACK_FIXED_DT_TRANSITIONS, state_probs)
+    most_likely_path = np.array(most_likely_path)
+    
     return np.array(ms), np.array(Ss), state_probs, most_likely_path, imm.total_loglikelihood
+
+
+def safelog(x):
+    return np.log(np.clip(x, 1e-9, None))
+
+def viterbi(initial_probs, transition_probs, emissions):
+    # TODO: Online mode
+    # TODO: Variable dt transitions!!
+    n_states = len(initial_probs)
+    emissions = iter(emissions)
+    emission = next(emissions)
+    transition_probs = safelog(transition_probs)
+    probs = safelog(emission) + safelog(initial_probs)
+    state_stack = []
+    
+    for i, emission in enumerate(emissions):
+        total_prob = np.sum(emission)
+        if total_prob > 1e-9:
+            emission /= total_prob
+        else:
+            emission[:] = 1/len(emission)
+        trans_probs = transition_probs + np.row_stack(probs)
+        most_likely_states = np.argmax(trans_probs, axis=0)
+        probs = safelog(emission) + trans_probs[most_likely_states, np.arange(n_states)]
+        state_stack.append(most_likely_states)
+    
+    state_seq = [np.argmax(probs)]
+
+    while state_stack:
+        most_likely_states = state_stack.pop()
+        state_seq.append(most_likely_states[state_seq[-1]])
+
+    state_seq.reverse()
+
+    return state_seq
