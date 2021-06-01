@@ -108,6 +108,12 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
         return val
 
 
+class ConfigNode(AuthenticatedDeviceNode):
+    sensor_sampling_delay = graphene.Int(description='Accelerometer and gyroscope sampling delay in min (disable if <= 0)')
+    sensor_sampling_distance = graphene.Int(description='Sample sensors only after having moved this many meters from last sampling location')
+    sensor_sampling_period = graphene.Int(description='How many ms to poll for sensors')
+
+
 class EnableMocafMutation(graphene.Mutation):
     class Arguments:
         uuid = graphene.String(required=False)
@@ -328,6 +334,14 @@ class Query(graphene.ObjectType):
     )
     trip = graphene.Field(TripNode, id=graphene.ID(required=True))
     transport_modes = graphene.List(TransportModeNode)
+    config = graphene.Field(ConfigNode)
+
+    def resolve_config(root, info):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+
+        return dict(sensor_sampling_delay=15, sensor_sampling_distance=500, sensor_sampling_period=3000)
 
     def resolve_trips(root, info, **kwargs):
         dev = info.context.device
