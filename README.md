@@ -148,11 +148,11 @@ Create a superuser:
 python manage.py createsuperuser
 ```
 
-
 ### TODO
 
 - Fix viterbi
   - Remove heuristic smoothing
 - Incorporate gis for vehicle detection
-- Check GTFS vs client GPS sync
+- Incorporate transitrt_vehiclelocation.route_type in transit type detection
+  - E.g. by returning the vehicle_ref
 - noProfit
