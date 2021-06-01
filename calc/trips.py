@@ -135,6 +135,7 @@ def filter_trips(df):
     out['location_std'] = df['loc_error'].clip(lower=0.1)
     out['atype'] = df['atype'].map(ATYPE_MAPPING)
     out['aconf'] = df['aconf'] / 100
+    out['vehicle_way_distance'] = df[['closest_car_way_dist', 'closest_rail_way_dist']].min(axis=1)
     out.loc[out.aconf == 1, 'aconf'] /= 2
 
     ms, Ss, state_probs, most_likely_path, _ = filter_trajectory((r for i, r in out.iterrows()))
