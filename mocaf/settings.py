@@ -129,6 +129,7 @@ INSTALLED_APPS = [
     'wagtail.search',
     'wagtail.admin',
     'wagtail.core',
+    'wagtail.contrib.modeladmin',
 
     'modeltrans',
     'modelcluster',
@@ -153,6 +154,7 @@ INSTALLED_APPS = [
     'budget',
     'feedback',
     'pages',
+    'notifications',
 ]
 
 MIDDLEWARE = [
