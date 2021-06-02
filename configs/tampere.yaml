@@ -74,12 +74,16 @@ transport_modes:
       - identifier: rollerskates
         name: Rullaluistimet
         name_en: Roller skates
-        emission_factor: 3
+        emission_factor: 0
       - identifier: skateboard
         name: Skeittilauta
         name_en: skateboard
-        emission_factor: 3
+        emission_factor: 0
       - identifier: escooter
         name: Sähköpotkulauta
         name_en: Electric scooter
         emission_factor: 7
+      - identifier: other
+        name: Muu
+        name_en: Other
+        emission_factor: 5
