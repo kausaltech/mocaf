@@ -22,9 +22,6 @@ celery
 redis
 django-modeltrans
 pyyaml
-factory-boy
-pytest-factoryboy
-pytest-django
 numba
 orjson
 jinja2

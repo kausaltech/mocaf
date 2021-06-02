@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from trips.models import Device
+from .engine import NotificationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +20,18 @@ def send_welcome_notifications(today=None):
     if today is None:
         today = timezone.now().date()
     logger.info("Sending welcome notifications")
+    engine = NotificationEngine()
     for device in welcome_notification_devices(today):
         logger.debug(f"Sending notification to {device}")
         with transaction.atomic():
             device.welcome_notification_sent = True
             device.save(update_fields=['welcome_notification_sent'])
-            # TODO: Send notification
+            # TODO: Use the actual title and content
+            title = {lang: f'title {lang}' for lang in ('fi', 'en')}
+            content = {lang: f'content {lang}' for lang in ('fi', 'en')}
+            # TODO: We might want to call send_notification in batch, but then we need to figure out which notifications
+            # have been sent successfully and set the welcome_notification_sent field for only those.
+            engine.send_notification([device], title, content)
 
 
 @shared_task
