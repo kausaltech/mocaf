@@ -45,7 +45,7 @@ transport_modes:
       - identifier: hybrid
         name: Hybridi
         name_en: Hybrid
-        emission_factor: 120
+        emission_factor: 152
       - identifier: bev
         name: Täyssähkö
         name_en: Battery electric
