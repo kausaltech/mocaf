@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.gis.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
 
@@ -44,8 +45,15 @@ class Device(models.Model):
     custom_config = models.JSONField(null=True)
 
     created_at = models.DateTimeField(null=True)
+    welcome_notification_sent = models.BooleanField(default=False)
+    last_summary_notification_month = models.DateField(null=True, blank=True, help_text="First day of the month for "
+                                                       "which the last monthly summary notification was sent")
 
     objects = DeviceQuerySet.as_manager()
+
+    def clean(self):
+        if self.last_summary_notification_month.day != 1:
+            raise ValidationError("Date of last monthly summary notification must be the first of a month")
 
     def generate_token(self):
         assert not self.token

@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 import os
 
 import environ
+from celery.schedules import crontab
 from corsheaders.defaults import default_headers as default_cors_headers  # noqa
 from django.utils.translation import gettext_lazy as _
 
@@ -100,6 +101,20 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 240,
         'options': {
             'expires': 30,
+        }
+    },
+    'send-monthly-summary-notifications': {
+        'task': 'notifications.tasks.send_monthly_summary_notifications',
+        'schedule': crontab(hour=9, minute=0, day_of_month=1),
+        'options': {
+            'expires': 2 * 24 * 60 * 60,  # 2 days
+        }
+    },
+    'send-welcome-notifications': {
+        'task': 'notifications.tasks.send_welcome_notifications',
+        'schedule': crontab(hour=9, minute=0),
+        'options': {
+            'expires': 2 * 24 * 60 * 60,  # 2 days
         }
     },
     **TRANSITRT_TASKS,

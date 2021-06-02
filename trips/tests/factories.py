@@ -16,6 +16,8 @@ class DeviceFactory(DjangoModelFactory):
     brand = None
     model = None
     created_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
+    welcome_notification_sent = False
+    last_summary_notification_month = make_aware(datetime(2020, 1, 1, 0, 0), utc)
 
 
 class TransportModeFactory(DjangoModelFactory):
