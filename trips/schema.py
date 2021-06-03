@@ -167,7 +167,13 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
     def mutate(root, info):
-        return dict(ok=False)
+        dev = info.context.device
+        with transaction.atomic():
+            dev.trips.all().delete()
+            dev.receive_data.all().delete()
+            dev.delete()
+
+        return dict(ok=True)
 
 
 class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
