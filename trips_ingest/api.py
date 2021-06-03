@@ -89,7 +89,7 @@ def ingest_view(request):
     data = request.data
     obj = ReceiveData(data=data, received_at=received_at)
     try:
-        obj.device = Device.objects.get(uuid=obj.get)
+        obj.device = Device.objects.get(uuid=obj.get_uuid())
     except Exception as e:
         sentry_sdk.capture_exception(e)
     obj.save()
