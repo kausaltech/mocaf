@@ -1,5 +1,7 @@
 import json
 import logging
+
+import sentry_sdk
 from django.utils import timezone
 from django.urls import reverse
 from rest_framework.decorators import api_view, schema
@@ -86,6 +88,10 @@ def ingest_view(request):
     received_at = timezone.now()
     data = request.data
     obj = ReceiveData(data=data, received_at=received_at)
+    try:
+        obj.device = Device.objects.get(uuid=obj.get)
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
     obj.save()
 
     resp = {'ok': True, 'received_at': received_at}

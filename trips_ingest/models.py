@@ -30,6 +30,9 @@ class ReceiveDataQuerySet(models.QuerySet):
 
 class ReceiveData(models.Model):
     data = models.JSONField()
+    device = models.ForeignKey(
+        'trips.Device', on_delete=models.CASCADE, null=True, related_name='receive_data'
+    )
     received_at = models.DateTimeField(db_index=True)
     imported_at = models.DateTimeField(null=True, db_index=True)
     import_failed = models.BooleanField(null=True)
@@ -63,8 +66,11 @@ class ReceiveData(models.Model):
 
     def get_uuid(self):
         loc = self.data.get('location')
-        if loc and isinstance(loc, list):
-            return loc[0].get('extras', {}).get('uid')
+        if loc:
+            if 'uid' in self.data:
+                return self.data['uid']
+            if isinstance(loc, list):
+                return loc[0].get('extras', {}).get('uid')
         if 'userId' in self.data:
             return self.data['userId']
 
