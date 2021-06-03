@@ -1,11 +1,14 @@
 import datetime
 import logging
+import random
 from celery import shared_task
 from django.db import transaction
 from django.utils import timezone
+from modeltrans.utils import build_localized_fieldname
 
 from trips.models import Device
 from .engine import NotificationEngine
+from .models import EventTypeChoices, NotificationTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +32,23 @@ def send_welcome_notifications(today=None):
     logger.info("Sending welcome notifications")
     engine = NotificationEngine()
 
-    for device in welcome_notification_devices(today):
-        logger.debug(f"Sending notification to {device}")
-        with transaction.atomic():
+    templates = NotificationTemplate.objects.filter(event_type=EventTypeChoices.WELCOME_MESSAGE)
+    try:
+        template = random.choice(templates)
+    except IndexError:
+        raise Exception("There is no welcome message template.")
+
+    devices = welcome_notification_devices(today)
+    logger.debug(f"Sending notification to {len(devices)} devices")
+    with transaction.atomic():
+        for device in devices:
             device.welcome_notification_sent = True
-            device.save(update_fields=['welcome_notification_sent'])
-            # TODO: Use the actual title and content
-            title = {lang: f'title {lang}' for lang in ('fi', 'en')}
-            content = {lang: f'content {lang}' for lang in ('fi', 'en')}
-            # TODO: We might want to call send_notification in batch, but then we need to figure out which notifications
-            # have been sent successfully and set the welcome_notification_sent field for only those.
-            engine.send_notification([device], title, content)
+        Device.objects.bulk_update(devices, ['welcome_notification_sent'])
+        title = {lang: getattr(template, build_localized_fieldname('title', lang)) for lang in ('fi', 'en')}
+        content = {lang: getattr(template, build_localized_fieldname('body', lang)) for lang in ('fi', 'en')}
+        response = engine.send_notification(devices, title, content)
+        if not response['ok'] or response['message'] != 'success':
+            raise Exception("Sending notifications failed")
 
 
 @shared_task

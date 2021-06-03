@@ -5,10 +5,16 @@ import responses
 
 from trips.tests.factories import DeviceFactory
 from notifications import tasks
+from notifications.models import EventTypeChoices
+from notifications.tests.factories import NotificationTemplateFactory
 
 pytestmark = pytest.mark.django_db
 
 API_URL = 'https://example.com/'
+SUCCESS_RESPONSE = {
+    'ok': True,
+    'message': 'success',
+}
 
 
 @pytest.fixture
@@ -40,8 +46,8 @@ def test_welcome_notification_devices_too_old():
 
 @responses.activate
 def test_send_welcome_notifications_sets_flag(device, api_settings):
-    # TODO: mock response
-    responses.add(responses.POST, API_URL, json={'todo': 'response'}, status=200)
+    NotificationTemplateFactory(event_type=EventTypeChoices.WELCOME_MESSAGE)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     today = device.created_at.date() + datetime.timedelta(days=1)
     tasks.send_welcome_notifications(today)
@@ -51,8 +57,8 @@ def test_send_welcome_notifications_sets_flag(device, api_settings):
 
 @responses.activate
 def test_send_welcome_notifications_sends_notification(device, api_settings):
-    # TODO: mock response
-    responses.add(responses.POST, API_URL, json={'todo': 'response'}, status=200)
+    template = NotificationTemplateFactory(event_type=EventTypeChoices.WELCOME_MESSAGE)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     today = device.created_at.date() + datetime.timedelta(days=1)
     tasks.send_welcome_notifications(today)
@@ -60,7 +66,10 @@ def test_send_welcome_notifications_sends_notification(device, api_settings):
     assert responses.calls[0].request.url == API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
-        # TODO: title_data, content_data
+        'contentEn': template.body_en,
+        'contentFi': template.body_fi,
+        'titleEn': template.title_en,
+        'titleFi': template.title_fi,
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
@@ -93,8 +102,7 @@ def test_monthly_summary_notification_devices_already_sent():
 
 @responses.activate
 def test_send_monthly_summary_notifications_sets_timestamp(device, api_settings):
-    # TODO: mock response
-    responses.add(responses.POST, API_URL, json={'todo': 'response'}, status=200)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     today = datetime.date(2020, 2, 1)
     # Send notification for January 2020
@@ -106,8 +114,7 @@ def test_send_monthly_summary_notifications_sets_timestamp(device, api_settings)
 
 @responses.activate
 def test_send_monthly_summary_notifications_sends_notification(device, api_settings):
-    # TODO: mock response
-    responses.add(responses.POST, API_URL, json={'todo': 'response'}, status=200)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     today = datetime.date(2020, 2, 1)
     # Send notification for January 2020
@@ -116,7 +123,10 @@ def test_send_monthly_summary_notifications_sends_notification(device, api_setti
     assert responses.calls[0].request.url == API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
-        # TODO: title_data, content_data
+        'contentEn': template.body_en,
+        'contentFi': template.body_fi,
+        'titleEn': template.title_en,
+        'titleFi': template.title_fi,
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
