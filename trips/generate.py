@@ -1,3 +1,4 @@
+from datetime import timedelta
 import logging
 import sentry_sdk
 import geopandas as gpd
@@ -221,6 +222,7 @@ class TripGenerator:
         sentry_sdk.set_tag('uuid', None)
 
     def find_uuids_with_new_samples(self):
+        one_week_ago = timezone.now() - timedelta(days=7)
         devices = (
             Device.objects.annotate(
                 last_leg_received_at=Max('trips__legs__received_at'),
@@ -232,7 +234,9 @@ class TripGenerator:
             for x in devices
         }
         uuids = (
-            Location.objects.values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
+            Location.objects
+            .filter(deleted_at__isnull=True, time__gte=one_week_ago)
+            .values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
             .values('uuid', 'newest_created_at')
         )
         uuids_to_process = []

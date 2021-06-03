@@ -54,5 +54,6 @@ WHERE
     l.uuid = $1
     AND l.time >= $2
     AND l.time <= $3
+    AND l.deleted_at IS NULL
 ORDER BY
     l.time;

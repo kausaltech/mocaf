@@ -177,8 +177,7 @@ class Location(models.Model):
     debug = models.BooleanField(default=False)
     manual_atype = models.CharField(choices=ActivityTypeChoices.choices, null=True, max_length=20)
     sensor_data_count = models.PositiveIntegerField(null=True)
-
-    public_fields = ['time', 'uuid', 'loc', 'acc', 'atype', 'aconf', 'speed', 'heading']
+    deleted_at = models.DateTimeField(null=True)
 
     class Meta:
         managed = False

@@ -1,3 +1,4 @@
+from trips_ingest.models import Location
 from budget.enums import EmissionUnit, TimeResolution
 from datetime import timedelta
 from budget.models import EmissionBudgetLevel
@@ -168,8 +169,10 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
 
     def mutate(root, info):
         dev = info.context.device
+        now = timezone.now()
         with transaction.atomic():
             dev.trips.all().delete()
+            Location.objects.filter(uuid=dev.uuid).update(deleted_at=now)
             dev.receive_data.all().delete()
             dev.delete()
 
