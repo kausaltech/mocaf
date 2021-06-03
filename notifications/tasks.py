@@ -25,18 +25,21 @@ def monthly_summary_notification_devices(summary_month: datetime.date):
     return Device.objects.exclude(last_summary_notification_month__gte=summary_month)
 
 
+def random_template(event_type):
+    templates = NotificationTemplate.objects.filter(event_type=event_type)
+    try:
+        return random.choice(templates)
+    except IndexError:
+        raise Exception(f"There is no notification template of type {event_type}.")
+
+
 @shared_task
 def send_welcome_notifications(today=None):
     if today is None:
         today = timezone.now().date()
     logger.info("Sending welcome notifications")
     engine = NotificationEngine()
-
-    templates = NotificationTemplate.objects.filter(event_type=EventTypeChoices.WELCOME_MESSAGE)
-    try:
-        template = random.choice(templates)
-    except IndexError:
-        raise Exception("There is no welcome message template.")
+    template = random_template(EventTypeChoices.WELCOME_MESSAGE)
 
     devices = welcome_notification_devices(today)
     logger.debug(f"Sending notification to {len(devices)} devices")
@@ -44,8 +47,8 @@ def send_welcome_notifications(today=None):
         for device in devices:
             device.welcome_notification_sent = True
         Device.objects.bulk_update(devices, ['welcome_notification_sent'])
-        title = {lang: getattr(template, build_localized_fieldname('title', lang)) for lang in ('fi', 'en')}
-        content = {lang: getattr(template, build_localized_fieldname('body', lang)) for lang in ('fi', 'en')}
+        title = template.render_all_languages('title')
+        content = template.render_all_languages('body')
         response = engine.send_notification(devices, title, content)
         if not response['ok'] or response['message'] != 'success':
             raise Exception("Sending notifications failed")
@@ -57,6 +60,7 @@ def send_monthly_summary_notifications(today):
         today = timezone.now().date()
     logger.info("Sending monthly summary notifications")
     engine = NotificationEngine()
+    template = random_template(EventTypeChoices.MONTHLY_SUMMARY)
 
     # In the Device model, we store always the first of the month
     this_month = today.replace(day=1)
@@ -68,7 +72,6 @@ def send_monthly_summary_notifications(today):
         with transaction.atomic():
             device.last_summary_notification_month = last_month
             device.save(update_fields=['last_summary_notification_month'])
-            # TODO: Use the actual title and content
-            title = {lang: f'title {lang}' for lang in ('fi', 'en')}
-            content = {lang: f'content {lang}' for lang in ('fi', 'en')}
+            title = template.render_all_languages('title')
+            content = template.render_all_languages('body')
             engine.send_notification([device], title, content)

@@ -66,10 +66,10 @@ def test_send_welcome_notifications_sends_notification(device, api_settings):
     assert responses.calls[0].request.url == API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
-        'contentEn': template.body_en,
-        'contentFi': template.body_fi,
-        'titleEn': template.title_en,
-        'titleFi': template.title_fi,
+        'titleEn': template.render('title', 'en'),
+        'titleFi': template.render('title', 'fi'),
+        'contentEn': template.render('body', 'en'),
+        'contentFi': template.render('body', 'fi'),
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
@@ -103,6 +103,7 @@ def test_monthly_summary_notification_devices_already_sent():
 @responses.activate
 def test_send_monthly_summary_notifications_sets_timestamp(device, api_settings):
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
 
     today = datetime.date(2020, 2, 1)
     # Send notification for January 2020
@@ -114,6 +115,7 @@ def test_send_monthly_summary_notifications_sets_timestamp(device, api_settings)
 
 @responses.activate
 def test_send_monthly_summary_notifications_sends_notification(device, api_settings):
+    template = NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     today = datetime.date(2020, 2, 1)
@@ -123,10 +125,10 @@ def test_send_monthly_summary_notifications_sends_notification(device, api_setti
     assert responses.calls[0].request.url == API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
-        'contentEn': template.body_en,
-        'contentFi': template.body_fi,
-        'titleEn': template.title_en,
-        'titleFi': template.title_fi,
+        'titleEn': template.render('title', 'en'),
+        'titleFi': template.render('title', 'fi'),
+        'contentEn': template.render('body', 'en'),
+        'contentFi': template.render('body', 'fi'),
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
