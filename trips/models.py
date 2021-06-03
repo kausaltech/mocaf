@@ -52,8 +52,8 @@ class Device(models.Model):
         self.token = uuid.uuid4()
 
     def set_enabled(self, enabled: bool):
-        dev = Device.objects.select_for_update().filter(pk=self.pk).first()
         with transaction.atomic():
+            dev = Device.objects.select_for_update().filter(pk=self.pk).first()
             try:
                 latest_event = dev.enable_events.latest()
                 if latest_event.enabled == enabled:
