@@ -61,6 +61,12 @@ TRANSPORT_COLOR_MAP = {
     'walk': COLOR_MAP['walking'],
 }
 
+ROUTE_TYPE_TO_ATYPE = {
+    0: 'tram',
+    2: 'train',
+    3: 'bus',
+}
+
 
 def hex_to_rgba(value):
     value = value.lstrip('#')
@@ -70,7 +76,7 @@ def hex_to_rgba(value):
 
 
 COLOR_MAP_RGB = {atype: hex_to_rgba(color) for atype, color in COLOR_MAP.items()}
-
+ROUTE_TYPE_COLOR_MAP = {key: COLOR_MAP_RGB[val] for key, val in ROUTE_TYPE_TO_ATYPE.items()}
 
 locations_df = None
 locations_uuid = None
@@ -115,15 +121,16 @@ def make_transit_layer(df):
     trdf['local_time'] = pd.to_datetime(trdf.time).dt.tz_convert(LOCAL_TZ).dt.round('1s')
     trdf['time_str'] = trdf.local_time.astype(str)
     trdf['description'] = trdf.vehicle_journey_ref
+    trdf['color'] = trdf['route_type'].map(ROUTE_TYPE_COLOR_MAP)
 
     tr_layer = pydeck.Layer(
         'PointCloudLayer',
         trdf,
         get_position=['lon', 'lat'],
         auto_highlight=True,
-        get_color=[180, 0, 200, 140],
+        get_color='color',
         pickable=True,
-        point_size=12,
+        point_size=8,
     )
     return tr_layer
 
@@ -140,13 +147,20 @@ def make_map_component(xstart=None, xend=None):
         lambda x: [*COLOR_MAP_RGB[x.atype], x.opacity],
         axis=1, result_type='reduce',
     )
+    df['colorf'] = df[['atypef', 'opacity']].apply(
+        lambda x: [*COLOR_MAP_RGB.get(x.atypef, 'unknown'), 255],
+        axis=1, result_type='reduce',
+    )
+    df['pos'] = df[['lon', 'lat']].apply(
+        (lambda x: [x.lon, x.lat]), axis=1
+    )
     df.loc_error = df.loc_error.fillna(value=-1)
     df.aconf = df.aconf.fillna(value=-1)
     df['time_str'] = df.local_time.astype(str)
     df.speed = (df.speed * 3.6).fillna(value=-1)
     df = df[[
-        'lon', 'lat', 'loc_error', 'color', 'aconf', 'speed', 'time_str', 'atype',
-        'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist',
+        'lon', 'lat', 'loc_error', 'color', 'colorf', 'aconf', 'speed', 'time_str', 'atype',
+        'battery_charging', 'atypef', 'closest_car_way_name', 'closest_car_way_dist', 'pos'
     ]]
     df.atypef = df.atypef.fillna(value='')
     df.closest_car_way_name = df.closest_car_way_name.fillna(value='')
@@ -155,21 +169,27 @@ def make_map_component(xstart=None, xend=None):
     df['description'] = df[['atype', 'atypef']].apply(
         lambda x: '%s -> %s' % (x.atype, x.atypef),
         axis=1
-        )
-    df = df.dropna()
-    layer = pydeck.Layer(
-        'PointCloudLayer',
-        df,
-        get_position=['lon', 'lat'], # , 'speed'
-        # get_position=['lon', 'lat'],
-        auto_highlight=True,
-        get_radius='loc_error < 20 ? loc_error * 1.5 : 20 * 1.5',
-        get_color='color',
-        pickable=True,
-        point_size=8,
     )
+    df = df.dropna()
+    all_layers = []
 
-    all_layers = [layer]
+    layer = pydeck.Layer(
+        'ScatterplotLayer',
+        df,
+        get_position='pos',
+        auto_highlight=True,
+        get_radius=4,
+        get_line_width=4,
+        radius_min_pixels=4,
+        stroked=True,
+        filled=True,
+        get_fill_color='colorf',
+        get_line_color='color',
+        line_width_units='pixels',
+        radius_units='pixels',
+        pickable=True,
+    )
+    all_layers.append(layer)
 
     tr_layer = make_transit_layer(time_filtered_locations_df)
     if tr_layer is not None:
@@ -504,7 +524,7 @@ def render_output(new_path, disable_filters, show_probs):
 
     if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
         pc.display('reading trips for %s' % new_uid)
-        df = read_locations(conn, new_uid, include_all=True, start_time='2021-05-20')
+        df = read_locations(conn, new_uid, include_all=True, start_time='2021-05-30')
         pc.display('trips read (%d rows)' % len(df))
         df.time = pd.to_datetime(df.time, utc=True)
 
@@ -515,6 +535,13 @@ def render_output(new_path, disable_filters, show_probs):
             if new_filtered and trip_id >= 0:
                 pc.display('filtering trip %d' % trip_id)
                 trip_df = filter_trips(trip_df)
+                """
+                fixed_df = trip_df.copy()
+                fixed_df['x'] = fixed_df.pop('xf')
+                fixed_df['y'] = fixed_df.pop('yf')
+                fixed_df['atype'] = fixed_df.pop('atypef')
+                legged_df = split_trip_legs(conn, new_uid, fixed_df)
+                """
                 pc.display('filtering done')
             #trip_df = split_trip_legs(conn, trip_df)
             trip_dfs.append(trip_df)
