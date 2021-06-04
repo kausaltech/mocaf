@@ -57,3 +57,9 @@ class NotificationTemplate(models.Model):
 
         kwargs are passed as context when rendering the template."""
         return {language: self.render(field_name, language, **kwargs) for language in ('fi', 'en')}
+
+
+class NotificationLogEntry(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    template = models.ForeignKey(NotificationTemplate, on_delete=models.SET_NULL, null=True)
+    sent_at = models.DateTimeField()
