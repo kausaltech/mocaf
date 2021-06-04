@@ -21,7 +21,7 @@ def transit_likelihoods(leg, transits):
     
     return trans_liks
 
-def transit_prob_ests_shit(leg, transits, transit_loc_std=10.0):
+def transit_prob_ests_糞(leg, transits, transit_loc_std=10.0):
     # Just a precision weighted average distance of leg location points from linearly
     # interpolated transit locations with some stetson-harrison to come up with a
     # probabilistish confidence. Not statistically rigorous, but a decent hack to avoid
@@ -55,14 +55,6 @@ def transit_prob_ests_shit(leg, transits, transit_loc_std=10.0):
         # Negative meters, TOTAL HACK!!
         trans_shit[key] = -est_mean_dist
     return trans_shit
-
-def is_transit_wild_guess_will_break(leg, transits):
-    trans_shit = transit_prob_ests_shit(leg, transits)
-    best_hit = max(trans_shit.values())
-    HARDCODED_HACK_HEURISTIC_YÖK = -30 # Negative meters, TOTAL HACK!!
-    
-    return best_hit > HARDCODED_HACK_HEURISTIC_YÖK
-
 
 
 def transit_likelihoods_(leg, transits, transit_loc_std=10.0):

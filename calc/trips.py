@@ -7,7 +7,7 @@ import pandas as pd
 from utils.perf import PerfCounter
 
 from .dragimm import filter_trajectory, filters as transport_modes
-from .transitest import is_transit_wild_guess_will_break
+from .transitest import transit_prob_ests_糞
 
 
 TABLE_NAME = 'trips_ingest_location'
@@ -19,7 +19,7 @@ MINS_BETWEEN_TRIPS = 20
 MIN_DISTANCE_MOVED_IN_TRIP = 200
 MIN_SAMPLES_PER_LEG = 15
 
-DAYS_TO_FETCH = 10
+DAYS_TO_FETCH = 5
 LOCAL_2D_CRS = 3067
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ ATYPE_UNKNOWN = ALL_ATYPES.index('unknown')
 IDX_MAPPING = {idx: ATYPE_REVERSE[x] for idx, x in enumerate(transport_modes.keys())}
 
 
-def filter_trips(df):
+def filter_trips(df: pd.DataFrame):
     out = df[['time', 'x', 'y', 'speed']].copy()
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
     out['time'] = s / pd.Timedelta('1s')
@@ -193,6 +193,7 @@ def get_transit_locations(conn, uid: str, start_time: datetime, end_time: dateti
             extract(epoch from time) AS epoch_time,
             ST_X(loc) AS x,
             ST_Y(loc) AS y,
+            route_type,
             (SELECT route_long_name FROM gtfs.routes
                 WHERE feed_index = vl.gtfs_feed_id AND route_id = vl.gtfs_route_id
             ) AS route_name
@@ -227,7 +228,7 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
 
     # First calculate how long same atype stretches we have
     for i in range(1, n_rows):
-        if atype[i] == atype[i - 1]:
+        if atype[i] == atype[i - 1] and i < n_rows - 1:
             if loc_error[i] < 100:
                 atype_count += 1
         else:
@@ -281,8 +282,21 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
     return leg_ids
 
 
+MAX_DISTANCE_BY_TRANSIT_TYPE = {
+    0: 50,  # tram
+    2: 500, # train
+    3: 30,  # bus
+}
+ATYPE_BY_TRANSIT_TYPE = {
+    0: 'tram',
+    2: 'train',
+    3: 'bus',
+}
+
+
 def split_trip_legs(conn, uid, df, include_all=False):
     assert len(df.trip_id.unique()) == 1
+
     s = df['time'].dt.tz_convert(None) - pd.Timestamp('1970-01-01')
     df['epoch_ts'] = s / pd.Timedelta('1s')
     df['calc_speed'] = df.speed
@@ -316,11 +330,22 @@ def split_trip_legs(conn, uid, df, include_all=False):
         transit_locs['time'] = transit_locs.epoch_time
         leg_df['location_std'] = leg_df['loc_error']
         transit_loc_by_id = {vech: d for vech, d in transit_locs.groupby('vehicle_ref')}
+        transit_type_by_id = {vech: d.iloc[0].route_type for vech, d in transit_loc_by_id.items()}
+
         leg_df['time'] = df['epoch_ts'].astype(float)
-        is_transit = is_transit_wild_guess_will_break(leg_df, transit_loc_by_id)
-        print(is_transit)
-        if is_transit:
-            df.loc[df.leg_id == leg_id, 'atype'] = 'bus'
+        transit_probs = transit_prob_ests_糞(leg_df, transit_loc_by_id)
+        transit_probs = sorted(
+            [(key, dist) for key, dist in transit_probs.items() if dist == dist],
+            key=lambda p: p[1]
+        )
+        if not len(transit_probs):
+            continue
+        vid, closest_dist = transit_probs[-1]
+        vtype = transit_type_by_id[vid]
+        max_dist = MAX_DISTANCE_BY_TRANSIT_TYPE.get(vtype, 30)
+
+        if closest_dist > -max_dist:
+            df.loc[df.leg_id == leg_id, 'atype'] = ATYPE_BY_TRANSIT_TYPE[vtype]
 
     df = df.drop(columns=['epoch_ts', 'calc_speed', 'int_atype'])
 
