@@ -1,3 +1,7 @@
 -c requirements.txt
+factory-boy
 ipython
 pip-tools
+pytest-django
+pytest-factoryboy
+responses

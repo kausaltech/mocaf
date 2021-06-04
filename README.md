@@ -118,6 +118,8 @@ createdb mocaf
 sudo -u postgres psql -c "CREATE EXTENSION postgis" mocaf
 ```
 
+Also make sure to create the gtfs tables as above.
+
 If you intend to run the tests, you need to make sure the extension is also created whenever the test database is
 created, which happens every time you run `pytest`. If you always run the tests with the `--reuse-db` flag, you can
 create the extension once for the database that is being re-used and you'll be fine:
@@ -133,6 +135,12 @@ database.
 
 ```shell
 sudo -u postgres psql -d template1 -c "CREATE EXTENSION IF NOT EXISTS postgis"
+```
+
+To create the necessary gtfs tables, do the following in the `gtfs/sql-importer` directory:
+
+```shell
+PGDATABASE=mocaf make init
 ```
 
 Run migrations:

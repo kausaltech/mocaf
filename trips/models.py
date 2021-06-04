@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.gis.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
 

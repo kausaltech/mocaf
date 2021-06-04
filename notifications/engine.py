@@ -6,9 +6,14 @@ from trips.models import Device
 
 
 class NotificationEngine:
-    def __init__(self):
-        self.api_url = settings.GENIEM_NOTIFICATION_API_BASE
-        self.api_token = settings.GENIEM_NOTIFICATION_API_TOKEN
+    def __init__(self, api_url=None, api_token=None):
+        if api_url is None:
+            api_url = settings.GENIEM_NOTIFICATION_API_BASE
+        if api_token is None:
+            api_token = settings.GENIEM_NOTIFICATION_API_TOKEN
+
+        self.api_url = api_url
+        self.api_token = api_token
 
     def is_enabled(self):
         return self.api_url and self.api_token
@@ -28,3 +33,4 @@ class NotificationEngine:
             timeout=30,
         )
         resp.raise_for_status()
+        return resp.json()
