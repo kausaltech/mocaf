@@ -14,10 +14,10 @@ ALTER TABLE routes
 
 -- calendar_dates
 
-ALTER TABLE calendar_dates
-  ADD CONSTRAINT calendar_fkey
-  FOREIGN KEY (feed_index, service_id)
-  REFERENCES calendar (feed_index, service_id) ON DELETE CASCADE;
+--ALTER TABLE calendar_dates
+--  ADD CONSTRAINT calendar_fkey
+--  FOREIGN KEY (feed_index, service_id)
+--  REFERENCES calendar (feed_index, service_id) ON DELETE CASCADE;
 
 ALTER TABLE fare_attributes
   ADD CONSTRAINT fare_attributes_fkey
@@ -48,10 +48,10 @@ ALTER TABLE trips
   FOREIGN KEY (feed_index, route_id)
   REFERENCES routes (feed_index, route_id) ON DELETE CASCADE;
 
-ALTER TABLE trips
-  ADD CONSTRAINT trips_calendar_fkey
-  FOREIGN KEY (feed_index, service_id)
-  REFERENCES calendar (feed_index, service_id) ON DELETE CASCADE;
+--ALTER TABLE trips
+--  ADD CONSTRAINT trips_calendar_fkey
+--  FOREIGN KEY (feed_index, service_id)
+--  REFERENCES calendar (feed_index, service_id) ON DELETE CASCADE;
 
 -- stop_times
 

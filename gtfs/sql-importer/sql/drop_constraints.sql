@@ -14,8 +14,8 @@ ALTER TABLE :schema.fare_attributes
 
 -- :schema.calendar_dates
 
-ALTER TABLE :schema.calendar_dates
-    DROP CONSTRAINT calendar_fkey CASCADE;
+-- ALTER TABLE :schema.calendar_dates
+--     DROP CONSTRAINT calendar_fkey CASCADE;
 
 -- :schema.fare_rules
 
@@ -30,8 +30,8 @@ ALTER TABLE :schema.fare_rules
 
 ALTER TABLE :schema.trips
     DROP CONSTRAINT trips_route_id_fkey CASCADE;
-ALTER TABLE :schema.trips
-    DROP CONSTRAINT trips_calendar_fkey CASCADE;
+-- ALTER TABLE :schema.trips
+--     DROP CONSTRAINT trips_calendar_fkey CASCADE;
 
 -- :schema.stop_times
 
