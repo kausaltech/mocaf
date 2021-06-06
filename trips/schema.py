@@ -1,20 +1,25 @@
-from trips_ingest.models import Location
-from budget.enums import EmissionUnit, TimeResolution
 from datetime import timedelta
-from budget.models import EmissionBudgetLevel
 from typing import Any
-from django.utils import timezone
-from django.contrib.gis.geos import LineString
-from django.db.models import Q
-from django.db import transaction
-import graphene
-from graphql.error import GraphQLError
-import graphene_django_optimizer as gql_optimizer
-from mocaf.graphql_types import DjangoNode, AuthenticatedDeviceNode
-from mocaf.graphql_helpers import paginate_queryset
-from mocaf.graphql_gis import PointScalar, LineStringScalar
 
-from .models import DeviceDefaultModeVariant, LegLocation, TransportModeVariant, Trip, Leg, Device, TransportMode, InvalidStateError
+import graphene
+import graphene_django_optimizer as gql_optimizer
+import sentry_sdk
+from django.contrib.gis.geos import LineString
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+from graphql.error import GraphQLError
+
+from budget.enums import EmissionUnit, TimeResolution
+from budget.models import EmissionBudgetLevel
+from mocaf.graphql_gis import LineStringScalar, PointScalar
+from mocaf.graphql_helpers import paginate_queryset
+from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
+from trips_ingest.models import Location
+
+from .models import (
+    Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
+)
 
 
 def resolve_i18n_field(obj: Any, field_name: str, info):
