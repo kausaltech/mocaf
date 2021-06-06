@@ -164,7 +164,7 @@ class DisableMocafMutation(graphene.Mutation, AuthenticatedDeviceNode):
         try:
             dev.set_enabled(False)
         except InvalidStateError:
-            raise GraphQLError('Already disabled', [info])
+            sentry_sdk.capture_exception(GraphQLError('Mocaf already disabled', [info]))
 
         return dict(ok=True)
 
