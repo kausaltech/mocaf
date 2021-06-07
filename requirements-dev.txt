@@ -6,24 +6,12 @@
 #
 backcall==0.2.0
     # via ipython
-certifi==2020.12.5
-    # via
-    #   -c requirements.txt
-    #   requests
-chardet==4.0.0
-    # via
-    #   -c requirements.txt
-    #   requests
 click==7.1.2
     # via
     #   -c requirements.txt
     #   pip-tools
 decorator==4.4.2
     # via ipython
-idna==2.10
-    # via
-    #   -c requirements.txt
-    #   requests
 ipython-genutils==0.2.0
     # via traitlets
 ipython==7.21.0
@@ -46,23 +34,8 @@ ptyprocess==0.7.0
     # via pexpect
 pygments==2.8.0
     # via ipython
-requests==2.25.1
-    # via
-    #   -c requirements.txt
-    #   responses
-responses==0.13.3
-    # via -r requirements-dev.in
-six==1.15.0
-    # via
-    #   -c requirements.txt
-    #   responses
 traitlets==5.0.5
     # via ipython
-urllib3==1.26.4
-    # via
-    #   -c requirements.txt
-    #   requests
-    #   responses
 wcwidth==0.2.5
     # via
     #   -c requirements.txt

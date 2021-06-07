@@ -215,7 +215,11 @@ pyyaml==5.4.1
 redis==3.5.3
     # via -r requirements.in
 requests==2.25.1
-    # via wagtail
+    # via
+    #   responses
+    #   wagtail
+responses==0.13.3
+    # via -r requirements.in
 rx==1.6.1
     # via graphql-core
 scipy==1.6.3
@@ -242,6 +246,7 @@ six==1.15.0
     #   munch
     #   promise
     #   python-dateutil
+    #   responses
     #   singledispatch
 soupsieve==2.2.1
     # via beautifulsoup4
@@ -260,6 +265,7 @@ toml==0.10.2
 urllib3==1.26.4
     # via
     #   requests
+    #   responses
     #   sentry-sdk
 vine==5.0.0
     # via
