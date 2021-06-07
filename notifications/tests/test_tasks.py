@@ -5,8 +5,8 @@ import responses
 from dateutil.relativedelta import relativedelta
 from django.utils.timezone import make_aware, utc
 
-from trips.tests.factories import DeviceFactory
-from notifications import tasks
+from trips.tests.factories import DeviceFactory, LegFactory
+from notifications.tasks import MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask
 from notifications.models import EventTypeChoices, NotificationLogEntry
 from notifications.tests.factories import NotificationLogEntryFactory, NotificationTemplateFactory
 
@@ -25,26 +25,29 @@ def api_settings(settings):
     settings.GENIEM_NOTIFICATION_API_TOKEN = 'test'
 
 
-def test_welcome_notification_devices():
+def test_welcome_notification_recipients():
     device = DeviceFactory()
-    today = device.created_at.date() + datetime.timedelta(days=1)
-    result = list(tasks.welcome_notification_devices(today))
+    task = WelcomeNotificationTask()
+    now = device.created_at + datetime.timedelta(days=1)
+    result = list(task.recipients(now))
     assert result == [device]
 
 
-def test_welcome_notification_devices_already_sent():
+def test_welcome_notification_recipients_already_sent():
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.WELCOME_MESSAGE)
-    today = device.created_at.date() + datetime.timedelta(days=1)
-    result = list(tasks.welcome_notification_devices(today))
+    task = WelcomeNotificationTask()
+    now = device.created_at + datetime.timedelta(days=1)
+    result = list(task.recipients(now))
     assert result == []
 
 
-def test_welcome_notification_devices_too_old():
+def test_welcome_notification_recipients_too_old():
     device = DeviceFactory()
-    today = device.created_at.date() + datetime.timedelta(days=2)
-    result = list(tasks.welcome_notification_devices(today))
+    task = WelcomeNotificationTask()
+    now = device.created_at + datetime.timedelta(days=2)
+    result = list(task.recipients(now))
     assert result == []
 
 
@@ -54,8 +57,9 @@ def test_send_welcome_notifications_records_sending(api_settings):
     template = NotificationTemplateFactory()
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
+    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    tasks.send_welcome_notifications(now)
+    task.send_notifications(now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -69,8 +73,9 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     template = NotificationTemplateFactory(event_type=EventTypeChoices.WELCOME_MESSAGE)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
+    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    tasks.send_welcome_notifications(now)
+    task.send_notifications(now)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -84,17 +89,18 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     assert request_body == expected_body
 
 
-def test_monthly_summary_notification_devices_no_prior_summary():
+def test_monthly_summary_notification_recipients_no_prior_summary():
     device = DeviceFactory()
-    today = device.created_at.date() + relativedelta(months=1)
-    result = list(tasks.monthly_summary_notification_devices(today))
+    task = MonthlySummaryNotificationTask()
+    now = device.created_at + relativedelta(months=1)
+    result = list(task.recipients(now))
     assert result == [device]
 
 
-@pytest.mark.parametrize('today', [
-    datetime.date(2020, 3, 1),
-    datetime.date(2020, 3, 15),
-    datetime.date(2020, 3, 31),
+@pytest.mark.parametrize('now', [
+    datetime.datetime(2020, 3, 1),
+    datetime.datetime(2020, 3, 15),
+    datetime.datetime(2020, 3, 31),
 ])
 @pytest.mark.parametrize('last_notification_sent_at', [
     datetime.datetime(2020, 2, 1),  # beginning of last month
@@ -102,12 +108,13 @@ def test_monthly_summary_notification_devices_no_prior_summary():
     datetime.datetime(2020, 2, 29),  # end of last month
     datetime.datetime(2020, 1, 31),  # older than last month
 ])
-def test_monthly_summary_notification_devices(today, last_notification_sent_at):
+def test_monthly_summary_notification_recipients(now, last_notification_sent_at):
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.MONTHLY_SUMMARY,
                                 sent_at=make_aware(last_notification_sent_at, utc))
-    result = list(tasks.monthly_summary_notification_devices(today))
+    task = MonthlySummaryNotificationTask()
+    result = list(task.recipients(now))
     assert result == [device]
 
 
@@ -116,13 +123,14 @@ def test_monthly_summary_notification_devices(today, last_notification_sent_at):
     datetime.datetime(2020, 3, 15),
     datetime.datetime(2020, 3, 31),
 ])
-def test_monthly_summary_notification_devices_already_sent(last_notification_sent_at):
-    today = datetime.date(2020, 3, 31)
+def test_monthly_summary_notification_recipients_already_sent(last_notification_sent_at):
+    now = datetime.datetime(2020, 3, 31)
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.MONTHLY_SUMMARY,
                                 sent_at=make_aware(last_notification_sent_at, utc))
-    result = list(tasks.monthly_summary_notification_devices(today))
+    task = MonthlySummaryNotificationTask()
+    result = list(task.recipients(now))
     assert result == []
 
 
@@ -133,7 +141,8 @@ def test_send_monthly_summary_notifications_sets_timestamp(api_settings):
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    tasks.send_monthly_summary_notifications(now)
+    task = MonthlySummaryNotificationTask()
+    task.send_notifications(now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -148,7 +157,8 @@ def test_send_monthly_summary_notifications_sends_notification(api_settings):
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    tasks.send_monthly_summary_notifications(now)
+    task = MonthlySummaryNotificationTask()
+    task.send_notifications(now)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -160,3 +170,33 @@ def test_send_monthly_summary_notifications_sends_notification(api_settings):
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
+
+
+def test_no_recent_trips_notification_recipients_exist():
+    device = DeviceFactory()
+    leg = LegFactory(trip__device=device)
+    task = NoRecentTripsNotificationTask()
+    now = leg.end_time + datetime.timedelta(days=14, seconds=1)
+    result = list(task.recipients(now))
+    assert result == [device]
+
+
+def test_no_recent_trips_notification_recipients_empty():
+    leg = LegFactory()
+    task = NoRecentTripsNotificationTask()
+    now = leg.end_time + datetime.timedelta(days=13, seconds=59)
+    result = list(task.recipients(now))
+    assert result == []
+
+
+def test_no_recent_trips_notification_recipients_already_sent():
+    device = DeviceFactory()
+    leg = LegFactory(trip__device=device)
+    sent_at = leg.end_time + datetime.timedelta(days=14, seconds=1)
+    NotificationLogEntryFactory(device=device,
+                                template__event_type=EventTypeChoices.NO_RECENT_TRIPS,
+                                sent_at=sent_at)
+    task = NoRecentTripsNotificationTask()
+    now = sent_at + datetime.timedelta(seconds=1)
+    result = list(task.recipients(now))
+    assert result == []

@@ -117,6 +117,13 @@ CELERY_BEAT_SCHEDULE = {
     #         'expires': 2 * 24 * 60 * 60,  # 2 days
     #     }
     # },
+    # 'send-no-recent-trips-notifications': {
+    #     'task': 'notifications.tasks.send_no_recent_trips_notifications',
+    #     'schedule': crontab(hour=10, minute=0),
+    #     'options': {
+    #         'expires': 2 * 24 * 60 * 60,  # 2 days
+    #     }
+    # },
     **TRANSITRT_TASKS,
 }
 CELERY_TASK_ROUTES = {
