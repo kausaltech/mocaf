@@ -25,3 +25,7 @@ pyyaml
 numba
 orjson
 jinja2
+factory-boy
+pytest-django
+pytest-factoryboy
+responses
