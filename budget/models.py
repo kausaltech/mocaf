@@ -6,7 +6,6 @@ import pytz
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from trips.models import Device
 from .enums import TimeResolution, EmissionUnit
 
 
@@ -61,24 +60,15 @@ class EmissionBudgetLevel(models.Model):
 
 class DeviceDailyCarbonFootprint(models.Model):
     device = models.ForeignKey(
-        Device, on_delete=models.CASCADE, related_name='daily_carbon_footprints'
+        'trips.Device', on_delete=models.CASCADE, related_name='daily_carbon_footprints'
     )
     date = models.DateField()
     carbon_footprint = models.FloatField()
-
-    @classmethod
-    def update_for_date(cls, device, date: date):
-        all_trips = device.trips.annotate(start_time=Min('legs__start_time'))
-        start_time = LOCAL_TZ.localize(datetime.combine(date, time(0)))
-        trips_for_date = all_trips.filter(start_time__gte=start_time)\
-            .filter(start_time__lt=start_time + timedelta(hours=24))
-        for trip in trips_for_date:
-            print(trip)
-
-    @classmethod
-    def update_for_period(cls, device, start_time: datetime, end_time: datetime):
-        pass
+    average_footprint_used = models.BooleanField(default=False)
 
     class Meta:
-        ordering = (('device', 'date'),)
+        ordering = ('device', 'date',)
         unique_together = (('device', 'date'),)
+
+    def __str__(self):
+        return '%s: %s (%.1f kg)' % (str(self.device), self.date.isoformat(), self.carbon_footprint)

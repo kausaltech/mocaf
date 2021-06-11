@@ -37,12 +37,6 @@ class CarbonFootprintSummary(graphene.ObjectType):
     current_level = graphene.Field('budget.schema.EmissionBudgetLevelNode')
     average_footprint_used = graphene.Boolean()
 
-    def resolve_ranking(root, info):
-        return 123
-
-    def resolve_maximum_rank(root, info):
-        return 1234
-
     def resolve_average_footprint_used(root, info):
         return False
 

@@ -161,6 +161,7 @@ class TripGenerator:
 
         trip = Trip(device=device)
         trip.save()
+        trip.update_device_carbon_footprint()
         pc.display('trip %d saved' % trip.id)
 
         leg_ids = df.leg_id.unique()

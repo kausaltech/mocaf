@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from django.db.models.query_utils import Q
+from budget.models import DeviceDailyCarbonFootprint
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
@@ -6,6 +9,7 @@ import calendar
 import uuid
 from django.db.models.aggregates import Sum
 from django.db.models.functions import Trunc
+from ranking import Ranking
 
 import pytz
 from django.utils import timezone
@@ -80,10 +84,40 @@ class Device(models.Model):
         except EnableEvent.DoesNotExist:
             return False
 
-    def update_carbon_footprint(self, start_time: datetime, end_time: datetime):
-        # from budget.models import DeviceDailyCarbonFootprint
-        # DeviceDailyCarbonFootprint.update_for_period(self.device, start_time, end_time)
-        pass
+    def update_daily_carbon_footprint(self, start_time: datetime, end_time: datetime):
+        start_date = LOCAL_TZ.localize(datetime.combine(start_time, time(0)))
+        end_date = LOCAL_TZ.localize(datetime.combine(end_time, time(0)))
+        summary = self.get_carbon_footprint_summary(
+            start_date, end_date, time_resolution=TimeResolution.DAY,
+            units=EmissionUnit.G
+        )
+        with transaction.atomic():
+            self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date).delete()
+            objs = []
+            for fp in summary:
+                obj = DeviceDailyCarbonFootprint(
+                    device=self, date=fp['date'], carbon_footprint=fp['carbon_footprint'],
+                    average_footprint_used=False
+                )
+                objs.append(obj)
+            DeviceDailyCarbonFootprint.objects.bulk_create(objs)
+
+    def get_ranking(self, month: date):
+        start_date = month.replace(day=1)
+        last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+        end_date = start_date.replace(day=last_day)
+        date_filter = Q(daily_carbon_footprints__date__gte=start_date, daily_carbon_footprints__date__lte=end_date)
+        active_devs = Device.objects.filter(enabled_at__isnull=False)
+        devs = active_devs.annotate(
+            carbon_sum=Sum('daily_carbon_footprints__carbon_footprint', filter=date_filter)
+        ).filter(carbon_sum__isnull=False).order_by('carbon_sum')
+        total = len(devs)
+        for rank, dev in Ranking(devs, key=lambda x: x.carbon_sum, reverse=True):
+            if dev == self:
+                break
+        else:
+            rank = 0
+        return dict(ranking=rank, maximum_rank=total)
 
     def _get_transport_modes(self):
         modes = getattr(self, '_mode_cache', None)
@@ -142,8 +176,13 @@ class Device(models.Model):
             ) for x in data]
             total_length = sum([x['length'] for x in per_mode])
             total_footprint = sum([x['carbon_footprint'] for x in per_mode])
+            if time_resolution == TimeResolution.MONTH:
+                rank_data = self.get_ranking(dt.date())
+            else:
+                rank_data = dict(ranking=0, maximum_rank=0)
             out.append(dict(
                 date=dt.date(), per_mode=per_mode, length=total_length, carbon_footprint=total_footprint,
+                **rank_data
             ))
 
         return out
@@ -294,11 +333,12 @@ class Trip(models.Model):
         self._update_end_time = end_time
         return end_time
 
-    def update_carbon_footprint(self):
-        all_legs = list(self.legs.order_by('start_time'))
-        self.device.update_carbon_footprint(
-            start_time=all_legs[0].start_time,
-            end_time=all_legs[-1].end_time
+    def update_device_carbon_footprint(self):
+        if self.first_leg is None or self.last_leg is None:
+            return
+        self.device.update_daily_carbon_footprint(
+            start_time=self.first_leg.start_time,
+            end_time=self.last_leg.end_time
         )
 
     def handle_leg_deletion(self, leg: Leg):

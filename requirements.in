@@ -29,3 +29,4 @@ factory-boy
 pytest-django
 pytest-factoryboy
 responses
+ranking

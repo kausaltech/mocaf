@@ -266,7 +266,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.trip.handle_leg_deletion(obj)
 
             if update_fields:
-                obj.trip.update_carbon_footprint()
+                obj.trip.update_device_carbon_footprint()
 
         return dict(ok=True, leg=obj)
 
