@@ -9,3 +9,7 @@ class DeviceFeedback(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True)
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def device_brand(self):
+        return self.device.brand
