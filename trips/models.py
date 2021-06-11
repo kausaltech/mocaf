@@ -1,4 +1,5 @@
 from __future__ import annotations
+from budget.models import DeviceDailyCarbonFootprint
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
@@ -44,6 +45,8 @@ class Device(models.Model):
     debugging_enabled_at = models.DateTimeField(null=True)
     custom_config = models.JSONField(null=True)
 
+    enabled_at = models.DateTimeField(null=True)
+    disabled_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(null=True)
 
     objects = DeviceQuerySet.as_manager()
@@ -63,6 +66,13 @@ class Device(models.Model):
                 pass
 
             dev.enable_events.create(time=timezone.now(), enabled=enabled)
+            if enabled:
+                dev.enabled_at = timezone.now()
+                dev.disabled_at = None
+            else:
+                dev.enabled_at = None
+                dev.disabled_at = timezone.now()
+            dev.save(update_fields=['enabled_at', 'disabled_at'])
 
     @property
     def enabled(self):
