@@ -11,6 +11,6 @@ class DeviceFeedbackPermissionHelper(PermissionHelper):
 @modeladmin_register
 class DeviceFeedbackAdmin(ModelAdmin):
     model = DeviceFeedback
-    # menu_icon = 'help'
+    menu_icon = 'mail'
     permission_helper_class = DeviceFeedbackPermissionHelper
     list_display = ['created_at', 'device_brand', 'comment']

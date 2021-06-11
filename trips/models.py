@@ -1,5 +1,4 @@
 from __future__ import annotations
-from budget.models import DeviceDailyCarbonFootprint
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
@@ -13,7 +12,6 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.gis.db import models
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
 

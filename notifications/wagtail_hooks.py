@@ -5,4 +5,4 @@ from .models import NotificationTemplate
 @modeladmin_register
 class NotificationTemplateAdmin(ModelAdmin):
     model = NotificationTemplate
-    menu_icon = 'mail'
+    menu_icon = 'edit'
