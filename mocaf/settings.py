@@ -355,6 +355,7 @@ if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
 
+    sentry_sdk.utils.MAX_STRING_LENGTH = 2048
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         send_default_pii=True,
