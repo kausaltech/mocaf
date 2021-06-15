@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from django.db.models.query_utils import Q
-from budget.models import DeviceDailyCarbonFootprint
+from budget.models import DeviceDailyCarbonFootprint, EmissionBudgetLevel
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
 import calendar
+import pandas as pd
 import uuid
 from django.db.models.aggregates import Sum
 from django.db.models.functions import Trunc
@@ -91,14 +92,29 @@ class Device(models.Model):
             start_date, end_date, time_resolution=TimeResolution.DAY,
             units=EmissionUnit.G
         )
+        date_summary = {fp['date']: fp for fp in summary}
+        bronze_budget_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
         with transaction.atomic():
             self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date).delete()
             objs = []
-            for fp in summary:
-                obj = DeviceDailyCarbonFootprint(
-                    device=self, date=fp['date'], carbon_footprint=fp['carbon_footprint'],
-                    average_footprint_used=False
-                )
+            for cur_datetime in pd.date_range(start=start_date.date(), end=end_date.date()).to_pydatetime():
+                cur_date = cur_datetime.date()
+                cur_summary = date_summary.get(cur_date)
+                if cur_summary is None:
+                    # Assume bronze budget level for all days without data
+                    obj = DeviceDailyCarbonFootprint(
+                        device=self,
+                        date=cur_date,
+                        carbon_footprint=bronze_budget_level.carbon_footprint,
+                        average_footprint_used=True,
+                    )
+                else:
+                    obj = DeviceDailyCarbonFootprint(
+                        device=self,
+                        date=cur_date,
+                        carbon_footprint=cur_summary['carbon_footprint'],
+                        average_footprint_used=False,
+                    )
                 objs.append(obj)
             DeviceDailyCarbonFootprint.objects.bulk_create(objs)
 
