@@ -6,7 +6,10 @@ from dateutil.relativedelta import relativedelta
 from django.utils.timezone import make_aware, utc
 
 from trips.tests.factories import DeviceFactory, LegFactory
-from notifications.tasks import MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask
+from notifications.tasks import (
+    MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask,
+    send_monthly_summary_notifications
+)
 from notifications.models import EventTypeChoices, NotificationLogEntry
 from notifications.tests.factories import NotificationLogEntryFactory, NotificationTemplateFactory
 
@@ -170,6 +173,34 @@ def test_send_monthly_summary_notifications_sends_notification(api_settings):
     }
     request_body = json.loads(responses.calls[0].request.body)
     assert request_body == expected_body
+
+
+@responses.activate
+def test_send_monthly_summary_notifications_updates_carbon_footprints(api_settings, emission_budget_level_bronze):
+    # send_monthly_summary_notifications() should call update_daily_carbon_footprint() to be sure that values are
+    # substituted for all days on which there is no data.
+    device = DeviceFactory()
+    NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+
+    now = device.created_at + relativedelta(months=1)
+    assert not device.daily_carbon_footprints.exists()
+    send_monthly_summary_notifications(now)
+    # Gaps (i.e., every day since there are no legs) should have been filled
+    assert device.daily_carbon_footprints.exists()
+
+
+@responses.activate
+def test_send_monthly_summary_notifications_updates_only_summary_month(api_settings, emission_budget_level_bronze):
+    device = DeviceFactory()
+    NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+
+    now = device.created_at + relativedelta(months=2)
+    assert not device.daily_carbon_footprints.exists()
+    send_monthly_summary_notifications(now)
+    # Only one month of filler data should have been generated
+    assert device.daily_carbon_footprints.count() <= 31
 
 
 def test_no_recent_trips_notification_recipients_exist():

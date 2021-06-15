@@ -2,6 +2,7 @@ import datetime
 import logging
 import random
 from celery import shared_task
+from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
 
@@ -78,6 +79,22 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .values('device'))
         return Device.objects.exclude(id__in=excluded_devices)
 
+    # TODO: Write tests for the following methods
+    def summary_month_start_date(self, now):
+        one_month_ago = now - relativedelta(months=1)
+        return one_month_ago.date().replace(day=1)
+
+    def summary_month_start_datetime(self, now):
+        start_date = self.summary_month_start_date(now)
+        return datetime.datetime.combine(start_date, datetime.time.min)
+
+    def summary_month_end_date(self, now):
+        return now.date().replace(day=1) - datetime.timedelta(days=1)
+
+    def summary_month_end_datetime(self, now):
+        end_date = self.summary_month_end_date(now)
+        return datetime.datetime.combine(end_date, datetime.time.max)
+
 
 class NoRecentTripsNotificationTask(NotificationTask):
     def __init__(self):
@@ -113,6 +130,13 @@ def send_monthly_summary_notifications(now=None):
     if now is None:
         now = timezone.now()
     task = MonthlySummaryNotificationTask()
+
+    # Update carbon footprints of all devices to make sure there are no gaps on days without data
+    start_time = task.summary_month_start_datetime(now)
+    end_time = task.summary_month_end_datetime(now)
+    for device in Device.objects.all():
+        device.update_daily_carbon_footprint(start_time, end_time)
+
     task.send_notifications(now)
 
 

@@ -2,20 +2,12 @@ import pytest
 from datetime import datetime
 from django.utils.timezone import make_aware, utc
 
-from budget.models import EmissionBudgetLevel
 from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
 
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def bronze_level():
-    return EmissionBudgetLevel.objects.create(identifier='bronze',
-                                              carbon_footprint=123,
-                                              year=2020)
-
-
-def test_update_daily_carbon_footprint_padding_on_idle_days(bronze_level):
+def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_level_bronze):
     device = DeviceFactory()
     trip1 = TripFactory(device=device)
     start_time = make_aware(datetime(2020, 1, 1, 0, 0), utc)
@@ -38,5 +30,5 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(bronze_level):
     assert not device.daily_carbon_footprints.exists()
     device.update_daily_carbon_footprint(start_time, end_time)
     assert device.daily_carbon_footprints.count() == 3
-    expected = [3.0, bronze_level.carbon_footprint, 5.0]
+    expected = [3.0, emission_budget_level_bronze.carbon_footprint, 5.0]
     assert list(device.daily_carbon_footprints.values_list('carbon_footprint', flat=True)) == expected

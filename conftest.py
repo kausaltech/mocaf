@@ -3,6 +3,7 @@ import pytest
 from graphene_django.utils.testing import graphql_query
 from pytest_factoryboy import register
 
+from budget.models import EmissionBudgetLevel
 from trips.tests import factories as trips_factories
 
 register(trips_factories.DeviceFactory)
@@ -105,3 +106,12 @@ def enable_mocaf(graphql_client_query_data):
 @pytest.fixture
 def token(enable_mocaf, uuid):
     return enable_mocaf(uuid)
+
+
+@pytest.fixture
+def emission_budget_level_bronze():
+    return EmissionBudgetLevel.objects.create(identifier='bronze',
+                                              carbon_footprint=123,
+                                              year=2020)
+
+
