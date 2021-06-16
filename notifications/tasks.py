@@ -5,6 +5,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
+from importlib import import_module
 
 from trips.models import Device
 from .engine import NotificationEngine
@@ -14,9 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationTask:
-    def __init__(self, event_type):
-        self.engine = NotificationEngine()
+    def __init__(self, event_type, engine=None):
+        if engine is None:
+            engine = NotificationEngine()
+
         self.event_type = event_type
+        self.engine = engine
 
     def recipients(self, now):
         """Return the recipient devices for the notifications to be sent at `now`."""
@@ -29,14 +33,20 @@ class NotificationTask:
         except IndexError:
             raise Exception(f"There is no notification template of type {self.event_type}.")
 
-    def send_notifications(self, now=None):
+    def send_notifications(self, now=None, devices=None):
+        """
+        Send notifications to the given devices using a randomly chosen template of the proper event type.
+
+        If `devices` is None, the recipients will the result of calling `recipients()`.
+        """
         if now is None:
             now = timezone.now()
-        logger.info(f"Sending {self.event_type} notifications")
-        template = self.random_template()
+        if devices is None:
+            devices = self.recipients(now)
 
-        devices = self.recipients(now)
+        logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(devices)} devices")
+        template = self.random_template()
         with transaction.atomic():
             for device in devices:
                 NotificationLogEntry.objects.create(device=device, template=template, sent_at=now)
@@ -48,8 +58,8 @@ class NotificationTask:
 
 
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self):
-        super().__init__(EventTypeChoices.WELCOME_MESSAGE)
+    def __init__(self, engine=None):
+        super().__init__(EventTypeChoices.WELCOME_MESSAGE, engine)
 
     def recipients(self, now):
         """Return devices that signed up on the day preceding `now`."""
@@ -65,8 +75,8 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self):
-        super().__init__(EventTypeChoices.MONTHLY_SUMMARY)
+    def __init__(self, engine=None):
+        super().__init__(EventTypeChoices.MONTHLY_SUMMARY, engine)
 
     def recipients(self, now):
         """Return devices that should receive a summary for the calendar month preceding the one of `now`."""
@@ -78,6 +88,14 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .filter(sent_at__date__gte=this_month)
                             .values('device'))
         return Device.objects.exclude(id__in=excluded_devices)
+
+    def send_notifications(self, now=None, devices=None):
+        # Update carbon footprints of all devices to make sure there are no gaps on days without data
+        start_time = self.summary_month_start_datetime(now)
+        end_time = self.summary_month_end_datetime(now)
+        for device in Device.objects.all():
+            device.update_daily_carbon_footprint(start_time, end_time)
+        super().send_notifications(now=now, devices=devices)
 
     # TODO: Write tests for the following methods
     def summary_month_start_date(self, now):
@@ -97,8 +115,8 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
 
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self):
-        super().__init__(EventTypeChoices.NO_RECENT_TRIPS)
+    def __init__(self, engine=None):
+        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, engine)
 
     def recipients(self, now):
         """Return devices that have not had any trips in 14 days until `now`."""
@@ -118,31 +136,14 @@ class NoRecentTripsNotificationTask(NotificationTask):
 
 
 @shared_task
-def send_welcome_notifications(now=None):
+def send_notifications(task_class, now=None, devices=None, engine=None):
+    if isinstance(task_class, str):
+        task_class = import_module(task_class)
+        parts = task_class.split('.')
+        class_name = parts.pop(-1)
+        module = import_module('.'.join(parts))
+        task_class = getattr(module, class_name)
     if now is None:
         now = timezone.now()
-    task = WelcomeNotificationTask()
-    task.send_notifications(now)
-
-
-@shared_task
-def send_monthly_summary_notifications(now=None):
-    if now is None:
-        now = timezone.now()
-    task = MonthlySummaryNotificationTask()
-
-    # Update carbon footprints of all devices to make sure there are no gaps on days without data
-    start_time = task.summary_month_start_datetime(now)
-    end_time = task.summary_month_end_datetime(now)
-    for device in Device.objects.all():
-        device.update_daily_carbon_footprint(start_time, end_time)
-
-    task.send_notifications(now)
-
-
-@shared_task
-def send_no_recent_trips_notifications(now=None):
-    if now is None:
-        now = timezone.now()
-    task = NoRecentTripsNotificationTask()
-    task.send_notifications(now)
+    task = task_class(engine=engine)
+    task.send_notifications(now, devices)

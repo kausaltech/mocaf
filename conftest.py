@@ -113,5 +113,3 @@ def emission_budget_level_bronze():
     return EmissionBudgetLevel.objects.create(identifier='bronze',
                                               carbon_footprint=123,
                                               year=2020)
-
-

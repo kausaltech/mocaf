@@ -7,8 +7,7 @@ from django.utils.timezone import make_aware, utc
 
 from trips.tests.factories import DeviceFactory, LegFactory
 from notifications.tasks import (
-    MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask,
-    send_monthly_summary_notifications
+    MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask, send_notifications
 )
 from notifications.models import EventTypeChoices, NotificationLogEntry
 from notifications.tests.factories import NotificationLogEntryFactory, NotificationTemplateFactory
@@ -60,9 +59,8 @@ def test_send_welcome_notifications_records_sending(api_settings):
     template = NotificationTemplateFactory()
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
-    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    task.send_notifications(now)
+    send_notifications(task_class=WelcomeNotificationTask, now=now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -76,9 +74,8 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     template = NotificationTemplateFactory(event_type=EventTypeChoices.WELCOME_MESSAGE)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
-    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    task.send_notifications(now)
+    send_notifications(task_class=WelcomeNotificationTask, now=now)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -138,14 +135,13 @@ def test_monthly_summary_notification_recipients_already_sent(last_notification_
 
 
 @responses.activate
-def test_send_monthly_summary_notifications_sets_timestamp(api_settings):
+def test_send_monthly_summary_notifications_sets_timestamp(api_settings, emission_budget_level_bronze):
     device = DeviceFactory()
     template = NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    task = MonthlySummaryNotificationTask()
-    task.send_notifications(now)
+    send_notifications(task_class=MonthlySummaryNotificationTask, now=now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -154,14 +150,13 @@ def test_send_monthly_summary_notifications_sets_timestamp(api_settings):
 
 
 @responses.activate
-def test_send_monthly_summary_notifications_sends_notification(api_settings):
+def test_send_monthly_summary_notifications_sends_notification(api_settings, emission_budget_level_bronze):
     device = DeviceFactory()
     template = NotificationTemplateFactory(event_type=EventTypeChoices.MONTHLY_SUMMARY)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    task = MonthlySummaryNotificationTask()
-    task.send_notifications(now)
+    send_notifications(task_class=MonthlySummaryNotificationTask, now=now)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -185,7 +180,7 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(api_settin
 
     now = device.created_at + relativedelta(months=1)
     assert not device.daily_carbon_footprints.exists()
-    send_monthly_summary_notifications(now)
+    send_notifications(task_class=MonthlySummaryNotificationTask, now=now)
     # Gaps (i.e., every day since there are no legs) should have been filled
     assert device.daily_carbon_footprints.exists()
 
@@ -198,7 +193,7 @@ def test_send_monthly_summary_notifications_updates_only_summary_month(api_setti
 
     now = device.created_at + relativedelta(months=2)
     assert not device.daily_carbon_footprints.exists()
-    send_monthly_summary_notifications(now)
+    send_notifications(task_class=MonthlySummaryNotificationTask, now=now)
     # Only one month of filler data should have been generated
     assert device.daily_carbon_footprints.count() <= 31
 

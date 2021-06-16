@@ -104,21 +104,24 @@ CELERY_BEAT_SCHEDULE = {
         }
     },
     # 'send-monthly-summary-notifications': {
-    #     'task': 'notifications.tasks.send_monthly_summary_notifications',
+    #     'task': 'notifications.tasks.send_notifications',
+    #     'args': ('notifications.tasks.MonthlySummaryNotificationTask',),
     #     'schedule': crontab(hour=9, minute=0, day_of_month=1),
     #     'options': {
     #         'expires': 2 * 24 * 60 * 60,  # 2 days
     #     }
     # },
     # 'send-welcome-notifications': {
-    #     'task': 'notifications.tasks.send_welcome_notifications',
+    #     'task': 'notifications.tasks.send_notifications',
+    #     'args': ('notifications.tasks.WelcomeNotificationTask',),
     #     'schedule': crontab(hour=9, minute=0),
     #     'options': {
     #         'expires': 2 * 24 * 60 * 60,  # 2 days
     #     }
     # },
     # 'send-no-recent-trips-notifications': {
-    #     'task': 'notifications.tasks.send_no_recent_trips_notifications',
+    #     'task': 'notifications.tasks.send_notifications',
+    #     'args': ('notifications.tasks.NoRecentTripsNotificationTask',),
     #     'schedule': crontab(hour=10, minute=0),
     #     'options': {
     #         'expires': 2 * 24 * 60 * 60,  # 2 days
