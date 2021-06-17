@@ -135,6 +135,13 @@ class Device(models.Model):
             rank = 0
         return dict(ranking=rank, maximum_rank=total)
 
+    def monthly_carbon_footprint(self, month: date):
+        start_date = month.replace(day=1)
+        last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+        end_date = start_date.replace(day=last_day)
+        relevant_daily_footprints = self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date)
+        return relevant_daily_footprints.aggregate(Sum('carbon_footprint'))['carbon_footprint__sum']
+
     def _get_transport_modes(self):
         modes = getattr(self, '_mode_cache', None)
         if not modes:

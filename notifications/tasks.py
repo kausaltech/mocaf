@@ -26,6 +26,10 @@ class NotificationTask:
         """Return the recipient devices for the notifications to be sent at `now`."""
         raise NotImplementedError()
 
+    def context(self, now, device):
+        """Return the context for rendering notification templates for the given device."""
+        return {}
+
     def random_template(self):
         templates = NotificationTemplate.objects.filter(event_type=self.event_type)
         try:
@@ -50,11 +54,14 @@ class NotificationTask:
         with transaction.atomic():
             for device in devices:
                 NotificationLogEntry.objects.create(device=device, template=template, sent_at=now)
-            title = template.render_all_languages('title')
-            content = template.render_all_languages('body')
-            response = self.engine.send_notification(devices, title, content)
-            if not response['ok'] or response['message'] != 'success':
-                raise Exception("Sending notifications failed")
+                context = self.context(now, device)
+                title = template.render_all_languages('title', **context)
+                content = template.render_all_languages('body', **context)
+                # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
+                # devices as first argument of engine.send_notification()
+                response = self.engine.send_notification([device], title, content)
+                if not response['ok'] or response['message'] != 'success':
+                    raise Exception("Sending notifications failed")
 
 
 class WelcomeNotificationTask(NotificationTask):
@@ -96,6 +103,10 @@ class MonthlySummaryNotificationTask(NotificationTask):
         for device in Device.objects.all():
             device.update_daily_carbon_footprint(start_time, end_time)
         super().send_notifications(now=now, devices=devices)
+
+    def context(self, now, device):
+        month = self.summary_month_start_date(now)
+        return {'carbon_footprint': device.monthly_carbon_footprint(month)}
 
     # TODO: Write tests for the following methods
     def summary_month_start_date(self, now):

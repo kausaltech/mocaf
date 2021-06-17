@@ -55,7 +55,8 @@ class NotificationTemplate(models.Model):
         """Return dict mapping each of the languages the notification API expects to a rendering of the given fields in
         the respective language.
 
-        kwargs are passed as context when rendering the template."""
+        kwargs are passed as context when rendering the template.
+        """
         return {language: self.render(field_name, language, **kwargs) for language in ('fi', 'en')}
 
 
