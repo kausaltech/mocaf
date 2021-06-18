@@ -27,7 +27,7 @@ class NotificationTask:
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
-        raise NotImplementedError()
+        return Device.objects.filter(enabled_at__isnull=False)
 
     def context(self, device):
         """Return the context for rendering notification templates for the given device."""
@@ -77,7 +77,7 @@ class WelcomeNotificationTask(NotificationTask):
                             .values('device'))
         today = self.now.date()
         yesterday = today - datetime.timedelta(days=1)
-        return (Device.objects
+        return (super().recipients()
                 .filter(created_at__date__gte=yesterday)
                 .exclude(id__in=excluded_devices))
 
@@ -100,13 +100,13 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .filter(template__event_type=self.event_type)
                             .filter(sent_at__date__gte=this_month)
                             .values('device'))
-        return Device.objects.exclude(id__in=excluded_devices)
+        return super().recipients().exclude(id__in=excluded_devices)
 
     def send_notifications(self, devices=None):
         # Update carbon footprints of all devices to make sure there are no gaps on days without data
         start_time = self.summary_month_start_datetime
         end_time = self.summary_month_end_datetime
-        for device in Device.objects.all():
+        for device in self.recipients():
             device.update_daily_carbon_footprint(start_time, end_time)
         super().send_notifications(devices=devices)
 
@@ -131,7 +131,7 @@ class NoRecentTripsNotificationTask(NotificationTask):
         devices_with_recent_trips = (Device.objects
                                      .filter(trips__legs__end_time__gte=inactivity_threshold)
                                      .values('id'))
-        return (Device.objects
+        return (super().recipients()
                 .exclude(id__in=devices_with_recent_trips)
                 .exclude(id__in=already_notified_devices))
 

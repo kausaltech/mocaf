@@ -15,6 +15,7 @@ class DeviceFactory(DjangoModelFactory):
     system_version = None
     brand = None
     model = None
+    enabled_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
     created_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
 
 
