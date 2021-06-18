@@ -100,6 +100,9 @@ class Device(models.Model):
             for cur_datetime in pd.date_range(start=start_date.date(), end=end_date.date()).to_pydatetime():
                 cur_date = cur_datetime.date()
                 cur_summary = date_summary.get(cur_date)
+                # TODO: Implement device.has_any_data_on_date() that checks
+                # trips_ingest.DeviceHeartbeat and trips_ingest.Location.
+                # If we have data, set carbon_footprint to 0.
                 if cur_summary is None:
                     # Assume bronze budget level for all days without data
                     obj = DeviceDailyCarbonFootprint(
