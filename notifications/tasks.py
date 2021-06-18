@@ -114,9 +114,11 @@ class MonthlySummaryNotificationTask(NotificationTask):
         return super().recipients().exclude(id__in=excluded_devices)
 
     def context(self, device):
+        def rounded_float(f):
+            return '%s' % int(float('%.3g' % f))
         return {
-            'carbon_footprint': self.footprints[device],
-            'average_carbon_footprint': self.average_footprint,
+            'carbon_footprint': rounded_float(self.footprints[device]),
+            'average_carbon_footprint': rounded_float(self.average_footprint),
         }
 
 
