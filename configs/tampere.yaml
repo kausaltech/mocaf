@@ -36,11 +36,11 @@ transport_modes:
         emission_factor: 151.2
       - identifier: average_ice
         name: Polttomoottoriauto (keskikokoinen)
-        name_en: Combustion engine (keskikokoinen)
+        name_en: Combustion engine (medium)
         emission_factor: 185.6
       - identifier: large_ice
         name: Polttomoottoriauto (suuri)
-        name_en: Combustion engine (suuri)
+        name_en: Combustion engine (large)
         emission_factor: 203.3
       - identifier: hybrid
         name: Hybridi
