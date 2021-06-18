@@ -29,9 +29,9 @@ def api_settings(settings):
 
 def test_welcome_notification_recipients():
     device = DeviceFactory()
-    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    result = list(task.recipients(now))
+    task = WelcomeNotificationTask(now)
+    result = list(task.recipients())
     assert result == [device]
 
 
@@ -39,17 +39,17 @@ def test_welcome_notification_recipients_already_sent():
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.WELCOME_MESSAGE)
-    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=1)
-    result = list(task.recipients(now))
+    task = WelcomeNotificationTask(now)
+    result = list(task.recipients())
     assert result == []
 
 
 def test_welcome_notification_recipients_too_old():
     device = DeviceFactory()
-    task = WelcomeNotificationTask()
     now = device.created_at + datetime.timedelta(days=2)
-    result = list(task.recipients(now))
+    task = WelcomeNotificationTask(now)
+    result = list(task.recipients())
     assert result == []
 
 
@@ -91,9 +91,9 @@ def test_send_welcome_notifications_sends_notification(api_settings):
 
 def test_monthly_summary_notification_recipients_no_prior_summary():
     device = DeviceFactory()
-    task = MonthlySummaryNotificationTask()
     now = device.created_at + relativedelta(months=1)
-    result = list(task.recipients(now))
+    task = MonthlySummaryNotificationTask(now)
+    result = list(task.recipients())
     assert result == [device]
 
 
@@ -113,8 +113,8 @@ def test_monthly_summary_notification_recipients(now, last_notification_sent_at)
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.MONTHLY_SUMMARY,
                                 sent_at=make_aware(last_notification_sent_at, utc))
-    task = MonthlySummaryNotificationTask()
-    result = list(task.recipients(now))
+    task = MonthlySummaryNotificationTask(now)
+    result = list(task.recipients())
     assert result == [device]
 
 
@@ -129,8 +129,8 @@ def test_monthly_summary_notification_recipients_already_sent(last_notification_
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.MONTHLY_SUMMARY,
                                 sent_at=make_aware(last_notification_sent_at, utc))
-    task = MonthlySummaryNotificationTask()
-    result = list(task.recipients(now))
+    task = MonthlySummaryNotificationTask(now)
+    result = list(task.recipients())
     assert result == []
 
 
@@ -201,17 +201,17 @@ def test_send_monthly_summary_notifications_updates_only_summary_month(api_setti
 def test_no_recent_trips_notification_recipients_exist():
     device = DeviceFactory()
     leg = LegFactory(trip__device=device)
-    task = NoRecentTripsNotificationTask()
     now = leg.end_time + datetime.timedelta(days=14, seconds=1)
-    result = list(task.recipients(now))
+    task = NoRecentTripsNotificationTask(now)
+    result = list(task.recipients())
     assert result == [device]
 
 
 def test_no_recent_trips_notification_recipients_empty():
     leg = LegFactory()
-    task = NoRecentTripsNotificationTask()
     now = leg.end_time + datetime.timedelta(days=13, seconds=59)
-    result = list(task.recipients(now))
+    task = NoRecentTripsNotificationTask(now)
+    result = list(task.recipients())
     assert result == []
 
 
@@ -222,7 +222,7 @@ def test_no_recent_trips_notification_recipients_already_sent():
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.NO_RECENT_TRIPS,
                                 sent_at=sent_at)
-    task = NoRecentTripsNotificationTask()
     now = sent_at + datetime.timedelta(seconds=1)
-    result = list(task.recipients(now))
+    task = NoRecentTripsNotificationTask(now)
+    result = list(task.recipients())
     assert result == []

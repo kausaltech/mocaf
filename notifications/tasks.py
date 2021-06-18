@@ -15,18 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationTask:
-    def __init__(self, event_type, engine=None):
+    def __init__(self, event_type, now=None, engine=None):
+        if now is None:
+            now = timezone.now()
         if engine is None:
             engine = NotificationEngine()
 
         self.event_type = event_type
+        self.now = now
         self.engine = engine
 
-    def recipients(self, now):
-        """Return the recipient devices for the notifications to be sent at `now`."""
+    def recipients(self):
+        """Return the recipient devices for the notifications to be sent at `self.now`."""
         raise NotImplementedError()
 
-    def context(self, now, device):
+    def context(self, device):
         """Return the context for rendering notification templates for the given device."""
         return {}
 
@@ -37,24 +40,22 @@ class NotificationTask:
         except IndexError:
             raise Exception(f"There is no notification template of type {self.event_type}.")
 
-    def send_notifications(self, now=None, devices=None):
+    def send_notifications(self, devices=None):
         """
         Send notifications to the given devices using a randomly chosen template of the proper event type.
 
         If `devices` is None, the recipients will the result of calling `recipients()`.
         """
-        if now is None:
-            now = timezone.now()
         if devices is None:
-            devices = self.recipients(now)
+            devices = self.recipients()
 
         logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(devices)} devices")
         template = self.random_template()
         with transaction.atomic():
             for device in devices:
-                NotificationLogEntry.objects.create(device=device, template=template, sent_at=now)
-                context = self.context(now, device)
+                NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
+                context = self.context(device)
                 title = template.render_all_languages('title', **context)
                 content = template.render_all_languages('body', **context)
                 # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
@@ -65,16 +66,16 @@ class NotificationTask:
 
 
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self, engine=None):
-        super().__init__(EventTypeChoices.WELCOME_MESSAGE, engine)
+    def __init__(self, now=None, engine=None):
+        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine)
 
-    def recipients(self, now):
-        """Return devices that signed up on the day preceding `now`."""
+    def recipients(self):
+        """Return devices that signed up on the day preceding `self.now`."""
         # Don't send anything to devices that already got a welcome notification
         excluded_devices = (NotificationLogEntry.objects
                             .filter(template__event_type=self.event_type)
                             .values('device'))
-        today = now.date()
+        today = self.now.date()
         yesterday = today - datetime.timedelta(days=1)
         return (Device.objects
                 .filter(created_at__date__gte=yesterday)
@@ -82,12 +83,17 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, engine=None):
-        super().__init__(EventTypeChoices.MONTHLY_SUMMARY, engine)
+    def __init__(self, now=None, engine=None):
+        super().__init__(EventTypeChoices.MONTHLY_SUMMARY, now, engine)
+        one_month_ago = now - relativedelta(months=1)
+        self.summary_month_start_date = one_month_ago.date().replace(day=1)
+        self.summary_month_start_datetime = datetime.datetime.combine(self.summary_month_start_date, datetime.time.min)
+        self.summary_month_end_date = now.date().replace(day=1) - datetime.timedelta(days=1)
+        self.summary_month_end_datetime = datetime.datetime.combine(self.summary_month_end_date, datetime.time.max)
 
-    def recipients(self, now):
-        """Return devices that should receive a summary for the calendar month preceding the one of `now`."""
-        today = now.date()
+    def recipients(self):
+        """Return devices that should receive a summary for the calendar month preceding the one of `self.now`."""
+        today = self.now.date()
         this_month = today.replace(day=1)
         # Don't send anything to devices that already got a summary notification this month
         excluded_devices = (NotificationLogEntry.objects
@@ -96,48 +102,32 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .values('device'))
         return Device.objects.exclude(id__in=excluded_devices)
 
-    def send_notifications(self, now=None, devices=None):
+    def send_notifications(self, devices=None):
         # Update carbon footprints of all devices to make sure there are no gaps on days without data
-        start_time = self.summary_month_start_datetime(now)
-        end_time = self.summary_month_end_datetime(now)
+        start_time = self.summary_month_start_datetime
+        end_time = self.summary_month_end_datetime
         for device in Device.objects.all():
             device.update_daily_carbon_footprint(start_time, end_time)
-        super().send_notifications(now=now, devices=devices)
+        super().send_notifications(devices=devices)
 
-    def context(self, now, device):
-        month = self.summary_month_start_date(now)
+    def context(self, device):
+        month = self.summary_month_start_date
         return {'carbon_footprint': device.monthly_carbon_footprint(month)}
-
-    # TODO: Write tests for the following methods
-    def summary_month_start_date(self, now):
-        one_month_ago = now - relativedelta(months=1)
-        return one_month_ago.date().replace(day=1)
-
-    def summary_month_start_datetime(self, now):
-        start_date = self.summary_month_start_date(now)
-        return datetime.datetime.combine(start_date, datetime.time.min)
-
-    def summary_month_end_date(self, now):
-        return now.date().replace(day=1) - datetime.timedelta(days=1)
-
-    def summary_month_end_datetime(self, now):
-        end_date = self.summary_month_end_date(now)
-        return datetime.datetime.combine(end_date, datetime.time.max)
 
 
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self, engine=None):
-        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, engine)
+    def __init__(self, now=None, engine=None):
+        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine)
 
-    def recipients(self, now):
-        """Return devices that have not had any trips in 14 days until `now`."""
+    def recipients(self):
+        """Return devices that have not had any trips in 14 days until `self.now`."""
         # Don't send anything to devices that already got a no-recent-trips notification in the last 30 days
-        avoid_duplicates_after = now - datetime.timedelta(days=30)
+        avoid_duplicates_after = self.now - datetime.timedelta(days=30)
         already_notified_devices = (NotificationLogEntry.objects
                                     .filter(template__event_type=self.event_type)
                                     .filter(sent_at__gte=avoid_duplicates_after)
                                     .values('device'))
-        inactivity_threshold = now - datetime.timedelta(days=14)
+        inactivity_threshold = self.now - datetime.timedelta(days=14)
         devices_with_recent_trips = (Device.objects
                                      .filter(trips__legs__end_time__gte=inactivity_threshold)
                                      .values('id'))
@@ -154,7 +144,5 @@ def send_notifications(task_class, now=None, devices=None, engine=None):
         class_name = parts.pop(-1)
         module = import_module('.'.join(parts))
         task_class = getattr(module, class_name)
-    if now is None:
-        now = timezone.now()
-    task = task_class(engine=engine)
-    task.send_notifications(now, devices)
+    task = task_class(now=now, engine=engine)
+    task.send_notifications(devices)
