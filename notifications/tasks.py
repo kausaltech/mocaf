@@ -1,6 +1,7 @@
 import datetime
 import logging
 import random
+import statistics
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
@@ -85,11 +86,21 @@ class WelcomeNotificationTask(NotificationTask):
 class MonthlySummaryNotificationTask(NotificationTask):
     def __init__(self, now=None, engine=None):
         super().__init__(EventTypeChoices.MONTHLY_SUMMARY, now, engine)
-        one_month_ago = now - relativedelta(months=1)
-        self.summary_month_start_date = one_month_ago.date().replace(day=1)
-        self.summary_month_start_datetime = datetime.datetime.combine(self.summary_month_start_date, datetime.time.min)
-        self.summary_month_end_date = now.date().replace(day=1) - datetime.timedelta(days=1)
-        self.summary_month_end_datetime = datetime.datetime.combine(self.summary_month_end_date, datetime.time.max)
+
+        one_month_ago = self.now - relativedelta(months=1)
+        start_date = one_month_ago.date().replace(day=1)
+        start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
+        end_date = self.now.date().replace(day=1) - datetime.timedelta(days=1)
+        end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+
+        # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
+        devices = super().recipients()
+        for device in devices:
+            device.update_daily_carbon_footprint(start_datetime, end_datetime)
+        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
+        self.average_footprint = None
+        if self.footprints:
+            self.average_footprint = statistics.mean(self.footprints.values())
 
     def recipients(self):
         """Return devices that should receive a summary for the calendar month preceding the one of `self.now`."""
@@ -102,17 +113,11 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .values('device'))
         return super().recipients().exclude(id__in=excluded_devices)
 
-    def send_notifications(self, devices=None):
-        # Update carbon footprints of all devices to make sure there are no gaps on days without data
-        start_time = self.summary_month_start_datetime
-        end_time = self.summary_month_end_datetime
-        for device in self.recipients():
-            device.update_daily_carbon_footprint(start_time, end_time)
-        super().send_notifications(devices=devices)
-
     def context(self, device):
-        month = self.summary_month_start_date
-        return {'carbon_footprint': device.monthly_carbon_footprint(month)}
+        return {
+            'carbon_footprint': self.footprints[device],
+            'average_carbon_footprint': self.average_footprint,
+        }
 
 
 class NoRecentTripsNotificationTask(NotificationTask):

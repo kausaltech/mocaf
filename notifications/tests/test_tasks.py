@@ -5,6 +5,7 @@ import responses
 from dateutil.relativedelta import relativedelta
 from django.utils.timezone import make_aware, utc
 
+from budget.models import EmissionBudgetLevel
 from trips.tests.factories import DeviceFactory, LegFactory
 from notifications.tasks import (
     MonthlySummaryNotificationTask, NoRecentTripsNotificationTask, WelcomeNotificationTask, send_notifications
@@ -89,7 +90,21 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     assert request_body == expected_body
 
 
-def test_monthly_summary_notification_recipients_no_prior_summary():
+def test_monthly_summary_notification_average_footprint():
+    # FIXME: This partly duplicates the fixture emission_budget_level_bronze. Think about something better.
+    EmissionBudgetLevel.objects.create(identifier='bronze',
+                                       carbon_footprint=0,
+                                       year=2020)
+    device1 = DeviceFactory()
+    device2 = DeviceFactory()
+    LegFactory(trip__device=device1, carbon_footprint=1)
+    LegFactory(trip__device=device2, carbon_footprint=3)
+    now = device1.created_at + relativedelta(months=1)
+    task = MonthlySummaryNotificationTask(now)
+    assert task.average_footprint == 2.0
+
+
+def test_monthly_summary_notification_recipients_no_prior_summary(emission_budget_level_bronze):
     device = DeviceFactory()
     now = device.created_at + relativedelta(months=1)
     task = MonthlySummaryNotificationTask(now)
@@ -108,7 +123,7 @@ def test_monthly_summary_notification_recipients_no_prior_summary():
     datetime.datetime(2020, 2, 29),  # end of last month
     datetime.datetime(2020, 1, 31),  # older than last month
 ])
-def test_monthly_summary_notification_recipients(now, last_notification_sent_at):
+def test_monthly_summary_notification_recipients(now, last_notification_sent_at, emission_budget_level_bronze):
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
                                 template__event_type=EventTypeChoices.MONTHLY_SUMMARY,
@@ -123,7 +138,7 @@ def test_monthly_summary_notification_recipients(now, last_notification_sent_at)
     datetime.datetime(2020, 3, 15),
     datetime.datetime(2020, 3, 31),
 ])
-def test_monthly_summary_notification_recipients_already_sent(last_notification_sent_at):
+def test_monthly_summary_notification_recipients_already_sent(last_notification_sent_at, emission_budget_level_bronze):
     now = datetime.datetime(2020, 3, 31)
     device = DeviceFactory()
     NotificationLogEntryFactory(device=device,
