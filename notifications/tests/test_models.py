@@ -30,8 +30,8 @@ def test_notification_template_render_in_active_language(field):
 @pytest.mark.parametrize('field', ['title', 'body'])
 def test_notification_template_render_all_languages(field):
     languages = ['fi', 'en']
-    factory_kwargs = {f'{field}_{language}': '{{var_%s}}' % language for language in languages}
+    factory_kwargs = {f'{field}_{language}': '{{ var }}' for language in languages}
     template = NotificationTemplateFactory(**factory_kwargs)
-    render_kwargs = {f'var_{language}': language for language in languages}
-    result = template.render_all_languages(field, **render_kwargs)
+    contexts = {language: {'var': language} for language in languages}
+    result = template.render_all_languages(field, contexts)
     assert result == {language: language for language in languages}

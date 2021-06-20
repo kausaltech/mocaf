@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+from django.utils.formats import date_format
+from django.utils.translation import gettext_lazy as _, override
 from jinja2 import StrictUndefined, Template
 from modeltrans.fields import TranslationField
 from modeltrans.utils import build_localized_fieldname
@@ -15,25 +17,35 @@ class EventTypeChoices(models.TextChoices):
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
 
 
+def example_month(language):
+    with override(language):
+        today = timezone.now().date()
+        return date_format(today, 'F')
+
+
 # Make sure the following  variables are set in the relevant context() method of a NotificationTask subclass.
+# List elements: (variable_name, description, example_value)
+# TODO: Create a class for this.
 available_variables = {
     EventTypeChoices.MONTHLY_SUMMARY: [
-        ('carbon_footprint', _("The user's carbon footprint in kg for the last month")),
-        ('average_carbon_footprint', _("Average carbon footprint of active devices for the last month")),
+        ('average_carbon_footprint', _("Average carbon footprint in kg of active devices for the last month"), 123.45),
+        ('carbon_footprint', _("The user's carbon footprint in kg for the last month"), 123.45),
+        ('month', _("Month that is being summarized in the notification"), example_month),
     ],
     EventTypeChoices.WELCOME_MESSAGE: [],
     EventTypeChoices.NO_RECENT_TRIPS: [],
 }
 
-variable_help_text = '<ul>'
+variable_help_text = '<ul style="margin-left: 1em">'
 for event_type, variables in available_variables.items():
     if variables:
         variable_help_text += f'<li style="list-style-type: disc">{event_type.label}:<ul>'
-        for name, description in variables:
+        for name, description, example_value in variables:
             li_style = 'list-style-type: circle; margin-left: 2em'
             variable_help_text += f'<li style="{li_style}"><b>{name}</b>: {description}</li>'
         variable_help_text += '</ul></li>'
 variable_help_text += '</ul>'
+variable_help_text += f'<p style="margin-top: 1ex">{_("You can see a preview of the notification be clicking <i>inspect</i> in the template list.")}</p>'
 
 
 class BodyPanel(FieldPanel):
@@ -73,13 +85,47 @@ class NotificationTemplate(models.Model):
         template = Template(field, undefined=StrictUndefined)
         return template.render(**kwargs)
 
-    def render_all_languages(self, field_name, **kwargs):
+    def render_all_languages(self, field_name, contexts):
         """Return dict mapping each of the languages the notification API expects to a rendering of the given fields in
         the respective language.
 
-        kwargs are passed as context when rendering the template.
+        `contexts` is a dict mapping each available language to a template context
         """
-        return {language: self.render(field_name, language, **kwargs) for language in ('fi', 'en')}
+        return {language: self.render(field_name, language, **contexts[language]) for language in ('fi', 'en')}
+
+    def render_preview(self, field_name, language=None):
+        context = {}
+        for name, d, value in available_variables[self.event_type]:
+            if callable(value):
+                context[name] = value(language=language)
+            else:
+                context[name] = value
+        return self.render(field_name, language, **context)
+
+    def title_preview(self, language=None):
+        return self.render_preview('title', language)
+
+    def body_preview(self, language=None):
+        return self.render_preview('body', language)
+
+    # TODO: Dynamically create the following methods
+    def title_fi_preview(self):
+        return self.title_preview('fi')
+
+    def title_en_preview(self):
+        return self.title_preview('en')
+
+    def title_sv_preview(self):
+        return self.title_preview('sv')
+
+    def body_fi_preview(self):
+        return self.body_preview('fi')
+
+    def body_en_preview(self):
+        return self.body_preview('en')
+
+    def body_sv_preview(self):
+        return self.body_preview('sv')
 
 
 class NotificationLogEntry(models.Model):

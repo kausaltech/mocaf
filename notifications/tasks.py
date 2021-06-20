@@ -4,8 +4,11 @@ import random
 import statistics
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from django.utils.formats import date_format
+from django.utils.translation import override
 from importlib import import_module
 
 from trips.models import Device
@@ -30,9 +33,9 @@ class NotificationTask:
         """Return the recipient devices for the notifications to be sent at `self.now`."""
         return Device.objects.filter(enabled_at__isnull=False)
 
-    def context(self, device):
-        """Return the context for rendering notification templates for the given device."""
-        return {}
+    def contexts(self, device):
+        """Return a dict mapping languages to a context for rendering notification templates for the given device."""
+        return {language: {} for language, _ in settings.LANGUAGES}
 
     def random_template(self):
         templates = NotificationTemplate.objects.filter(event_type=self.event_type)
@@ -56,9 +59,9 @@ class NotificationTask:
         with transaction.atomic():
             for device in devices:
                 NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
-                context = self.context(device)
-                title = template.render_all_languages('title', **context)
-                content = template.render_all_languages('body', **context)
+                contexts = self.contexts(device)
+                title = template.render_all_languages('title', contexts)
+                content = template.render_all_languages('body', contexts)
                 # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
                 # devices as first argument of engine.send_notification()
                 response = self.engine.send_notification([device], title, content)
@@ -92,6 +95,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
         end_date = self.now.date().replace(day=1) - datetime.timedelta(days=1)
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+        self.summary_month_start = start_date
 
         # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
         devices = super().recipients()
@@ -113,13 +117,16 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .values('device'))
         return super().recipients().exclude(id__in=excluded_devices)
 
-    def context(self, device):
+    def contexts(self, device):
         def rounded_float(f):
             return '%s' % int(float('%.3g' % f))
-        return {
-            'carbon_footprint': rounded_float(self.footprints[device]),
-            'average_carbon_footprint': rounded_float(self.average_footprint),
-        }
+        contexts = super().contexts(device)
+        for language, context in contexts.items():
+            context['average_carbon_footprint'] = rounded_float(self.average_footprint)
+            context['carbon_footprint'] = rounded_float(self.footprints[device])
+            with override(language):
+                context['month'] = date_format(self.summary_month_start, 'F')
+        return contexts
 
 
 class NoRecentTripsNotificationTask(NotificationTask):
