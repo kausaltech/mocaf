@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from jinja2 import StrictUndefined, Template
 from modeltrans.fields import TranslationField
 from modeltrans.utils import build_localized_fieldname
-from wagtail.admin.edit_handlers import FieldPanel
+from wagtail.admin.edit_handlers import FieldPanel, HelpPanel
 
 from trips.models import Device
 
@@ -15,10 +15,31 @@ class EventTypeChoices(models.TextChoices):
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
 
 
+# Make sure the following  variables are set in the relevant context() method of a NotificationTask subclass.
+available_variables = {
+    EventTypeChoices.MONTHLY_SUMMARY: [
+        ('carbon_footprint', _("The user's carbon footprint in kg for the last month")),
+        ('average_carbon_footprint', _("Average carbon footprint of active devices for the last month")),
+    ],
+    EventTypeChoices.WELCOME_MESSAGE: [],
+    EventTypeChoices.NO_RECENT_TRIPS: [],
+}
+
+variable_help_text = '<ul>'
+for event_type, variables in available_variables.items():
+    if variables:
+        variable_help_text += f'<li style="list-style-type: disc">{event_type.label}:<ul>'
+        for name, description in variables:
+            li_style = 'list-style-type: circle; margin-left: 2em'
+            variable_help_text += f'<li style="{li_style}"><b>{name}</b>: {description}</li>'
+        variable_help_text += '</ul></li>'
+variable_help_text += '</ul>'
+
+
 class BodyPanel(FieldPanel):
     def on_form_bound(self):
         super().on_form_bound()
-        self.help_text = _("Notification body; variables like x can be substituted using the syntax {{ x }}")
+        self.help_text = _("Notification body; variables can be substituted using the syntax {{ x }}.")
 
 
 class NotificationTemplate(models.Model):
@@ -30,6 +51,7 @@ class NotificationTemplate(models.Model):
 
     panels = [
         FieldPanel('event_type'),
+        HelpPanel(heading=_("Available variables by event type"), content=variable_help_text),
     ] + [
         FieldPanel(f'title_{language}') for language, _ in settings.LANGUAGES
     ] + [
