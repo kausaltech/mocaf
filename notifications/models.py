@@ -12,7 +12,9 @@ from trips.models import Device
 
 
 class EventTypeChoices(models.TextChoices):
-    MONTHLY_SUMMARY = 'monthly_summary', _("Monthly summary")
+    MONTHLY_SUMMARY_GOLD = 'monthly_summary_gold', _("Monthly summary (gold-level budget)")
+    MONTHLY_SUMMARY_SILVER = 'monthly_summary_silver', _("Monthly summary (silver-level budget)")
+    MONTHLY_SUMMARY_BRONZE = 'monthly_summary_bronze', _("Monthly summary (bronze-level budget or worse)")
     WELCOME_MESSAGE = 'welcome_message', _("Welcome message")
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
 
@@ -27,11 +29,17 @@ def example_month(language):
 # List elements: (variable_name, description, example_value)
 # TODO: Create a class for this.
 available_variables = {
-    EventTypeChoices.MONTHLY_SUMMARY: [
-        ('average_carbon_footprint', _("Average carbon footprint in kg of active devices for the last month"), 123.45),
-        ('carbon_footprint', _("The user's carbon footprint in kg for the last month"), 123.45),
-        ('month', _("Month that is being summarized in the notification"), example_month),
-    ],
+    **{
+        choice: [
+            ('average_carbon_footprint', _("Average carbon footprint in kg of active devices for the last month"),
+             123.45),
+            ('carbon_footprint', _("The user's carbon footprint in kg for the last month"), 123.45),
+            ('month', _("Month that is being summarized in the notification"), example_month),
+        ]
+        for choice in (EventTypeChoices.MONTHLY_SUMMARY_GOLD,
+                       EventTypeChoices.MONTHLY_SUMMARY_SILVER,
+                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE)
+    },
     EventTypeChoices.WELCOME_MESSAGE: [],
     EventTypeChoices.NO_RECENT_TRIPS: [],
 }
@@ -45,7 +53,8 @@ for event_type, variables in available_variables.items():
             variable_help_text += f'<li style="{li_style}"><b>{name}</b>: {description}</li>'
         variable_help_text += '</ul></li>'
 variable_help_text += '</ul>'
-variable_help_text += f'<p style="margin-top: 1ex">{_("You can see a preview of the notification be clicking <i>inspect</i> in the template list.")}</p>'
+instructions = _("You can see a preview of the notification be clicking <i>inspect</i> in the template list.")
+variable_help_text += f'<p style="margin-top: 1ex">{instructions}</p>'
 
 
 class BodyPanel(FieldPanel):
@@ -55,7 +64,7 @@ class BodyPanel(FieldPanel):
 
 
 class NotificationTemplate(models.Model):
-    event_type = models.CharField(max_length=20, choices=EventTypeChoices.choices)
+    event_type = models.CharField(max_length=22, choices=EventTypeChoices.choices)
     title = models.CharField(max_length=255)
     body = models.TextField()
 

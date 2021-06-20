@@ -8,7 +8,7 @@ class NotificationTemplateAdmin(ModelAdmin):
     model = NotificationTemplate
     menu_icon = 'edit'
     inspect_view_enabled = True
-    inspect_view_fields = [
+    inspect_view_fields = ['event_type'] + [
         f'title_{lang}_preview' for lang in ('fi', 'en', 'sv')
     ] + [
         f'body_{lang}_preview' for lang in ('fi', 'en', 'sv')

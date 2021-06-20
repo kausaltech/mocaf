@@ -428,8 +428,8 @@ class Leg(models.Model):
     end_time = models.DateTimeField(db_index=True)
     start_loc = models.PointField(null=False, srid=4326)
     end_loc = models.PointField(null=False, srid=4326)
-    length = models.FloatField()
-    carbon_footprint = models.FloatField()
+    length = models.FloatField(help_text=_('Length in m'))
+    carbon_footprint = models.FloatField(help_text=_('Carbon footprint in g CO2e'))
     nr_passengers = models.IntegerField(null=True)
 
     received_at = models.DateTimeField(null=True)

@@ -2,6 +2,7 @@ import pytest
 from datetime import date, datetime
 from django.utils.timezone import make_aware, utc
 
+from budget.enums import TimeResolution
 from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
 
 pytestmark = pytest.mark.django_db
@@ -30,7 +31,7 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_leve
     assert not device.daily_carbon_footprints.exists()
     device.update_daily_carbon_footprint(start_time, end_time)
     assert device.daily_carbon_footprints.count() == 3
-    expected = [3.0, emission_budget_level_bronze.carbon_footprint, 5.0]
+    expected = [3.0, emission_budget_level_bronze.calculate_for_date(date(2020, 1, 2), TimeResolution.DAY), 5.0]
     assert list(device.daily_carbon_footprints.values_list('carbon_footprint', flat=True)) == expected
 
 
@@ -60,7 +61,7 @@ def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
                                          make_aware(datetime(2020, 3, 1, 0, 0), utc))
     # For the days on which there are no trips, the bronze-level footprint is used
     if month.month == 1:
-        expected = 5 + 30 * emission_budget_level_bronze.carbon_footprint
+        expected = 5 + 30 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     elif month.month == 2:
-        expected = 3 + 28 * emission_budget_level_bronze.carbon_footprint
+        expected = 3 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     assert device.monthly_carbon_footprint(month) == expected
