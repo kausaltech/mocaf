@@ -63,7 +63,7 @@ class DeviceDailyCarbonFootprint(models.Model):
         'trips.Device', on_delete=models.CASCADE, related_name='daily_carbon_footprints'
     )
     date = models.DateField()
-    carbon_footprint = models.FloatField()
+    carbon_footprint = models.FloatField(help_text=_('Carbon footprint in kg CO2e'))
     average_footprint_used = models.BooleanField(default=False)
 
     class Meta:

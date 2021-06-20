@@ -90,7 +90,7 @@ class Device(models.Model):
         end_date = LOCAL_TZ.localize(datetime.combine(end_time, time(0)))
         summary = self.get_carbon_footprint_summary(
             start_date, end_date, time_resolution=TimeResolution.DAY,
-            units=EmissionUnit.G
+            units=EmissionUnit.KG
         )
         date_summary = {fp['date']: fp for fp in summary}
         bronze_budget_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
@@ -105,10 +105,13 @@ class Device(models.Model):
                 # If we have data, set carbon_footprint to 0.
                 if cur_summary is None:
                     # Assume bronze budget level for all days without data
+                    carbon_footprint = bronze_budget_level.calculate_for_date(cur_date,
+                                                                              TimeResolution.DAY,
+                                                                              EmissionUnit.KG)
                     obj = DeviceDailyCarbonFootprint(
                         device=self,
                         date=cur_date,
-                        carbon_footprint=bronze_budget_level.carbon_footprint,
+                        carbon_footprint=carbon_footprint,
                         average_footprint_used=True,
                     )
                 else:
