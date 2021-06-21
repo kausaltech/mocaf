@@ -4,6 +4,8 @@ from django.utils.timezone import make_aware, utc
 
 from budget.enums import TimeResolution
 from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
+from trips.generate import make_point
+from trips_ingest.models import DeviceHeartbeat, Location
 
 pytestmark = pytest.mark.django_db
 
@@ -59,9 +61,30 @@ def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
                carbon_footprint=2000)
     device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
                                          make_aware(datetime(2020, 3, 1, 0, 0), utc))
-    # For the days on which there are no trips, the bronze-level footprint is used
+    # For the days on which there are no trips and we don't know if the device moved, the bronze-level footprint is used
     if month.month == 1:
         expected = 5 + 30 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     elif month.month == 2:
         expected = 3 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
+    assert device.monthly_carbon_footprint(month) == pytest.approx(expected)
+
+
+def test_monthly_carbon_footprint_device_stationary(emission_budget_level_bronze):
+    month = date(2020, 1, 1)
+    device = DeviceFactory()
+    # 1 leg in January, total footprint 5 kg
+    LegFactory(trip__device=device,
+               start_time=make_aware(datetime(2020, 1, 1, 0, 0), utc),
+               end_time=make_aware(datetime(2020, 1, 1, 0, 30), utc),
+               carbon_footprint=5000)
+    # For the days on which there are no trips and the device was stationary, assume 0 emissions.
+    # A device is considered stationary on a day if it has a DeviceHeartbeat or Location on that day.
+    DeviceHeartbeat.objects.create(time=make_aware(datetime(2020, 1, 2, 0, 0), utc),
+                                   uuid=device.uuid)
+    Location.objects.create(time=make_aware(datetime(2020, 1, 3, 0, 0), utc),
+                            uuid=device.uuid,
+                            loc=make_point(0, 0))
+    device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
+                                         make_aware(datetime(2020, 2, 1, 0, 0), utc))
+    expected = 5 + 2 * 0 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     assert device.monthly_carbon_footprint(month) == pytest.approx(expected)

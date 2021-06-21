@@ -21,6 +21,7 @@ from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
 
 from budget.enums import EmissionUnit, TimeResolution
+from trips_ingest.models import DeviceHeartbeat, Location
 
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
@@ -100,27 +101,25 @@ class Device(models.Model):
             for cur_datetime in pd.date_range(start=start_date.date(), end=end_date.date()).to_pydatetime():
                 cur_date = cur_datetime.date()
                 cur_summary = date_summary.get(cur_date)
-                # TODO: Implement device.has_any_data_on_date() that checks
-                # trips_ingest.DeviceHeartbeat and trips_ingest.Location.
-                # If we have data, set carbon_footprint to 0.
+                average_footprint_used = False
                 if cur_summary is None:
-                    # Assume bronze budget level for all days without data
-                    carbon_footprint = bronze_budget_level.calculate_for_date(cur_date,
-                                                                              TimeResolution.DAY,
-                                                                              EmissionUnit.KG)
-                    obj = DeviceDailyCarbonFootprint(
-                        device=self,
-                        date=cur_date,
-                        carbon_footprint=carbon_footprint,
-                        average_footprint_used=True,
-                    )
+                    if self.has_any_data_on_date(cur_date):
+                        # Device has data, so has not moved
+                        carbon_footprint = 0
+                    else:
+                        # We don't know if the device has moved, so assume bronze budget level
+                        carbon_footprint = bronze_budget_level.calculate_for_date(cur_date,
+                                                                                  TimeResolution.DAY,
+                                                                                  EmissionUnit.KG)
+                        average_footprint_used = True
                 else:
-                    obj = DeviceDailyCarbonFootprint(
-                        device=self,
-                        date=cur_date,
-                        carbon_footprint=cur_summary['carbon_footprint'],
-                        average_footprint_used=False,
-                    )
+                    carbon_footprint = cur_summary['carbon_footprint']
+                obj = DeviceDailyCarbonFootprint(
+                    device=self,
+                    date=cur_date,
+                    carbon_footprint=carbon_footprint,
+                    average_footprint_used=average_footprint_used,
+                )
                 objs.append(obj)
             DeviceDailyCarbonFootprint.objects.bulk_create(objs)
 
@@ -215,6 +214,10 @@ class Device(models.Model):
             ))
 
         return out
+
+    def has_any_data_on_date(self, date):
+        return (DeviceHeartbeat.objects.filter(time__date=date, uuid=self.uuid).exists()
+                or Location.objects.filter(time__date=date, uuid=self.uuid).exists())
 
     def __str__(self):
         return str(self.uuid)
