@@ -91,6 +91,8 @@ class NotificationTemplate(models.Model):
         if language is None:
             language = 'i18n'
         field = getattr(self, build_localized_fieldname(field_name, language))
+        if field is None:  # can happen if the field has no value for that language
+            field = ''
         template = Template(field, undefined=StrictUndefined)
         return template.render(**kwargs)
 
