@@ -16,16 +16,16 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_leve
     LegFactory(trip=trip1,
                start_time=start_time,
                end_time=make_aware(datetime(2020, 1, 1, 0, 30), utc),
-               carbon_footprint=1)
+               carbon_footprint=1000)
     LegFactory(trip=trip1,
                start_time=make_aware(datetime(2020, 1, 1, 0, 30), utc),
                end_time=make_aware(datetime(2020, 1, 1, 1, 30), utc),
-               carbon_footprint=2)
+               carbon_footprint=2000)
     trip2 = TripFactory(device=device)
     LegFactory(trip=trip2,
                start_time=make_aware(datetime(2020, 1, 3, 19, 0), utc),
                end_time=end_time,
-               carbon_footprint=5)
+               carbon_footprint=5000)
     # There is no leg on 2020-01-02, so there the bronze level budget should be used
 
     assert not device.daily_carbon_footprints.exists()
@@ -43,20 +43,20 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_leve
 ])
 def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
     device = DeviceFactory()
-    # 1 leg in January, total footprint 5
+    # 1 leg in January, total footprint 5 kg
     LegFactory(trip__device=device,
                start_time=make_aware(datetime(2020, 1, 1, 0, 0), utc),
                end_time=make_aware(datetime(2020, 1, 1, 0, 30), utc),
-               carbon_footprint=5)
-    # 2 legs in February, total footprint 3
+               carbon_footprint=5000)
+    # 2 legs in February, total footprint 3 kg
     LegFactory(trip__device=device,
                start_time=make_aware(datetime(2020, 2, 1, 0, 0), utc),
                end_time=make_aware(datetime(2020, 2, 1, 0, 30), utc),
-               carbon_footprint=1)
+               carbon_footprint=1000)
     LegFactory(trip__device=device,
                start_time=make_aware(datetime(2020, 2, 1, 0, 30), utc),
                end_time=make_aware(datetime(2020, 2, 1, 1, 30), utc),
-               carbon_footprint=2)
+               carbon_footprint=2000)
     device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
                                          make_aware(datetime(2020, 3, 1, 0, 0), utc))
     # For the days on which there are no trips, the bronze-level footprint is used
@@ -64,4 +64,4 @@ def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
         expected = 5 + 30 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     elif month.month == 2:
         expected = 3 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
-    assert device.monthly_carbon_footprint(month) == expected
+    assert device.monthly_carbon_footprint(month) == pytest.approx(expected)

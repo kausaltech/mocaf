@@ -87,8 +87,8 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, event_type, now=None, engine=None):
-        super().__init__(event_type, now, engine)
+    def __init__(self, now=None, engine=None):
+        super().__init__(self.event_type, now, engine)
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -130,18 +130,15 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
 
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
-    def __init__(self, now=None, engine=None):
-        super().__init__(EventTypeChoices.MONTHLY_SUMMARY_GOLD, now, engine)
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
 
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
-    def __init__(self, now=None, engine=None):
-        super().__init__(EventTypeChoices.MONTHLY_SUMMARY_SILVER, now, engine)
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
 
 class MonthlySummaryBronzeNotificationTask(MonthlySummaryNotificationTask):
-    def __init__(self, now=None, engine=None):
-        super().__init__(EventTypeChoices.MONTHLY_SUMMARY_BRONZE, now, engine)
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE
 
 
 class NoRecentTripsNotificationTask(NotificationTask):

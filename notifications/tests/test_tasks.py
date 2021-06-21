@@ -180,7 +180,7 @@ def test_monthly_summary_notification_recipients_already_sent(task_class, last_n
 ])
 def test_send_monthly_summary_notifications_sets_timestamp(task_class, api_settings, emission_budget_level_bronze):
     device = DeviceFactory()
-    template = NotificationTemplateFactory(event_type=task_class().event_type)
+    template = NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
@@ -200,7 +200,7 @@ def test_send_monthly_summary_notifications_sets_timestamp(task_class, api_setti
 ])
 def test_send_monthly_summary_notifications_sends_notification(task_class, api_settings, emission_budget_level_bronze):
     device = DeviceFactory()
-    template = NotificationTemplateFactory(event_type=task_class().event_type)
+    template = NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
@@ -229,7 +229,7 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(task_class
     # send_monthly_summary_notifications() should call update_daily_carbon_footprint() to be sure that values are
     # substituted for all days on which there is no data.
     device = DeviceFactory()
-    NotificationTemplateFactory(event_type=task_class().event_type)
+    NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
@@ -248,7 +248,7 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(task_class
 def test_send_monthly_summary_notifications_updates_only_summary_month(task_class, api_settings,
                                                                        emission_budget_level_bronze):
     device = DeviceFactory()
-    NotificationTemplateFactory(event_type=task_class().event_type)
+    NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=2)
