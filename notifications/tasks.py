@@ -56,8 +56,8 @@ class NotificationTask:
         logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(devices)} devices")
         template = self.random_template()
-        with transaction.atomic():
-            for device in devices:
+        for device in devices:
+            with transaction.atomic():
                 NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)

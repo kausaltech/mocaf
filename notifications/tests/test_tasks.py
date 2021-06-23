@@ -1,6 +1,7 @@
 import datetime
 import json
 import pytest
+import requests
 import responses
 from dateutil.relativedelta import relativedelta
 from django.utils.timezone import make_aware, utc
@@ -21,6 +22,17 @@ SUCCESS_RESPONSE = {
     'ok': True,
     'message': 'success',
 }
+ERROR_RESPONSE = {
+    'ok': False,
+    'message': 'error',
+}
+
+
+def response_uuid_matcher(uuid):
+    def matcher(request_body):
+        body = json.loads(request_body)
+        return str(uuid) in body['uuids']
+    return matcher
 
 
 @pytest.fixture
@@ -58,11 +70,30 @@ def test_welcome_notification_recipients_too_old():
 @responses.activate
 def test_send_welcome_notifications_records_sending(api_settings):
     device = DeviceFactory()
+    failing_device = DeviceFactory()
     template = NotificationTemplateFactory()
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(
+        responses.POST,
+        API_URL,
+        json=SUCCESS_RESPONSE,
+        status=200,
+        match=[
+            response_uuid_matcher(device.uuid)
+        ],
+    )
+    responses.add(
+        responses.POST,
+        API_URL,
+        json=ERROR_RESPONSE,
+        status=500,
+        match=[
+            response_uuid_matcher(failing_device.uuid)
+        ],
+    )
 
     now = device.created_at + datetime.timedelta(days=1)
-    send_notifications(task_class=WelcomeNotificationTask, now=now)
+    with pytest.raises(requests.exceptions.HTTPError):
+        send_notifications(task_class=WelcomeNotificationTask, now=now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
