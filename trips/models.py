@@ -86,7 +86,11 @@ class Device(models.Model):
         except EnableEvent.DoesNotExist:
             return False
 
-    def update_daily_carbon_footprint(self, start_time: datetime, end_time: datetime):
+    def update_daily_carbon_footprint(
+            self, start_time: datetime, end_time: datetime, default_emissions: EmissionBudgetLevel = None
+    ):
+        if default_emissions is None:
+            default_emissions = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
         start_date = LOCAL_TZ.localize(datetime.combine(start_time, time(0)))
         end_date = LOCAL_TZ.localize(datetime.combine(end_time, time(0)))
         summary = self.get_carbon_footprint_summary(
@@ -94,34 +98,34 @@ class Device(models.Model):
             units=EmissionUnit.KG
         )
         date_summary = {fp['date']: fp for fp in summary}
-        bronze_budget_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
         with transaction.atomic():
             self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date).delete()
             objs = []
             for cur_datetime in pd.date_range(start=start_date.date(), end=end_date.date()).to_pydatetime():
                 cur_date = cur_datetime.date()
                 cur_summary = date_summary.get(cur_date)
-                average_footprint_used = False
-                if cur_summary is None:
-                    if self.has_any_data_on_date(cur_date):
-                        # Device has data, so has not moved
-                        carbon_footprint = 0
-                    else:
-                        # We don't know if the device has moved, so assume bronze budget level
-                        carbon_footprint = bronze_budget_level.calculate_for_date(cur_date,
-                                                                                  TimeResolution.DAY,
-                                                                                  EmissionUnit.KG)
-                        average_footprint_used = True
-                else:
-                    carbon_footprint = cur_summary['carbon_footprint']
-                obj = DeviceDailyCarbonFootprint(
-                    device=self,
-                    date=cur_date,
-                    carbon_footprint=carbon_footprint,
-                    average_footprint_used=average_footprint_used,
-                )
+                carbon_footprint = cur_summary['carbon_footprint'] if cur_summary is not None else None
+                default_footprint = default_emissions.calculate_for_date(cur_date, TimeResolution.DAY, EmissionUnit.KG)
+                obj = self.create_device_daily_carbon_footprint(cur_date, carbon_footprint, default_footprint)
                 objs.append(obj)
             DeviceDailyCarbonFootprint.objects.bulk_create(objs)
+
+    def create_device_daily_carbon_footprint(self, date, carbon_footprint, default_footprint):
+        average_footprint_used = False
+        if carbon_footprint is None:
+            if self.has_any_data_on_date(date):
+                # Device has data, so has not moved
+                carbon_footprint = 0
+            else:
+                # We don't know if the device has moved, so assume default footprint
+                carbon_footprint = default_footprint
+                average_footprint_used = True
+        return DeviceDailyCarbonFootprint(
+            device=self,
+            date=date,
+            carbon_footprint=carbon_footprint,
+            average_footprint_used=average_footprint_used,
+        )
 
     def get_ranking(self, month: date):
         start_date = month.replace(day=1)

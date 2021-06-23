@@ -28,5 +28,6 @@ jinja2
 factory-boy
 pytest-django
 pytest-factoryboy
+pytest-lazy-fixture
 responses
 ranking

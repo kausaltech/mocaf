@@ -6,6 +6,7 @@ import responses
 from dateutil.relativedelta import relativedelta
 from django.utils.timezone import make_aware, utc
 
+from budget.enums import EmissionUnit, TimeResolution
 from budget.models import EmissionBudgetLevel
 from trips.tests.factories import DeviceFactory, LegFactory
 from notifications.tasks import (
@@ -39,6 +40,11 @@ def response_uuid_matcher(uuid):
 def api_settings(settings):
     settings.GENIEM_NOTIFICATION_API_BASE = API_URL
     settings.GENIEM_NOTIFICATION_API_TOKEN = 'test'
+
+
+@pytest.fixture
+def zero_emission_budget_level():
+    return EmissionBudgetLevel(identifier='zero', carbon_footprint=0, year=2020)
 
 
 def test_welcome_notification_recipients():
@@ -93,7 +99,7 @@ def test_send_welcome_notifications_records_sending(api_settings):
 
     now = device.created_at + datetime.timedelta(days=1)
     with pytest.raises(requests.exceptions.HTTPError):
-        send_notifications(task_class=WelcomeNotificationTask, now=now)
+        send_notifications(WelcomeNotificationTask, now=now)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -108,7 +114,7 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + datetime.timedelta(days=1)
-    send_notifications(task_class=WelcomeNotificationTask, now=now)
+    send_notifications(WelcomeNotificationTask, now=now)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -127,17 +133,13 @@ def test_send_welcome_notifications_sends_notification(api_settings):
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_monthly_summary_notification_average_footprint(task_class):
-    # FIXME: This partly duplicates the fixture emission_budget_level_bronze. Think about something better.
-    EmissionBudgetLevel.objects.create(identifier='bronze',
-                                       carbon_footprint=0,
-                                       year=2020)
+def test_monthly_summary_notification_average_footprint(task_class, zero_emission_budget_level):
     device1 = DeviceFactory()
     device2 = DeviceFactory()
     LegFactory(trip__device=device1, carbon_footprint=1000)
     LegFactory(trip__device=device2, carbon_footprint=3000)
     now = device1.created_at + relativedelta(months=1)
-    task = task_class(now)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
     assert task.average_footprint == 2.0
 
 
@@ -146,10 +148,13 @@ def test_monthly_summary_notification_average_footprint(task_class):
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_monthly_summary_notification_recipients_no_prior_summary(task_class, emission_budget_level_bronze):
+def test_monthly_summary_notification_recipients_no_prior_summary(
+    task_class, zero_emission_budget_level, emission_budget_level_bronze, emission_budget_level_silver,
+    emission_budget_level_gold
+):
     device = DeviceFactory()
     now = device.created_at + relativedelta(months=1)
-    task = task_class(now)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
     result = list(task.recipients())
     assert result == [device]
 
@@ -170,15 +175,51 @@ def test_monthly_summary_notification_recipients_no_prior_summary(task_class, em
     datetime.datetime(2020, 2, 29),  # end of last month
     datetime.datetime(2020, 1, 31),  # older than last month
 ])
-def test_monthly_summary_notification_recipients(task_class, now, last_notification_sent_at,
-                                                 emission_budget_level_bronze):
+def test_monthly_summary_notification_recipients(
+    task_class, now, last_notification_sent_at, zero_emission_budget_level, emission_budget_level_bronze,
+    emission_budget_level_silver, emission_budget_level_gold
+):
     device = DeviceFactory()
-    task = task_class(now)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
     NotificationLogEntryFactory(device=device,
                                 template__event_type=task.event_type,
                                 sent_at=make_aware(last_notification_sent_at, utc))
     result = list(task.recipients())
     assert result == [device]
+
+
+@pytest.mark.parametrize('task_class,budget_level', [
+    (MonthlySummaryGoldNotificationTask, pytest.lazy_fixture('emission_budget_level_gold')),
+    (MonthlySummarySilverNotificationTask, pytest.lazy_fixture('emission_budget_level_silver')),
+    (MonthlySummaryBronzeNotificationTask, pytest.lazy_fixture('emission_budget_level_bronze')),
+])
+def test_monthly_summary_notification_recipients_reach_level(task_class, zero_emission_budget_level, budget_level):
+    device = DeviceFactory()
+    threshold = budget_level.calculate_for_date(
+        device.created_at, TimeResolution.MONTH, EmissionUnit.G
+    )
+    LegFactory(trip__device=device, carbon_footprint=threshold)
+    now = device.created_at + relativedelta(months=1)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
+    result = list(task.recipients())
+    assert result == [device]
+
+
+@pytest.mark.parametrize('task_class,budget_level', [
+    (MonthlySummaryGoldNotificationTask, pytest.lazy_fixture('emission_budget_level_gold')),
+    (MonthlySummarySilverNotificationTask, pytest.lazy_fixture('emission_budget_level_silver')),
+    (MonthlySummaryBronzeNotificationTask, pytest.lazy_fixture('emission_budget_level_bronze')),
+])
+def test_monthly_summary_notification_recipients_miss_level(task_class, zero_emission_budget_level, budget_level):
+    device = DeviceFactory()
+    threshold = budget_level.calculate_for_date(
+        device.created_at, TimeResolution.MONTH, EmissionUnit.G
+    )
+    LegFactory(trip__device=device, carbon_footprint=threshold + 0.001)
+    now = device.created_at + relativedelta(months=1)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
+    result = list(task.recipients())
+    assert result == []
 
 
 @pytest.mark.parametrize('task_class', [
@@ -191,11 +232,13 @@ def test_monthly_summary_notification_recipients(task_class, now, last_notificat
     datetime.datetime(2020, 3, 15),
     datetime.datetime(2020, 3, 31),
 ])
-def test_monthly_summary_notification_recipients_already_sent(task_class, last_notification_sent_at,
-                                                              emission_budget_level_bronze):
+def test_monthly_summary_notification_recipients_already_sent(
+    task_class, last_notification_sent_at, zero_emission_budget_level, emission_budget_level_bronze,
+    emission_budget_level_silver, emission_budget_level_gold
+):
     now = datetime.datetime(2020, 3, 31)
     device = DeviceFactory()
-    task = task_class(now)
+    task = task_class(now, default_emissions=zero_emission_budget_level)
     NotificationLogEntryFactory(device=device,
                                 template__event_type=task.event_type,
                                 sent_at=make_aware(last_notification_sent_at, utc))
@@ -209,13 +252,16 @@ def test_monthly_summary_notification_recipients_already_sent(task_class, last_n
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_send_monthly_summary_notifications_sets_timestamp(task_class, api_settings, emission_budget_level_bronze):
+def test_send_monthly_summary_notifications_sets_timestamp(
+    task_class, api_settings, zero_emission_budget_level, emission_budget_level_bronze, emission_budget_level_silver,
+    emission_budget_level_gold
+):
     device = DeviceFactory()
     template = NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    send_notifications(task_class=task_class, now=now)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -229,13 +275,16 @@ def test_send_monthly_summary_notifications_sets_timestamp(task_class, api_setti
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_send_monthly_summary_notifications_sends_notification(task_class, api_settings, emission_budget_level_bronze):
+def test_send_monthly_summary_notifications_sends_notification(
+    task_class, api_settings, zero_emission_budget_level, emission_budget_level_bronze, emission_budget_level_silver,
+    emission_budget_level_gold
+):
     device = DeviceFactory()
     template = NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    send_notifications(task_class=task_class, now=now)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == API_URL
     expected_body = {
@@ -255,8 +304,10 @@ def test_send_monthly_summary_notifications_sends_notification(task_class, api_s
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_send_monthly_summary_notifications_updates_carbon_footprints(task_class, api_settings,
-                                                                      emission_budget_level_bronze):
+def test_send_monthly_summary_notifications_updates_carbon_footprints(
+    task_class, api_settings, zero_emission_budget_level, emission_budget_level_bronze, emission_budget_level_silver,
+    emission_budget_level_gold
+):
     # send_monthly_summary_notifications() should call update_daily_carbon_footprint() to be sure that values are
     # substituted for all days on which there is no data.
     device = DeviceFactory()
@@ -265,7 +316,7 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(task_class
 
     now = device.created_at + relativedelta(months=1)
     assert not device.daily_carbon_footprints.exists()
-    send_notifications(task_class=task_class, now=now)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     # Gaps (i.e., every day since there are no legs) should have been filled
     assert device.daily_carbon_footprints.exists()
 
@@ -276,15 +327,17 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(task_class
     MonthlySummarySilverNotificationTask,
     MonthlySummaryBronzeNotificationTask
 ])
-def test_send_monthly_summary_notifications_updates_only_summary_month(task_class, api_settings,
-                                                                       emission_budget_level_bronze):
+def test_send_monthly_summary_notifications_updates_only_summary_month(
+    task_class, api_settings, zero_emission_budget_level, emission_budget_level_bronze, emission_budget_level_silver,
+    emission_budget_level_gold
+):
     device = DeviceFactory()
     NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=2)
     assert not device.daily_carbon_footprints.exists()
-    send_notifications(task_class=task_class, now=now)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     # Only one month of filler data should have been generated
     assert device.daily_carbon_footprints.count() <= 31
 

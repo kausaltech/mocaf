@@ -30,4 +30,4 @@ class Command(BaseCommand):
     def send_notification(self, uuid, task_class, api_url=None, api_token=None):
         devices = [Device.objects.get(uuid=uuid)]
         engine = NotificationEngine(api_url, api_token)
-        send_notifications(task_class=task_class, devices=devices, engine=engine)
+        send_notifications(task_class, devices, engine=engine)

@@ -11,6 +11,8 @@ from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
 
+from budget.enums import TimeResolution, EmissionUnit
+from budget.models import EmissionBudgetLevel
 from trips.models import Device
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
@@ -67,6 +69,10 @@ class NotificationTask:
                 response = self.engine.send_notification([device], title, content)
                 if not response['ok'] or response['message'] != 'success':
                     raise Exception("Sending notifications failed")
+                self.on_notification_sent(device, response)
+
+    def on_notification_sent(self, device, response):
+        pass
 
 
 class WelcomeNotificationTask(NotificationTask):
@@ -87,7 +93,7 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None):
+    def __init__(self, now=None, engine=None, default_emissions=None):
         super().__init__(self.event_type, now, engine)
 
         one_month_ago = self.now - relativedelta(months=1)
@@ -100,7 +106,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
         devices = super().recipients()
         for device in devices:
-            device.update_daily_carbon_footprint(start_datetime, end_datetime)
+            device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
         self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
         self.average_footprint = None
         if self.footprints:
@@ -115,7 +121,15 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .filter(template__event_type=self.event_type)
                             .filter(sent_at__date__gte=this_month)
                             .values('device'))
-        return super().recipients().exclude(id__in=excluded_devices)
+
+        # Only send to devices whose footprint is smaller than the threshold
+        level = EmissionBudgetLevel.objects.get(
+            identifier=self.budget_level_identifier, year=self.summary_month_start.year
+        )
+        monthly_footprint = level.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
+        eligible_devices = [dev.id for dev, footprint in self.footprints.items() if footprint <= monthly_footprint]
+
+        return super().recipients().filter(id__in=eligible_devices).exclude(id__in=excluded_devices)
 
     def contexts(self, device):
         def rounded_float(f):
@@ -131,14 +145,17 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
+    budget_level_identifier = 'gold'
 
 
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
+    budget_level_identifier = 'silver'
 
 
 class MonthlySummaryBronzeNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE
+    budget_level_identifier = 'bronze'
 
 
 class NoRecentTripsNotificationTask(NotificationTask):
@@ -163,12 +180,12 @@ class NoRecentTripsNotificationTask(NotificationTask):
 
 
 @shared_task
-def send_notifications(task_class, now=None, devices=None, engine=None):
+def send_notifications(task_class, devices=None, **kwargs):
     if isinstance(task_class, str):
         task_class = import_module(task_class)
         parts = task_class.split('.')
         class_name = parts.pop(-1)
         module = import_module('.'.join(parts))
         task_class = getattr(module, class_name)
-    task = task_class(now=now, engine=engine)
+    task = task_class(**kwargs)
     task.send_notifications(devices)
