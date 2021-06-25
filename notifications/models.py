@@ -14,7 +14,7 @@ from trips.models import Device
 class EventTypeChoices(models.TextChoices):
     MONTHLY_SUMMARY_GOLD = 'monthly_summary_gold', _("Monthly summary (gold-level budget)")
     MONTHLY_SUMMARY_SILVER = 'monthly_summary_silver', _("Monthly summary (silver-level budget)")
-    MONTHLY_SUMMARY_BRONZE = 'monthly_summary_bronze', _("Monthly summary (bronze-level budget or worse)")
+    MONTHLY_SUMMARY_BRONZE_OR_WORSE = 'monthly_summary_geq_bronze', _("Monthly summary (bronze-level budget or worse)")
     WELCOME_MESSAGE = 'welcome_message', _("Welcome message")
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
 
@@ -38,7 +38,7 @@ available_variables = {
         ]
         for choice in (EventTypeChoices.MONTHLY_SUMMARY_GOLD,
                        EventTypeChoices.MONTHLY_SUMMARY_SILVER,
-                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE)
+                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE)
     },
     EventTypeChoices.WELCOME_MESSAGE: [],
     EventTypeChoices.NO_RECENT_TRIPS: [],
@@ -64,7 +64,7 @@ class BodyPanel(FieldPanel):
 
 
 class NotificationTemplate(models.Model):
-    event_type = models.CharField(max_length=22, choices=EventTypeChoices.choices)
+    event_type = models.CharField(max_length=26, choices=EventTypeChoices.choices)
     title = models.CharField(max_length=255)
     body = models.TextField()
 

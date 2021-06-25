@@ -106,24 +106,3 @@ def enable_mocaf(graphql_client_query_data):
 @pytest.fixture
 def token(enable_mocaf, uuid):
     return enable_mocaf(uuid)
-
-
-@pytest.fixture
-def emission_budget_level_bronze():
-    return EmissionBudgetLevel.objects.create(identifier='bronze',
-                                              carbon_footprint=30,
-                                              year=2020)
-
-
-@pytest.fixture
-def emission_budget_level_silver():
-    return EmissionBudgetLevel.objects.create(identifier='silver',
-                                              carbon_footprint=20,
-                                              year=2020)
-
-
-@pytest.fixture
-def emission_budget_level_gold():
-    return EmissionBudgetLevel.objects.create(identifier='gold',
-                                              carbon_footprint=10,
-                                              year=2020)

@@ -122,12 +122,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
                             .filter(sent_at__date__gte=this_month)
                             .values('device'))
 
-        # Only send to devices whose footprint is smaller than the threshold
-        level = EmissionBudgetLevel.objects.get(
-            identifier=self.budget_level_identifier, year=self.summary_month_start.year
-        )
-        monthly_footprint = level.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
-        eligible_devices = [dev.id for dev, footprint in self.footprints.items() if footprint <= monthly_footprint]
+        eligible_devices = [dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)]
 
         return super().recipients().filter(id__in=eligible_devices).exclude(id__in=excluded_devices)
 
@@ -142,20 +137,44 @@ class MonthlySummaryNotificationTask(NotificationTask):
                 context['month'] = date_format(self.summary_month_start, 'F')
         return contexts
 
+    def on_notification_sent(self, device, response):
+        # TODO: Create Prize instance
+        pass
+
+    def footprint_eligible(self, footprint):
+        return True
+
 
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
-    budget_level_identifier = 'gold'
+
+    def footprint_eligible(self, footprint):
+        # Only send to devices whose footprint is smaller than the threshold
+        gold = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
+        gold_threshold = gold.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
+        return footprint <= gold_threshold
 
 
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
-    budget_level_identifier = 'silver'
+
+    def footprint_eligible(self, footprint):
+        # Only send to devices whose footprint is smaller than the silver threshold but bigger than the gold threshold
+        silver = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
+        gold = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
+        silver_threshold = silver.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
+        gold_threshold = gold.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
+        return footprint <= silver_threshold and footprint > gold_threshold
 
 
-class MonthlySummaryBronzeNotificationTask(MonthlySummaryNotificationTask):
-    event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE
-    budget_level_identifier = 'bronze'
+class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask):
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
+
+    def footprint_eligible(self, footprint):
+        # Only send to devices whose footprint is bigger than the silver threshold
+        silver = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
+        silver_threshold = silver.calculate_for_date(self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG)
+        return footprint > silver_threshold
 
 
 class NoRecentTripsNotificationTask(NotificationTask):
