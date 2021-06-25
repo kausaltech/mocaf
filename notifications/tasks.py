@@ -13,6 +13,7 @@ from importlib import import_module
 
 from budget.enums import TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel, Prize
+from budget.prize_api import PrizeApi
 from trips.models import Device
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
@@ -60,18 +61,18 @@ class NotificationTask:
         template = self.random_template()
         for device in devices:
             with transaction.atomic():
+                self.before_notification_sent(device)
                 NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)
                 content = template.render_all_languages('body', contexts)
                 # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
                 # devices as first argument of engine.send_notification()
-                response = self.engine.send_notification([device], title, content)
+                response = self.engine.send_notification([device], title, content).json()
                 if not response['ok'] or response['message'] != 'success':
                     raise Exception("Sending notifications failed")
-                self.on_notification_sent(device, response)
 
-    def on_notification_sent(self, device, response):
+    def before_notification_sent(self, device):
         pass
 
 
@@ -93,8 +94,13 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, default_emissions=None):
+    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
         super().__init__(self.event_type, now, engine)
+
+        if award_prizes and prize_api is None:
+            prize_api = PrizeApi()
+        self.prize_api = prize_api
+        self.award_prizes = award_prizes
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -141,12 +147,29 @@ class MonthlySummaryNotificationTask(NotificationTask):
         """Return true iff devices with the given footprint are eligible for getting the notification."""
         return True
 
+    @transaction.atomic
+    def award_prize(self, device, budget_level):
+        if self.award_prizes:
+            prize = Prize.objects.create(
+                device=device,
+                budget_level=budget_level,
+                prize_month_start=self.summary_month_start
+            )
+            # TODO: Award all prizes in a single API call
+            self.prize_api.award([prize])
+
 
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
-    def __init__(self, now=None, engine=None, default_emissions=None):
-        super().__init__(now=now, engine=engine, default_emissions=default_emissions)
+    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+        super().__init__(
+            now=now,
+            engine=engine,
+            prize_api=prize_api,
+            default_emissions=default_emissions,
+            award_prizes=award_prizes
+        )
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
         self.gold_threshold = self.gold_level.calculate_for_date(
             self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG
@@ -155,16 +178,22 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     def footprint_eligible(self, footprint):
         return footprint <= self.gold_threshold
 
-    def on_notification_sent(self, device, response):
+    def before_notification_sent(self, device):
         assert self.footprints[device] <= self.gold_threshold
-        Prize.objects.create(device=device, budget_level=self.gold_level, prize_month_start=self.summary_month_start)
+        self.award_prize(device, self.gold_level)
 
 
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
-    def __init__(self, now=None, engine=None, default_emissions=None):
-        super().__init__(now=now, engine=engine, default_emissions=default_emissions)
+    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+        super().__init__(
+            now=now,
+            engine=engine,
+            prize_api=prize_api,
+            default_emissions=default_emissions,
+            award_prizes=award_prizes
+        )
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
         self.silver_threshold = self.silver_level.calculate_for_date(
@@ -177,16 +206,22 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     def footprint_eligible(self, footprint):
         return footprint <= self.silver_threshold and footprint > self.gold_threshold
 
-    def on_notification_sent(self, device, response):
+    def before_notification_sent(self, device):
         assert self.footprints[device] <= self.silver_threshold and self.footprints[device] > self.gold_threshold
-        Prize.objects.create(device=device, budget_level=self.silver_level, prize_month_start=self.summary_month_start)
+        self.award_prize(device, self.silver_level)
 
 
 class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
 
-    def __init__(self, now=None, engine=None, default_emissions=None):
-        super().__init__(now=now, engine=engine, default_emissions=default_emissions)
+    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+        super().__init__(
+            now=now,
+            engine=engine,
+            prize_api=prize_api,
+            default_emissions=default_emissions,
+            award_prizes=award_prizes
+        )
         self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
         self.bronze_threshold = self.bronze_level.calculate_for_date(
@@ -200,14 +235,11 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
         # Anything worse than silver gets a notification even if not within bronze level
         return footprint > self.silver_threshold
 
-    def on_notification_sent(self, device, response):
+    def before_notification_sent(self, device):
         assert self.footprint_eligible(self.footprints[device])
         # Anything worse than silver gets a notification, but we only want to give prizes within bronze level
         if self.footprints[device] <= self.bronze_threshold:
-            _, created = Prize.objects.get_or_create(
-                device=device, budget_level=self.bronze_level, prize_month_start=self.summary_month_start
-            )
-            assert created
+            self.award_prize(device, self.bronze_level)
 
 
 class NoRecentTripsNotificationTask(NotificationTask):

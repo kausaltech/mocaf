@@ -18,7 +18,7 @@ from notifications.tests.factories import NotificationLogEntryFactory, Notificat
 
 pytestmark = pytest.mark.django_db
 
-API_URL = 'https://example.com/'
+NOTIFICATION_API_URL = 'https://example.com/notifications/'
 SUCCESS_RESPONSE = {
     'ok': True,
     'message': 'success',
@@ -27,6 +27,7 @@ ERROR_RESPONSE = {
     'ok': False,
     'message': 'error',
 }
+PRIZE_API_URL = 'https://example.com/prizes/'
 
 
 def response_uuid_matcher(uuid):
@@ -50,8 +51,10 @@ def budget_level_leg(budget_level, device, date=None):
 
 @pytest.fixture
 def api_settings(settings):
-    settings.GENIEM_NOTIFICATION_API_BASE = API_URL
+    settings.GENIEM_NOTIFICATION_API_BASE = NOTIFICATION_API_URL
     settings.GENIEM_NOTIFICATION_API_TOKEN = 'test'
+    settings.GENIEM_PRIZE_API_BASE = PRIZE_API_URL
+    settings.GENIEM_PRIZE_API_TOKEN = 'test'
 
 
 @pytest.fixture
@@ -92,7 +95,7 @@ def test_send_welcome_notifications_records_sending(api_settings):
     template = NotificationTemplateFactory()
     responses.add(
         responses.POST,
-        API_URL,
+        NOTIFICATION_API_URL,
         json=SUCCESS_RESPONSE,
         status=200,
         match=[
@@ -101,7 +104,7 @@ def test_send_welcome_notifications_records_sending(api_settings):
     )
     responses.add(
         responses.POST,
-        API_URL,
+        NOTIFICATION_API_URL,
         json=ERROR_RESPONSE,
         status=500,
         match=[
@@ -123,12 +126,12 @@ def test_send_welcome_notifications_records_sending(api_settings):
 def test_send_welcome_notifications_sends_notification(api_settings):
     device = DeviceFactory()
     template = NotificationTemplateFactory(event_type=EventTypeChoices.WELCOME_MESSAGE)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + datetime.timedelta(days=1)
     send_notifications(WelcomeNotificationTask, now=now)
     assert len(responses.calls) == 1
-    assert responses.calls[0].request.url == API_URL
+    assert responses.calls[0].request.url == NOTIFICATION_API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
         'titleEn': template.render('title', 'en'),
@@ -151,7 +154,7 @@ def test_monthly_summary_notification_average_footprint(task_class, zero_emissio
     LegFactory(trip__device=device1, carbon_footprint=1000)
     LegFactory(trip__device=device2, carbon_footprint=3000)
     now = device1.created_at + relativedelta(months=1)
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     assert task.average_footprint == 2.0
 
 
@@ -176,7 +179,7 @@ def test_monthly_summary_notification_recipients(
 ):
     device = DeviceFactory()
     budget_level_leg(budget_level, device, date=datetime.datetime(2020, 2, 1))
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     NotificationLogEntryFactory(device=device,
                                 template__event_type=task.event_type,
                                 sent_at=make_aware(last_notification_sent_at, utc))
@@ -192,7 +195,7 @@ def test_monthly_summary_notification_recipients_reach_level(task_class, zero_em
     device = DeviceFactory()
     budget_level_leg(budget_level, device)
     now = device.created_at + relativedelta(months=1)
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     result = list(task.recipients())
     assert result == [device]
 
@@ -205,7 +208,11 @@ def test_monthly_summary_notification_recipients_always_reach_bronze_or_worse(
     leg.carbon_footprint += 1
     leg.save()
     now = device.created_at + relativedelta(months=1)
-    task = MonthlySummaryBronzeOrWorseNotificationTask(now, default_emissions=zero_emission_budget_level)
+    task = MonthlySummaryBronzeOrWorseNotificationTask(
+        now,
+        default_emissions=zero_emission_budget_level,
+        award_prizes=False
+    )
     result = list(task.recipients())
     assert result == [device]
 
@@ -220,7 +227,7 @@ def test_monthly_summary_notification_recipients_miss_level(task_class, zero_emi
     leg.carbon_footprint += 0.001
     leg.save()
     now = device.created_at + relativedelta(months=1)
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     result = list(task.recipients())
     assert result == []
 
@@ -238,12 +245,12 @@ def test_monthly_summary_notification_recipients_miss_level(task_class, zero_emi
     ),
 ])
 def test_monthly_summary_notification_recipients_higher_level(
-        task_class, zero_emission_budget_level, budget_level, higher_level
+    task_class, zero_emission_budget_level, budget_level, higher_level
 ):
     device = DeviceFactory()
     budget_level_leg(higher_level, device)
     now = device.created_at + relativedelta(months=1)
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     result = list(task.recipients())
     assert result == []
 
@@ -263,7 +270,7 @@ def test_monthly_summary_notification_recipients_already_sent(
 ):
     now = datetime.datetime(2020, 3, 31)
     device = DeviceFactory()
-    task = task_class(now, default_emissions=zero_emission_budget_level)
+    task = task_class(now, default_emissions=zero_emission_budget_level, award_prizes=False)
     NotificationLogEntryFactory(device=device,
                                 template__event_type=task.event_type,
                                 sent_at=make_aware(last_notification_sent_at, utc))
@@ -283,10 +290,11 @@ def test_send_monthly_summary_notifications_sets_timestamp(
     device = DeviceFactory()
     budget_level_leg(budget_level, device)
     template = NotificationTemplateFactory(event_type=task_class.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, PRIZE_API_URL, status=201)
 
     now = device.created_at + relativedelta(months=1)
-    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level, award_prizes=False)
     log_entries = list(NotificationLogEntry.objects.all())
     assert len(log_entries) == 1
     assert log_entries[0].device == device
@@ -306,12 +314,12 @@ def test_send_monthly_summary_notifications_sends_notification(
     device = DeviceFactory()
     budget_level_leg(budget_level, device)
     template = NotificationTemplateFactory(event_type=task_class.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level, award_prizes=False)
     assert len(responses.calls) == 1
-    assert responses.calls[0].request.url == API_URL
+    assert responses.calls[0].request.url == NOTIFICATION_API_URL
     expected_body = {
         'uuids': [str(device.uuid)],
         'titleEn': template.render('title', 'en'),
@@ -336,11 +344,11 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(
     # substituted for all days on which there is no data.
     device = DeviceFactory()
     NotificationTemplateFactory(event_type=task_class.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
     assert not device.daily_carbon_footprints.exists()
-    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level, award_prizes=False)
     # Gaps (i.e., every day since there are no legs) should have been filled
     assert device.daily_carbon_footprints.exists()
 
@@ -356,11 +364,11 @@ def test_send_monthly_summary_notifications_updates_only_summary_month(
 ):
     device = DeviceFactory()
     NotificationTemplateFactory(event_type=task_class.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=2)
     assert not device.daily_carbon_footprints.exists()
-    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+    send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level, award_prizes=False)
     # Only one month of filler data should have been generated
     assert device.daily_carbon_footprints.count() <= 31
 
@@ -402,27 +410,43 @@ def test_no_recent_trips_notification_recipients_already_sent():
     (MonthlySummaryBronzeOrWorseNotificationTask, pytest.lazy_fixture('emission_budget_level_bronze')),
 ])
 @pytest.mark.parametrize('num_calls', [1, 2])  # create exactly one prize even if we call send_notifications() twice
-def test_monthly_summary_notification_creates_prize(
+def test_monthly_summary_notification_awards_prize(
     task_class, api_settings, zero_emission_budget_level, budget_level, num_calls
 ):
     device = DeviceFactory()
     budget_level_leg(budget_level, device)
     NotificationTemplateFactory(event_type=task_class.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, PRIZE_API_URL, status=201)
 
     now = device.created_at + relativedelta(months=1)
     assert device.prizes.count() == 0
     for _ in range(num_calls):
         send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+
+    # Exactly one Prize instance should have been created
     assert device.prizes.count() == 1
     prize = device.prizes.first()
     assert prize.device == device
     assert prize.budget_level == budget_level
     assert prize.prize_month_start == device.created_at.date().replace(day=1)
 
+    # Exactly one prize API call should have been made (beside the one to the notification API)
+    assert len(responses.calls) == 2
+    assert responses.calls[0].request.url == PRIZE_API_URL
+    expected_body = [{
+        'uuid': str(device.uuid),
+        'level': budget_level.identifier,
+        'year': prize.prize_month_start.year,
+        'month': prize.prize_month_start.month,
+    }]
+    request_body = json.loads(responses.calls[0].request.body)
+    assert request_body == expected_body
+    assert responses.calls[1].request.url == NOTIFICATION_API_URL
+
 
 @responses.activate
-def test_monthly_summary_notification_creates_no_prize(
+def test_monthly_summary_notification_awards_no_prize(
     api_settings, zero_emission_budget_level, emission_budget_level_bronze
 ):
     device = DeviceFactory()
@@ -430,7 +454,7 @@ def test_monthly_summary_notification_creates_no_prize(
     leg.carbon_footprint += 1
     leg.save()
     NotificationTemplateFactory(event_type=MonthlySummaryBronzeOrWorseNotificationTask.event_type)
-    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+    responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
     send_notifications(
@@ -439,3 +463,4 @@ def test_monthly_summary_notification_creates_no_prize(
         default_emissions=zero_emission_budget_level
     )
     assert not device.prizes.exists()
+    # TODO: Check that API was not called

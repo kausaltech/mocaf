@@ -1,26 +1,19 @@
 from typing import Dict, List
-import requests
 from django.conf import settings
 
+from mocaf.geniem_api import GeniemApi
 from trips.models import Device
 
 
-class NotificationEngine:
+class NotificationEngine(GeniemApi):
     def __init__(self, api_url=None, api_token=None):
         if api_url is None:
             api_url = settings.GENIEM_NOTIFICATION_API_BASE
         if api_token is None:
             api_token = settings.GENIEM_NOTIFICATION_API_TOKEN
-
-        self.api_url = api_url
-        self.api_token = api_token
-
-    def is_enabled(self):
-        return self.api_url and self.api_token
+        super().__init__(api_url, api_token)
 
     def send_notification(self, devices: List[Device], title: Dict[str, str], content: Dict[str, str]):
-        assert self.is_enabled()
-
         title_data = {'title%s' % lang.capitalize(): val for lang, val in title.items()}
         content_data = {'content%s' % lang.capitalize(): val for lang, val in content.items()}
         data = dict(
@@ -28,9 +21,4 @@ class NotificationEngine:
             **title_data,
             **content_data,
         )
-        resp = requests.post(
-            self.api_url, json=data, headers=dict(apikey=self.api_token),
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.json()
+        return self.post(data)
