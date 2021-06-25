@@ -1,6 +1,5 @@
 import calendar
-from datetime import date, datetime, time, timedelta
-from django.db.models.aggregates import Min
+from datetime import date
 from modeltrans.fields import TranslationField
 import pytz
 from django.conf import settings
@@ -72,3 +71,12 @@ class DeviceDailyCarbonFootprint(models.Model):
 
     def __str__(self):
         return '%s: %s (%.1f kg)' % (str(self.device), self.date.isoformat(), self.carbon_footprint)
+
+
+class Prize(models.Model):
+    device = models.ForeignKey('trips.Device', on_delete=models.CASCADE, related_name='prizes')
+    budget_level = models.ForeignKey(
+        EmissionBudgetLevel, blank=True, null=True, on_delete=models.SET_NULL, related_name='prizes'
+    )
+    prize_month_start = models.DateField(help_text=_("First day of the month for which the prize is awarded"))
+    created_at = models.DateTimeField(auto_now_add=True)

@@ -393,3 +393,49 @@ def test_no_recent_trips_notification_recipients_already_sent():
     task = NoRecentTripsNotificationTask(now)
     result = list(task.recipients())
     assert result == []
+
+
+@responses.activate
+@pytest.mark.parametrize('task_class,budget_level', [
+    (MonthlySummaryGoldNotificationTask, pytest.lazy_fixture('emission_budget_level_gold')),
+    (MonthlySummarySilverNotificationTask, pytest.lazy_fixture('emission_budget_level_silver')),
+    (MonthlySummaryBronzeOrWorseNotificationTask, pytest.lazy_fixture('emission_budget_level_bronze')),
+])
+@pytest.mark.parametrize('num_calls', [1, 2])  # create exactly one prize even if we call send_notifications() twice
+def test_monthly_summary_notification_creates_prize(
+    task_class, api_settings, zero_emission_budget_level, budget_level, num_calls
+):
+    device = DeviceFactory()
+    budget_level_leg(budget_level, device)
+    NotificationTemplateFactory(event_type=task_class.event_type)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+
+    now = device.created_at + relativedelta(months=1)
+    assert device.prizes.count() == 0
+    for _ in range(num_calls):
+        send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
+    assert device.prizes.count() == 1
+    prize = device.prizes.first()
+    assert prize.device == device
+    assert prize.budget_level == budget_level
+    assert prize.prize_month_start == device.created_at.date().replace(day=1)
+
+
+@responses.activate
+def test_monthly_summary_notification_creates_no_prize(
+    api_settings, zero_emission_budget_level, emission_budget_level_bronze
+):
+    device = DeviceFactory()
+    leg = budget_level_leg(emission_budget_level_bronze, device)
+    leg.carbon_footprint += 1
+    leg.save()
+    NotificationTemplateFactory(event_type=MonthlySummaryBronzeOrWorseNotificationTask.event_type)
+    responses.add(responses.POST, API_URL, json=SUCCESS_RESPONSE, status=200)
+
+    now = device.created_at + relativedelta(months=1)
+    send_notifications(
+        MonthlySummaryBronzeOrWorseNotificationTask,
+        now=now,
+        default_emissions=zero_emission_budget_level
+    )
+    assert not device.prizes.exists()
