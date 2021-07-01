@@ -87,7 +87,7 @@ class Device(models.Model):
             return False
 
     def update_daily_carbon_footprint(
-            self, start_time: datetime, end_time: datetime, default_emissions: EmissionBudgetLevel = None
+        self, start_time: datetime, end_time: datetime, default_emissions: EmissionBudgetLevel = None
     ):
         if default_emissions is None:
             default_emissions = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
@@ -352,6 +352,7 @@ class Trip(models.Model):
 
     @property
     def carbon_footprint(self) -> float:
+        """Return the sum of carbon footprint of all legs in g"""
         self._ensure_ordered_legs()
         footprint = 0
         for leg in self._ordered_legs:

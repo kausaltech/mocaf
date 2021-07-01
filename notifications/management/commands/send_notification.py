@@ -23,6 +23,9 @@ class Command(BaseCommand):
         parser.add_argument('--force-recipient',
                             action='store_true',
                             help="Send notification to device regardless of whether it qualifies for the notification")
+        parser.add_argument('--restrict-average',
+                            action='store_true',
+                            help="Use device's footprint as average to avoid expensive recomputation for all devices")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]
@@ -31,9 +34,20 @@ class Command(BaseCommand):
                                api_url=options.get('api_url'),
                                api_token=options.get('api_token'),
                                dry_run=options.get('dry_run'),
-                               force_recipients=options.get('force_recipient'))
+                               force_recipients=options.get('force_recipient'),
+                               restrict_average=options.get('restrict_average'))
 
-    def send_notification(self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force_recipients=False):
+    def send_notification(
+        self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force_recipients=False,
+        restrict_average=False
+    ):
         devices = Device.objects.filter(uuid=uuid)
         engine = NotificationEngine(api_url, api_token)
-        send_notifications(task_class, devices, engine=engine, dry_run=dry_run, force_recipients=force_recipients)
+        send_notifications(
+            task_class,
+            devices,
+            engine=engine,
+            dry_run=dry_run,
+            force_recipients=force_recipients,
+            restrict_average=restrict_average,
+        )

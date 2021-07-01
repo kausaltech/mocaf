@@ -115,8 +115,13 @@ class WelcomeNotificationTask(NotificationTask):
 
 class MonthlySummaryNotificationTask(NotificationTask):
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        restrict_average=False
     ):
+        """
+        If `restrict_average` is True, consider only devices in `devices` for the average footprint and only regenerate
+        the carbon footprints for these. (Useful for testing since regenerating footprints is expensive.)
+        """
         if getattr(self, 'event_type', None) is None:
             raise AttributeError("MonthlySummaryNotificationTask subclass must define event_type")
 
@@ -129,19 +134,17 @@ class MonthlySummaryNotificationTask(NotificationTask):
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.summary_month_start = start_date
 
-        # Update carbon footprints of all potential recipients to make sure there are no gaps on days without data
-        if force_recipients:
-            potential_recipients = devices
+        # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
+        if restrict_average:
+            device_universe = devices
         else:
-            potential_recipients = super().recipients()
-        for device in potential_recipients:
+            device_universe = Device.objects.filter(enabled_at__isnull=False)
+        for device in device_universe:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
-        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in potential_recipients}
+        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in device_universe}
         self.average_footprint = None
         if self.footprints:
-            # FIXME: If force_recipients is True, the following is the average footprint of `devices`, not the entire
-            # user base. Calling update_daily_carbon_footprint() for all devices is quite expensive.
             self.average_footprint = statistics.mean(self.footprints.values())
 
     def recipients(self):
@@ -179,7 +182,8 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        restrict_average=False
     ):
         super().__init__(
             now=now,
@@ -188,6 +192,7 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
             devices=devices,
             force_recipients=force_recipients,
             default_emissions=default_emissions,
+            restrict_average=restrict_average,
         )
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
         self.gold_threshold = self.gold_level.calculate_for_date(
@@ -203,7 +208,8 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        restrict_average=False
     ):
         super().__init__(
             now=now,
@@ -212,6 +218,7 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
             devices=devices,
             force_recipients=force_recipients,
             default_emissions=default_emissions,
+            restrict_average=restrict_average,
         )
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
@@ -231,7 +238,8 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        restrict_average=False
     ):
         super().__init__(
             now=now,
@@ -240,6 +248,7 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
             devices=devices,
             force_recipients=force_recipients,
             default_emissions=default_emissions,
+            restrict_average=restrict_average,
         )
         self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
