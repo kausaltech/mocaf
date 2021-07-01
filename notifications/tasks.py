@@ -172,7 +172,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
     @transaction.atomic
     def award_prize(self, device, budget_level):
-        if self.award_prizes and self.dry_run:
+        if self.award_prizes:
             if self.dry_run:
                 print(f"Awarding prize {budget_level} to device {device.uuid} for month {self.summary_month_start}")
             else:
