@@ -4,6 +4,10 @@ x-django-environment: &django-environment
   - DATABASE_URL=postgis://mocaf:${POSTGRES_PASSWORD}@db/mocaf
   - CELERY_BROKER_URL=redis://redis:6379
   - CELERY_RESULT_BACKEND=redis://redis:6379
+  - GENIEM_NOTIFICATION_API_BASE
+  - GENIEM_NOTIFICATION_API_TOKEN
+  - GENIEM_PRIZE_API_BASE
+  - GENIEM_PRIZE_API_TOKEN
   - STATIC_ROOT=/srv/static
   - MEDIA_ROOT=/srv/media
   - MEDIA_URL
