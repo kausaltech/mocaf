@@ -3,7 +3,6 @@ import pytest
 from graphene_django.utils.testing import graphql_query
 from pytest_factoryboy import register
 
-from budget.models import EmissionBudgetLevel
 from trips.tests import factories as trips_factories
 
 register(trips_factories.DeviceFactory)
