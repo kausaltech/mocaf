@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 from trips.models import Device
 from notifications.engine import NotificationEngine
-from notifications.tasks import registered_tasks, send_notifications
+from notifications.tasks import MonthlySummaryNotificationTask, registered_tasks, send_notifications
 
 
 class Command(BaseCommand):
@@ -25,7 +25,8 @@ class Command(BaseCommand):
                             help="Send notification to device regardless of whether it qualifies for the notification")
         parser.add_argument('--restrict-average',
                             action='store_true',
-                            help="Use device's footprint as average to avoid expensive recomputation for all devices")
+                            help="Use device's footprint as average to avoid expensive recomputation for all devices "
+                            "(only for monthly summary notifications)")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]
@@ -43,11 +44,11 @@ class Command(BaseCommand):
     ):
         devices = Device.objects.filter(uuid=uuid)
         engine = NotificationEngine(api_url, api_token)
-        send_notifications(
-            task_class,
-            devices,
-            engine=engine,
-            dry_run=dry_run,
-            force_recipients=force_recipients,
-            restrict_average=restrict_average,
-        )
+        kwargs = {
+            'engine': engine,
+            'dry_run': dry_run,
+            'force_recipients': force_recipients,
+        }
+        if issubclass(task_class, MonthlySummaryNotificationTask):
+            kwargs['restrict_average'] = restrict_average
+        send_notifications(task_class, devices, **kwargs)
