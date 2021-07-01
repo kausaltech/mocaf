@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 from trips.models import Device
 from notifications.engine import NotificationEngine
-from notifications.tasks import NotificationTask, registered_tasks, send_notifications
+from notifications.tasks import registered_tasks, send_notifications
 
 
 class Command(BaseCommand):
@@ -19,8 +19,7 @@ class Command(BaseCommand):
                             help="Class of the task to be executed")
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
-        parser.add_argument('--dry-run', action='store_true',
-                            help="Neither send notifications nor award prizes but print them instead")
+        parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]

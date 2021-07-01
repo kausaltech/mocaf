@@ -14,15 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class MonthlyPrizeTask:
-    budget_level_identifier = None
-
-    # Next lower budget level; if footprint is smaller, do not award the budget_level_identifier prize (but hopefully
-    # the better one)
-    next_budget_level_identifier = None
-
     def __init__(
-            self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, prize_api=None,
-            default_emissions=None
+        self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, prize_api=None,
+        default_emissions=None
     ):
         """
         `budget_level_identifier` is the budget level for which to award a prize if footprint is smaller.
