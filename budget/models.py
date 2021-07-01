@@ -80,3 +80,8 @@ class Prize(models.Model):
     )
     prize_month_start = models.DateField(help_text=_("First day of the month for which the prize is awarded"))
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        year = self.prize_month_start.year
+        month = str(self.prize_month_start.month).zfill(2)
+        return f'{self.device} [{year}-{month}]: {self.budget_level}'
