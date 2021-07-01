@@ -30,20 +30,29 @@ def register_for_management_command(cls):
 
 
 class NotificationTask:
-    def __init__(self, event_type, now=None, engine=None, dry_run=False):
+    def __init__(self, event_type, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
+        """
+        `devices` can be set to a QuerySet smaller than Device.objects.all() to limit the potential recipients.
+        If `force_recipients` is True, attempt to send the notification to all devices in `devices` regardless of
+        whether they qualify for the notification.
+        """
         if now is None:
             now = timezone.now()
         if engine is None:
             engine = NotificationEngine()
+        if devices is None:
+            devices = Device.objects.all()
 
         self.event_type = event_type
         self.now = now
         self.engine = engine
         self.dry_run = dry_run
+        self.devices = devices
+        self.force_recipients = force_recipients
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
-        return Device.objects.filter(enabled_at__isnull=False)
+        return self.devices.filter(enabled_at__isnull=False)
 
     def contexts(self, device):
         """Return a dict mapping languages to a context for rendering notification templates for the given device."""
@@ -56,19 +65,16 @@ class NotificationTask:
         except IndexError:
             raise Exception(f"There is no notification template of type {self.event_type}.")
 
-    def send_notifications(self, devices=None):
-        """
-        Send notifications to the given devices using a randomly chosen template of the proper event type.
-
-        If `devices` is None, the recipients will the result of calling `recipients()`.
-        """
-        if devices is None:
-            devices = self.recipients()
-
+    def send_notifications(self):
+        """Send notifications using a randomly chosen template of the proper event type."""
+        if self.force_recipients:
+            recipients = self.devices
+        else:
+            recipients = self.recipients()
         logger.info(f"Sending {self.event_type} notifications")
-        logger.debug(f"Sending notification to {len(devices)} devices")
+        logger.debug(f"Sending notification to {len(recipients)} devices")
         template = self.random_template()
-        for device in devices:
+        for device in recipients:
             with transaction.atomic():
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)
@@ -91,8 +97,8 @@ class NotificationTask:
 
 @register_for_management_command
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False):
-        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run)
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
+        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run, devices, force_recipients)
 
     def recipients(self):
         """Return devices that signed up on the day preceding `self.now`."""
@@ -108,11 +114,13 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, default_emissions=None):
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+    ):
         if getattr(self, 'event_type', None) is None:
             raise AttributeError("MonthlySummaryNotificationTask subclass must define event_type")
 
-        super().__init__(self.event_type, now, engine, dry_run)
+        super().__init__(self.event_type, now, engine, dry_run, devices, force_recipients)
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -121,14 +129,19 @@ class MonthlySummaryNotificationTask(NotificationTask):
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.summary_month_start = start_date
 
-        # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
-        devices = super().recipients()
-        for device in devices:
+        # Update carbon footprints of all potential recipients to make sure there are no gaps on days without data
+        if force_recipients:
+            potential_recipients = devices
+        else:
+            potential_recipients = super().recipients()
+        for device in potential_recipients:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
-        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
+        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in potential_recipients}
         self.average_footprint = None
         if self.footprints:
+            # FIXME: If force_recipients is True, the following is the average footprint of `devices`, not the entire
+            # user base. Calling update_daily_carbon_footprint() for all devices is quite expensive.
             self.average_footprint = statistics.mean(self.footprints.values())
 
     def recipients(self):
@@ -165,11 +178,15 @@ class MonthlySummaryNotificationTask(NotificationTask):
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
-    def __init__(self, now=None, engine=None, dry_run=False, default_emissions=None):
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+    ):
         super().__init__(
             now=now,
             engine=engine,
             dry_run=dry_run,
+            devices=devices,
+            force_recipients=force_recipients,
             default_emissions=default_emissions,
         )
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
@@ -185,11 +202,15 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
-    def __init__(self, now=None, engine=None, dry_run=False, default_emissions=None):
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+    ):
         super().__init__(
             now=now,
             engine=engine,
             dry_run=dry_run,
+            devices=devices,
+            force_recipients=force_recipients,
             default_emissions=default_emissions,
         )
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
@@ -209,11 +230,15 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
 class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
 
-    def __init__(self, now=None, engine=None, dry_run=False, default_emissions=None):
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None
+    ):
         super().__init__(
             now=now,
             engine=engine,
             dry_run=dry_run,
+            devices=devices,
+            force_recipients=force_recipients,
             default_emissions=default_emissions,
         )
         self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
@@ -232,8 +257,8 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
 
 @register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False):
-        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run)
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
+        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run, devices, force_recipients)
 
     def recipients(self):
         """Return devices that have not had any trips in 14 days until `self.now`."""
@@ -260,5 +285,5 @@ def send_notifications(task_class, devices=None, **kwargs):
         class_name = parts.pop(-1)
         module = import_module('.'.join(parts))
         task_class = getattr(module, class_name)
-    task = task_class(**kwargs)
-    task.send_notifications(devices)
+    task = task_class(devices=devices, **kwargs)
+    task.send_notifications()

@@ -20,6 +20,9 @@ class Command(BaseCommand):
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
         parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
+        parser.add_argument('--force-recipient',
+                            action='store_true',
+                            help="Send notification to device regardless of whether it qualifies for the notification")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]
@@ -27,9 +30,10 @@ class Command(BaseCommand):
                                task_class,
                                api_url=options.get('api_url'),
                                api_token=options.get('api_token'),
-                               dry_run=options.get('dry_run'))
+                               dry_run=options.get('dry_run'),
+                               force_recipients=options.get('force_recipient'))
 
-    def send_notification(self, uuid, task_class, api_url=None, api_token=None, dry_run=False):
-        devices = [Device.objects.get(uuid=uuid)]
+    def send_notification(self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force_recipients=False):
+        devices = Device.objects.filter(uuid=uuid)
         engine = NotificationEngine(api_url, api_token)
-        send_notifications(task_class, devices, engine=engine, dry_run=dry_run)
+        send_notifications(task_class, devices, engine=engine, dry_run=dry_run, force_recipients=force_recipients)
