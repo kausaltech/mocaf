@@ -15,22 +15,29 @@ logger = logging.getLogger(__name__)
 
 class MonthlyPrizeTask:
     def __init__(
-        self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, prize_api=None,
-        default_emissions=None
+        self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, devices=None,
+        force=False, prize_api=None, default_emissions=None
     ):
         """
         `budget_level_identifier` is the budget level for which to award a prize if footprint is smaller.
         `next_budget_level_identifier` is the next lower budget level; if footprint is smaller, do not award the
         `budget_level_identifier` prize (but you should make sure to award the better one by creating a new
         `MonthlyPrizeTask` with that level as `budget_level_identifier`).
+        `devices` can be set to a QuerySet smaller than Device.objects.all() to limit the potential recipients.
+        If `force` is True, attempt to award the prize to all devices in `devices` (or all if `devices` is not set)
+        regardless of whether they qualify for the prize.
         """
         if now is None:
             now = timezone.now()
+        if devices is None:
+            devices = Device.objects.all()
         if prize_api is None:
             prize_api = PrizeApi()
 
         self.now = now
         self.dry_run = dry_run
+        self.devices = devices
+        self.force = force
         self.prize_api = prize_api
 
         one_month_ago = self.now - relativedelta(months=1)
@@ -40,8 +47,7 @@ class MonthlyPrizeTask:
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.prize_month_start = start_date
 
-        # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
-        devices = Device.objects.filter(enabled_at__isnull=False)
+        # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
         for device in devices:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
@@ -65,18 +71,14 @@ class MonthlyPrizeTask:
                 self.prize_month_start, TimeResolution.MONTH, EmissionUnit.KG
             )
 
-    def award_prizes(self, devices=None):
-        """
-        Award the prize to the given devices.
-
-        If `devices` is None, the recipients will the result of calling `recipients()`.
-        """
-        if devices is None:
-            devices = self.recipients()
-
+    def award_prizes(self):
+        if self.force:
+            recipients = self.devices
+        else:
+            recipients = self.recipients()
         logger.info("Awarding prizes")
-        logger.debug(f"Awarding prizes to {len(devices)} devices")
-        for device in devices:
+        logger.debug(f"Awarding prizes to {len(recipients)} devices")
+        for device in recipients:
             self.award_prize(device)
 
     def recipients(self):
@@ -88,7 +90,7 @@ class MonthlyPrizeTask:
 
         eligible_devices = [dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)]
 
-        return (Device.objects
+        return (self.devices
                 .filter(enabled_at__isnull=False)
                 .filter(id__in=eligible_devices)
                 .exclude(id__in=excluded_devices))
@@ -116,5 +118,5 @@ class MonthlyPrizeTask:
 
 @shared_task
 def award_prizes(budget_level_identifier, next_budget_level_identifier=None, devices=None, **kwargs):
-    task = MonthlyPrizeTask(budget_level_identifier, next_budget_level_identifier, **kwargs)
-    task.award_prizes(devices)
+    task = MonthlyPrizeTask(budget_level_identifier, next_budget_level_identifier, devices=devices, **kwargs)
+    task.award_prizes()

@@ -30,11 +30,11 @@ def register_for_management_command(cls):
 
 
 class NotificationTask:
-    def __init__(self, event_type, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
+    def __init__(self, event_type, now=None, engine=None, dry_run=False, devices=None, force=False):
         """
         `devices` can be set to a QuerySet smaller than Device.objects.all() to limit the potential recipients.
-        If `force_recipients` is True, attempt to send the notification to all devices in `devices` regardless of
-        whether they qualify for the notification.
+        If `force` is True, attempt to send the notification to all devices in `devices` (or all if `devices` is not
+        set) regardless of whether they qualify for the notification.
         """
         if now is None:
             now = timezone.now()
@@ -48,7 +48,7 @@ class NotificationTask:
         self.engine = engine
         self.dry_run = dry_run
         self.devices = devices
-        self.force_recipients = force_recipients
+        self.force = force
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
@@ -67,7 +67,7 @@ class NotificationTask:
 
     def send_notifications(self):
         """Send notifications using a randomly chosen template of the proper event type."""
-        if self.force_recipients:
+        if self.force:
             recipients = self.devices
         else:
             recipients = self.recipients()
@@ -97,8 +97,8 @@ class NotificationTask:
 
 @register_for_management_command
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
-        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run, devices, force_recipients)
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run, devices, force)
 
     def recipients(self):
         """Return devices that signed up on the day preceding `self.now`."""
@@ -115,7 +115,7 @@ class WelcomeNotificationTask(NotificationTask):
 
 class MonthlySummaryNotificationTask(NotificationTask):
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
         restrict_average=False
     ):
         """
@@ -125,7 +125,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         if getattr(self, 'event_type', None) is None:
             raise AttributeError("MonthlySummaryNotificationTask subclass must define event_type")
 
-        super().__init__(self.event_type, now, engine, dry_run, devices, force_recipients)
+        super().__init__(self.event_type, now, engine, dry_run, devices, force)
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -182,7 +182,7 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
         restrict_average=False
     ):
         super().__init__(
@@ -190,7 +190,7 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
             engine=engine,
             dry_run=dry_run,
             devices=devices,
-            force_recipients=force_recipients,
+            force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
         )
@@ -208,7 +208,7 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
         restrict_average=False
     ):
         super().__init__(
@@ -216,7 +216,7 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
             engine=engine,
             dry_run=dry_run,
             devices=devices,
-            force_recipients=force_recipients,
+            force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
         )
@@ -238,7 +238,7 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
 
     def __init__(
-        self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False, default_emissions=None,
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
         restrict_average=False
     ):
         super().__init__(
@@ -246,7 +246,7 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
             engine=engine,
             dry_run=dry_run,
             devices=devices,
-            force_recipients=force_recipients,
+            force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
         )
@@ -266,8 +266,8 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
 
 @register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force_recipients=False):
-        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run, devices, force_recipients)
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run, devices, force)
 
     def recipients(self):
         """Return devices that have not had any trips in 14 days until `self.now`."""

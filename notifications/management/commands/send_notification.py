@@ -20,9 +20,10 @@ class Command(BaseCommand):
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
         parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
-        parser.add_argument('--force-recipient',
+        parser.add_argument('--force',
                             action='store_true',
-                            help="Send notification to device regardless of whether it qualifies for the notification")
+                            help="Send notification to device regardless of whether the device qualifies for the "
+                            "notification")
         parser.add_argument('--restrict-average',
                             action='store_true',
                             help="Use device's footprint as average to avoid expensive recomputation for all devices "
@@ -35,11 +36,11 @@ class Command(BaseCommand):
                                api_url=options.get('api_url'),
                                api_token=options.get('api_token'),
                                dry_run=options.get('dry_run'),
-                               force_recipients=options.get('force_recipient'),
+                               force=options.get('force'),
                                restrict_average=options.get('restrict_average'))
 
     def send_notification(
-        self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force_recipients=False,
+        self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force=False,
         restrict_average=False
     ):
         devices = Device.objects.filter(uuid=uuid)
@@ -47,7 +48,7 @@ class Command(BaseCommand):
         kwargs = {
             'engine': engine,
             'dry_run': dry_run,
-            'force_recipients': force_recipients,
+            'force': force,
         }
         if issubclass(task_class, MonthlySummaryNotificationTask):
             kwargs['restrict_average'] = restrict_average
