@@ -76,10 +76,10 @@ class NotificationTask:
                 title = template.render_all_languages('title', contexts)
                 content = template.render_all_languages('body', contexts)
                 if self.dry_run:
-                    print(f"Sending notification to {device.uuid}:")
-                    print("Title: ", end='')
+                    print(f"Sending notification to {device.uuid}")
+                    print("Title:")
                     pprint(title)
-                    print("Content: ", end='')
+                    print("Content:")
                     pprint(content)
                     print()
                 else:
