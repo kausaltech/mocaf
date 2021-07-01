@@ -13,14 +13,16 @@ class Command(BaseCommand):
         available_budget_levels = EmissionBudgetLevel.objects.values_list('identifier', flat=True)
 
         parser.add_argument('budget_level', choices=available_budget_levels, help="Prize level to be awarded")
-        parser.add_argument('--all-devices', action='store_true', help="Award prizes to all devices")
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
-        parser.add_argument('--device', action='append', help="Award prize to device with given UUID", default=[])
         parser.add_argument('--dry-run', action='store_true', help="Do not award prizes but print them instead")
         parser.add_argument('--force',
                             action='store_true',
                             help="Award prize to device regardless of whether the device qualifies for the prize")
+
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('--device', action='append', help="Award prize to device with given UUID", default=[])
+        group.add_argument('--all-devices', action='store_true', help="Award prizes to all devices")
 
     def handle(self, *args, **options):
         self.award_prize(options['budget_level'],

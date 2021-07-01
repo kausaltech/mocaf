@@ -16,10 +16,8 @@ class Command(BaseCommand):
         parser.add_argument('task_class',
                             choices=self.task_classes.keys(),
                             help="Class of the task to be executed")
-        parser.add_argument('--all-devices', action='store_true', help="Send notifications to all devices")
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
-        parser.add_argument('--device', action='append', help="Send notification to device with given UUID", default=[])
         parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
         parser.add_argument('--force',
                             action='store_true',
@@ -29,6 +27,10 @@ class Command(BaseCommand):
                             action='store_true',
                             help="Use potential recipients' footprint as average to avoid expensive recomputation for "
                             "all devices (only for monthly summary notifications)")
+
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('--device', action='append', help="Send notification to device with given UUID", default=[])
+        group.add_argument('--all-devices', action='store_true', help="Send notifications to all devices")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]
