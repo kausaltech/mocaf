@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
+from pprint import pprint
 
 from budget.enums import TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel, Prize
@@ -20,9 +21,17 @@ from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
 
 logger = logging.getLogger(__name__)
 
+# Tasks usable in send_notification management command
+registered_tasks = []
+
+
+def register_for_management_command(cls):
+    registered_tasks.append(cls)
+    return cls
+
 
 class NotificationTask:
-    def __init__(self, event_type, now=None, engine=None):
+    def __init__(self, event_type, now=None, engine=None, dry_run=False):
         if now is None:
             now = timezone.now()
         if engine is None:
@@ -31,6 +40,7 @@ class NotificationTask:
         self.event_type = event_type
         self.now = now
         self.engine = engine
+        self.dry_run = dry_run
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
@@ -62,23 +72,32 @@ class NotificationTask:
         for device in devices:
             with transaction.atomic():
                 self.before_notification_sent(device)
-                NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)
                 content = template.render_all_languages('body', contexts)
-                # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
-                # devices as first argument of engine.send_notification()
-                response = self.engine.send_notification([device], title, content).json()
-                if not response['ok'] or response['message'] != 'success':
-                    raise Exception("Sending notifications failed")
+                if self.dry_run:
+                    print(f"Sending notification to {device.uuid}:")
+                    print("Title: ", end='')
+                    pprint(title)
+                    print("Content: ", end='')
+                    pprint(content)
+                    print()
+                else:
+                    NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
+                    # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
+                    # devices as first argument of engine.send_notification()
+                    response = self.engine.send_notification([device], title, content).json()
+                    if not response['ok'] or response['message'] != 'success':
+                        raise Exception("Sending notifications failed")
 
     def before_notification_sent(self, device):
         pass
 
 
+@register_for_management_command
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None):
-        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine)
+    def __init__(self, now=None, engine=None, dry_run=False):
+        super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run)
 
     def recipients(self):
         """Return devices that signed up on the day preceding `self.now`."""
@@ -94,8 +113,11 @@ class WelcomeNotificationTask(NotificationTask):
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
-        super().__init__(self.event_type, now, engine)
+    def __init__(self, now=None, engine=None, dry_run=False, prize_api=None, default_emissions=None, award_prizes=True):
+        if getattr(self, 'event_type', None) is None:
+            raise AttributeError("MonthlySummaryNotificationTask subclass must define event_type")
+
+        super().__init__(self.event_type, now, engine, dry_run)
 
         if award_prizes and prize_api is None:
             prize_api = PrizeApi()
@@ -112,6 +134,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         # Update carbon footprints of all (enabled) devices to make sure there are no gaps on days without data
         devices = super().recipients()
         for device in devices:
+            # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
         self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
         self.average_footprint = None
@@ -149,23 +172,28 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
     @transaction.atomic
     def award_prize(self, device, budget_level):
-        if self.award_prizes:
-            prize = Prize.objects.create(
-                device=device,
-                budget_level=budget_level,
-                prize_month_start=self.summary_month_start
-            )
-            # TODO: Award all prizes in a single API call
-            self.prize_api.award([prize])
+        if self.award_prizes and self.dry_run:
+            if self.dry_run:
+                print(f"Awarding prize {budget_level} to device {device.uuid} for month {self.summary_month_start}")
+            else:
+                prize = Prize.objects.create(
+                    device=device,
+                    budget_level=budget_level,
+                    prize_month_start=self.summary_month_start
+                )
+                # TODO: Award all prizes in a single API call
+                self.prize_api.award([prize])
 
 
+@register_for_management_command
 class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_GOLD
 
-    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+    def __init__(self, now=None, engine=None, dry_run=False, prize_api=None, default_emissions=None, award_prizes=True):
         super().__init__(
             now=now,
             engine=engine,
+            dry_run=dry_run,
             prize_api=prize_api,
             default_emissions=default_emissions,
             award_prizes=award_prizes
@@ -183,14 +211,16 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
         self.award_prize(device, self.gold_level)
 
 
+@register_for_management_command
 class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_SILVER
 
-    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+    def __init__(self, now=None, engine=None, dry_run=False, prize_api=None, default_emissions=None, award_prizes=True):
         super().__init__(
             now=now,
             engine=engine,
             prize_api=prize_api,
+            dry_run=dry_run,
             default_emissions=default_emissions,
             award_prizes=award_prizes
         )
@@ -211,13 +241,15 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
         self.award_prize(device, self.silver_level)
 
 
+@register_for_management_command
 class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask):
     event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE
 
-    def __init__(self, now=None, engine=None, prize_api=None, default_emissions=None, award_prizes=True):
+    def __init__(self, now=None, engine=None, dry_run=False, prize_api=None, default_emissions=None, award_prizes=True):
         super().__init__(
             now=now,
             engine=engine,
+            dry_run=dry_run,
             prize_api=prize_api,
             default_emissions=default_emissions,
             award_prizes=award_prizes
@@ -242,9 +274,10 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
             self.award_prize(device, self.bronze_level)
 
 
+@register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None):
-        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine)
+    def __init__(self, now=None, engine=None, dry_run=False):
+        super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run)
 
     def recipients(self):
         """Return devices that have not had any trips in 14 days until `self.now`."""
