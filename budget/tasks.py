@@ -104,9 +104,11 @@ class MonthlyPrizeTask:
 
     @transaction.atomic
     def award_prize(self, device):
+        message = f"Awarding prize {self.budget_level} to device {device.uuid} for month {self.prize_month_start}"
         if self.dry_run:
-            print(f"Awarding prize {self.budget_level} to device {device.uuid} for month {self.prize_month_start}")
+            print(message)
         else:
+            logger.info(message)
             prize = Prize.objects.create(
                 device=device,
                 budget_level=self.budget_level,

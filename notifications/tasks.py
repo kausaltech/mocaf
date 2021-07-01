@@ -87,6 +87,7 @@ class NotificationTask:
                     pprint(content)
                     print()
                 else:
+                    logger.info(f"Sending notification to {device.uuid}")
                     NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
                     # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
                     # devices as first argument of engine.send_notification()
@@ -139,6 +140,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
             device_universe = devices
         else:
             device_universe = Device.objects.filter(enabled_at__isnull=False)
+
         for device in device_universe:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)

@@ -13,26 +13,28 @@ class Command(BaseCommand):
         self.task_classes = {c.__name__: c for c in registered_tasks}
 
     def add_arguments(self, parser):
-        parser.add_argument('device', help="UUID of recipient device")
         parser.add_argument('task_class',
                             choices=self.task_classes.keys(),
                             help="Class of the task to be executed")
+        parser.add_argument('--all-devices', action='store_true', help="Send notifications to all devices")
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
+        parser.add_argument('--device', action='append', help="Send notification to device with given UUID", default=[])
         parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
         parser.add_argument('--force',
                             action='store_true',
-                            help="Send notification to device regardless of whether the device qualifies for the "
+                            help="Send notifications to devices regardless of whether devices qualify for the "
                             "notification")
         parser.add_argument('--restrict-average',
                             action='store_true',
-                            help="Use device's footprint as average to avoid expensive recomputation for all devices "
-                            "(only for monthly summary notifications)")
+                            help="Use potential recipients' footprint as average to avoid expensive recomputation for "
+                            "all devices (only for monthly summary notifications)")
 
     def handle(self, *args, **options):
         task_class = self.task_classes[options['task_class']]
-        self.send_notification(options['device'],
-                               task_class,
+        self.send_notification(task_class,
+                               options.get('device'),
+                               options.get('all_devices'),
                                api_url=options.get('api_url'),
                                api_token=options.get('api_token'),
                                dry_run=options.get('dry_run'),
@@ -40,10 +42,18 @@ class Command(BaseCommand):
                                restrict_average=options.get('restrict_average'))
 
     def send_notification(
-        self, uuid, task_class, api_url=None, api_token=None, dry_run=False, force=False,
+        self, task_class, uuids, all_devices=False, api_url=None, api_token=None, dry_run=False, force=False,
         restrict_average=False
     ):
-        devices = Device.objects.filter(uuid=uuid)
+        for uuid in uuids:
+            if not Device.objects.filter(uuid=uuid).exists():
+                raise ValueError(f"Device {uuid} does not exist")
+
+        if all_devices:
+            devices = Device.objects.all()
+        else:
+            devices = Device.objects.filter(uuid__in=uuids)
+
         engine = NotificationEngine(api_url, api_token)
         kwargs = {
             'engine': engine,
