@@ -13,3 +13,5 @@ class NotificationTemplateAdmin(ModelAdmin):
     ] + [
         f'body_{lang}_preview' for lang in ('fi', 'en', 'sv')
     ]
+    list_display = ['title', 'event_type']
+    list_filter = ['event_type']
