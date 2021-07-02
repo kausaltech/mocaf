@@ -24,6 +24,10 @@ class Command(BaseCommand):
         parser.add_argument('--force',
                             action='store_true',
                             help="Award prize to device regardless of whether the device qualifies for the prize")
+        parser.add_argument('--min-active-days',
+                            type=int,
+                            default=0,
+                            help="Minimum number of active days in the last month in order to receive a prize")
 
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument('--device', action='append', help="Award prize to device with given UUID", default=[])
@@ -37,11 +41,12 @@ class Command(BaseCommand):
                          api_url=options.get('api_url'),
                          api_token=options.get('api_token'),
                          dry_run=options.get('dry_run'),
-                         force=options.get('force'))
+                         force=options.get('force'),
+                         min_active_days=options['min_active_days'])
 
     def award_prize(
         self, budget_level_identifier, uuids, next_budget_level_identifier=None, all_devices=False, api_url=None,
-        api_token=None, dry_run=False, force=False
+        api_token=None, dry_run=False, force=False, min_active_days=0
     ):
         for uuid in uuids:
             if not Device.objects.filter(uuid=uuid).exists():
@@ -60,4 +65,5 @@ class Command(BaseCommand):
             prize_api=prize_api,
             dry_run=dry_run,
             force=force,
+            min_active_days=min_active_days,
         )

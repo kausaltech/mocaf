@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 class MonthlyPrizeTask:
     def __init__(
         self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, devices=None,
-        force=False, prize_api=None, default_emissions=None
+        force=False, prize_api=None, default_emissions=None, min_active_days=0
     ):
         """
+        Award prizes for the month preceding `now` and the given budget level.
+
         `budget_level_identifier` is the budget level for which to award a prize if footprint is smaller.
         `next_budget_level_identifier` is the next lower budget level; if footprint is smaller, do not award the
         `budget_level_identifier` prize (but you should make sure to award the better one by creating a new
@@ -26,6 +28,8 @@ class MonthlyPrizeTask:
         `devices` can be set to a QuerySet smaller than Device.objects.all() to limit the potential recipients.
         If `force` is True, attempt to award the prize to all devices in `devices` (or all if `devices` is not set)
         regardless of whether they qualify for the prize.
+        `min_active_days` is the number of days of the relevant month that the device must have been active in order to
+        receive a prize.
         """
         if now is None:
             now = timezone.now()
@@ -39,6 +43,7 @@ class MonthlyPrizeTask:
         self.devices = devices
         self.force = force
         self.prize_api = prize_api
+        self.min_active_days = min_active_days
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -52,6 +57,7 @@ class MonthlyPrizeTask:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
             device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
         self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
+        self.num_active_days = {device: device.num_active_days(start_date) for device in devices}
 
         self.budget_level = EmissionBudgetLevel.objects.get(
             identifier=budget_level_identifier,
@@ -84,16 +90,23 @@ class MonthlyPrizeTask:
     def recipients(self):
         """Return devices that should receive a prize for the calendar month preceding the one of `self.now`."""
         # Don't send anything to devices that already got a prize for that month
-        excluded_devices = (Prize.objects
-                            .filter(prize_month_start=self.prize_month_start)
-                            .values('device'))
+        earlier_recipients = (Prize.objects
+                              .filter(prize_month_start=self.prize_month_start)
+                              .values('device'))
 
-        eligible_devices = [dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)]
+        eligible_footprint_devices = [
+            dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)
+        ]
+
+        sufficiently_active_devices = [
+            dev.id for dev, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
+        ]
 
         return (self.devices
                 .filter(enabled_at__isnull=False)
-                .filter(id__in=eligible_devices)
-                .exclude(id__in=excluded_devices))
+                .filter(id__in=eligible_footprint_devices)
+                .filter(id__in=sufficiently_active_devices)
+                .exclude(id__in=earlier_recipients))
 
     def footprint_eligible(self, footprint):
         """Return true iff devices with the given footprint are eligible for getting the prize."""

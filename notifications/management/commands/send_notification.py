@@ -23,6 +23,10 @@ class Command(BaseCommand):
                             action='store_true',
                             help="Send notifications to devices regardless of whether devices qualify for the "
                             "notification")
+        parser.add_argument('--min-active-days',
+                            type=int,
+                            default=0,
+                            help="Minimum number of active days in the last month in order to receive a prize")
         parser.add_argument('--restrict-average',
                             action='store_true',
                             help="Use potential recipients' footprint as average to avoid expensive recomputation for "
@@ -41,11 +45,12 @@ class Command(BaseCommand):
                                api_token=options.get('api_token'),
                                dry_run=options.get('dry_run'),
                                force=options.get('force'),
-                               restrict_average=options.get('restrict_average'))
+                               restrict_average=options.get('restrict_average'),
+                               min_active_days=options.get('min_active_days'))
 
     def send_notification(
         self, task_class, uuids, all_devices=False, api_url=None, api_token=None, dry_run=False, force=False,
-        restrict_average=False
+        restrict_average=False, min_active_days=0
     ):
         for uuid in uuids:
             if not Device.objects.filter(uuid=uuid).exists():
@@ -61,6 +66,7 @@ class Command(BaseCommand):
             'engine': engine,
             'dry_run': dry_run,
             'force': force,
+            'min_active_days': min_active_days,
         }
         if issubclass(task_class, MonthlySummaryNotificationTask):
             kwargs['restrict_average'] = restrict_average

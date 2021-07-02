@@ -144,12 +144,23 @@ class Device(models.Model):
             rank = 0
         return dict(ranking=rank, maximum_rank=total)
 
-    def monthly_carbon_footprint(self, month: date):
+    def daily_carbon_footprints_for_month(self, month: date):
         start_date = month.replace(day=1)
         last_day = calendar.monthrange(start_date.year, start_date.month)[1]
         end_date = start_date.replace(day=last_day)
-        relevant_daily_footprints = self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date)
-        return relevant_daily_footprints.aggregate(Sum('carbon_footprint'))['carbon_footprint__sum']
+        return self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date)
+
+    def monthly_carbon_footprint(self, month: date):
+        footprints = self.daily_carbon_footprints_for_month(month)
+        return footprints.aggregate(Sum('carbon_footprint'))['carbon_footprint__sum']
+
+    def num_active_days(self, month: date):
+        """
+        Return the number of days of the given month on which the average carbon footprint was *not* used for this
+        device.
+        """
+        footprints = self.daily_carbon_footprints_for_month(month)
+        return footprints.filter(average_footprint_used=False).count()
 
     def _get_transport_modes(self):
         modes = getattr(self, '_mode_cache', None)

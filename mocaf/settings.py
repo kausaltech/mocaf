@@ -105,6 +105,7 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,
         }
     },
+    # TODO: Update the following. Be sure to include min_active_days etc.
     # 'send-monthly-summary-notifications': {
     #     'task': 'notifications.tasks.send_notifications',
     #     'args': ('notifications.tasks.MonthlySummaryNotificationTask',),

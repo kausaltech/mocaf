@@ -117,16 +117,19 @@ class WelcomeNotificationTask(NotificationTask):
 class MonthlySummaryNotificationTask(NotificationTask):
     def __init__(
         self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
-        restrict_average=False
+        restrict_average=False, min_active_days=0
     ):
         """
         If `restrict_average` is True, consider only devices in `devices` for the average footprint and only regenerate
         the carbon footprints for these. (Useful for testing since regenerating footprints is expensive.)
+        `min_active_days` is the number of days of the relevant month that the device must have been active in order to
+        receive a notification.
         """
         if getattr(self, 'event_type', None) is None:
             raise AttributeError("MonthlySummaryNotificationTask subclass must define event_type")
 
         super().__init__(self.event_type, now, engine, dry_run, devices, force)
+        self.min_active_days = min_active_days
 
         one_month_ago = self.now - relativedelta(months=1)
         start_date = one_month_ago.date().replace(day=1)
@@ -148,20 +151,30 @@ class MonthlySummaryNotificationTask(NotificationTask):
         self.average_footprint = None
         if self.footprints:
             self.average_footprint = statistics.mean(self.footprints.values())
+        self.num_active_days = {device: device.num_active_days(start_date) for device in device_universe}
 
     def recipients(self):
         """Return devices that should receive a summary for the calendar month preceding the one of `self.now`."""
         today = self.now.date()
         this_month = today.replace(day=1)
         # Don't send anything to devices that already got a summary notification this month
-        excluded_devices = (NotificationLogEntry.objects
-                            .filter(template__event_type=self.event_type)
-                            .filter(sent_at__date__gte=this_month)
-                            .values('device'))
+        earlier_recipients = (NotificationLogEntry.objects
+                              .filter(template__event_type=self.event_type)
+                              .filter(sent_at__date__gte=this_month)
+                              .values('device'))
 
-        eligible_devices = [dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)]
+        eligible_footprint_devices = [
+            dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)
+        ]
 
-        return super().recipients().filter(id__in=eligible_devices).exclude(id__in=excluded_devices)
+        sufficiently_active_devices = [
+            dev.id for dev, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
+        ]
+
+        return (super().recipients()
+                .filter(id__in=eligible_footprint_devices)
+                .filter(id__in=sufficiently_active_devices)
+                .exclude(id__in=earlier_recipients))
 
     def contexts(self, device):
         def rounded_float(f):
@@ -185,7 +198,7 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
 
     def __init__(
         self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
-        restrict_average=False
+        restrict_average=False, min_active_days=0
     ):
         super().__init__(
             now=now,
@@ -195,6 +208,7 @@ class MonthlySummaryGoldNotificationTask(MonthlySummaryNotificationTask):
             force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
+            min_active_days=min_active_days,
         )
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
         self.gold_threshold = self.gold_level.calculate_for_date(
@@ -211,7 +225,7 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
 
     def __init__(
         self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
-        restrict_average=False
+        restrict_average=False, min_active_days=0
     ):
         super().__init__(
             now=now,
@@ -221,6 +235,7 @@ class MonthlySummarySilverNotificationTask(MonthlySummaryNotificationTask):
             force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
+            min_active_days=min_active_days,
         )
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
         self.gold_level = EmissionBudgetLevel.objects.get(identifier='gold', year=self.summary_month_start.year)
@@ -241,7 +256,7 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
 
     def __init__(
         self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
-        restrict_average=False
+        restrict_average=False, min_active_days=0
     ):
         super().__init__(
             now=now,
@@ -251,6 +266,7 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
             force=force,
             default_emissions=default_emissions,
             restrict_average=restrict_average,
+            min_active_days=min_active_days,
         )
         self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
         self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)

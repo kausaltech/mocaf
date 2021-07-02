@@ -99,6 +99,19 @@ def test_monthly_prize_recipients_already_awarded(zero_emission_budget_level, al
         assert result == [device]
 
 
+@pytest.mark.parametrize('already_awarded', [False, True])
+def test_monthly_prize_recipients_too_few_active_days(zero_emission_budget_level, already_awarded):
+    now = datetime.datetime(2020, 4, 1)
+    device = DeviceFactory()
+    budget_level = EmissionBudgetLevelFactory()
+    budget_level_leg(budget_level, device, date=datetime.datetime(2020, 3, 1))
+    task = MonthlyPrizeTask(
+        budget_level.identifier, now=now, default_emissions=zero_emission_budget_level, min_active_days=2
+    )
+    result = list(task.recipients())
+    assert result == []
+
+
 @responses.activate
 def test_award_prizes_calls_api(api_settings, zero_emission_budget_level):
     now = datetime.datetime(2020, 4, 1)

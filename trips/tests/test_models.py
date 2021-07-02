@@ -88,3 +88,15 @@ def test_monthly_carbon_footprint_device_stationary(emission_budget_level_bronze
                                          make_aware(datetime(2020, 2, 1, 0, 0), utc))
     expected = 5 + 2 * 0 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     assert device.monthly_carbon_footprint(month) == pytest.approx(expected)
+
+
+def test_num_active_days():
+    device = DeviceFactory()
+    num_active_days = 3
+    for i in range(num_active_days):
+        LegFactory(trip__device=device,
+                   start_time=make_aware(datetime(2020, 1, i+1, 0, 0), utc),
+                   end_time=make_aware(datetime(2020, 1, i+1, 0, 30), utc))
+    device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
+                                         make_aware(datetime(2020, 2, 1, 0, 0), utc))
+    assert device.num_active_days(make_aware(datetime(2020, 1, 1, 0, 0))) == num_active_days
