@@ -199,7 +199,7 @@ class TransitRTImporter:
         transaction.set_autocommit(True)
 
     def perform_http_query(self):
-        resp = requests.get(self.http_url, timeout=(10, 30))
+        resp = requests.get(self.http_url, timeout=(10, 10))
         resp.raise_for_status()
         return resp.content
 

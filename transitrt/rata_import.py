@@ -48,7 +48,7 @@ GRAPHQL_URL = 'https://rata.digitraffic.fi/api/v2/graphql/graphql'
 
 class RataImporter(TransitRTImporter):
     def perform_http_query(self):
-        resp = requests.post(GRAPHQL_URL, json={'query': GRAPHQL_QUERY}, timeout=(10, 30))
+        resp = requests.post(GRAPHQL_URL, json={'query': GRAPHQL_QUERY}, timeout=(10, 10))
         resp.raise_for_status()
         return resp.content
 
