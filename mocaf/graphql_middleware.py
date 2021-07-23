@@ -42,7 +42,11 @@ class APITokenMiddleware:
             raise GraphQLAuthFailedError("Device required", [directive])
         if dev.token != token:
             raise GraphQLAuthFailedError("Invalid token", [directive])
-        if not dev.enabled and info.field_name != 'enableMocaf' and info.field_name != 'disableMocaf':
+
+        ALLOWED_MUTATIONS_WHEN_DISABLED = (
+            'enableMocaf', 'disableMocaf', 'clearUserData',
+        )
+        if not dev.enabled and info.field_name not in ALLOWED_MUTATIONS_WHEN_DISABLED:
             raise GraphQLAuthFailedError("Mocaf disabled", [directive])
 
         info.context.device = dev
