@@ -31,3 +31,4 @@ pytest-factoryboy
 pytest-lazy-fixture
 responses
 ranking
+django-prometheus

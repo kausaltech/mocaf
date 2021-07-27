@@ -42,6 +42,7 @@ env = environ.Env(
     GENIEM_PRIZE_API_BASE=(str, ''),
     GENIEM_PRIZE_API_TOKEN=(str, ''),
     INTERNAL_IPS=(list, []),
+    PROMETHEUS_METRICS_AUTH_TOKEN=(str, None),
 )
 
 BASE_DIR = root()
@@ -174,6 +175,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_extensions',
+    'django_prometheus',
 
     'gtfs',
     'transitrt',
@@ -186,6 +188,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -195,8 +198,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-
     'wagtail.contrib.redirects.middleware.RedirectMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'mocaf.urls'
@@ -377,3 +380,5 @@ if SENTRY_DSN:
 if 'DATABASES' in locals():
     if DATABASES['default']['ENGINE'] in ('django.db.backends.postgresql', 'django.contrib.gis.db.backends.postgis'):
         DATABASES['default']['CONN_MAX_AGE'] = 600
+
+PROMETHEUS_METRICS_AUTH_TOKEN = env('PROMETHEUS_METRICS_AUTH_TOKEN')

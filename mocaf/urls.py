@@ -2,6 +2,7 @@ from django.conf import settings
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import admin
+from django_prometheus import urls as django_prometheus_urls
 
 from wagtail.admin import urls as wagtailadmin_urls
 # from wagtail.core import urls as wagtail_urls
@@ -9,7 +10,7 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from trips_ingest.api import ingest_view, upload_log_view
 from .graphql_views import MocafGraphQLView
-from .views import health_view
+from .views import health_view, prometheus_exporter_view
 
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True))),
     path('v1/ingest/', csrf_exempt(ingest_view)),
     path('v1/upload-log/<slug:uuid>/', csrf_exempt(upload_log_view), name='upload-debug-log'),
+    path("metrics", prometheus_exporter_view, name="prometheus-django-metrics")
 ]
 
 
