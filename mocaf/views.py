@@ -14,8 +14,11 @@ def health_view(request):
 
 def prometheus_exporter_view(request):
     auth_header = request.META.get('HTTP_AUTHORIZATION')
+    auth_header_token = None
+    if auth_header and auth_header.startswith('Bearer '):
+        auth_header_token = auth_header[7:] 
     get_parameter_token = request.GET.get('token')
-    token = auth_header or get_parameter_token
+    token = auth_header_token or get_parameter_token
     if token != settings.PROMETHEUS_METRICS_AUTH_TOKEN:
         return HttpResponse('Unauthorized', status=401)
     return ExportToDjangoView(request)
