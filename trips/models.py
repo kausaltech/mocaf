@@ -18,7 +18,9 @@ from django.db import transaction
 from django.contrib.gis.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from django_prometheus.models import ExportModelOperationsMixin
 from modeltrans.fields import TranslationField
+from prometheus_client import Gauge
 
 from budget.enums import EmissionUnit, TimeResolution
 from trips_ingest.models import DeviceHeartbeat, Location
@@ -36,7 +38,7 @@ class DeviceQuerySet(models.QuerySet):
         return self.filter(friendly_name__iexact=name)
 
 
-class Device(models.Model):
+class Device(ExportModelOperationsMixin('device'), models.Model):
     uuid = models.UUIDField(null=False, unique=True, db_index=True)
     token = models.CharField(max_length=50, null=True)
     platform = models.CharField(max_length=20, null=True)
@@ -326,7 +328,7 @@ class TripQuerySet(models.QuerySet):
         return self.filter(deleted_at__isnull=True)
 
 
-class Trip(models.Model):
+class Trip(ExportModelOperationsMixin('trip'), models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
     deleted_at = models.DateTimeField(null=True)
 
