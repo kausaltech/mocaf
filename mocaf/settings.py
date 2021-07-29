@@ -43,7 +43,9 @@ env = environ.Env(
     GENIEM_PRIZE_API_TOKEN=(str, ''),
     INTERNAL_IPS=(list, []),
     PROMETHEUS_METRICS_AUTH_TOKEN=(str, None),
+    PROMETHEUS_EXPORT_MIGRATIONS=(bool, False),
 )
+PROMETHEUS_EXPORT_MIGRATIONS = env('PROMETHEUS_EXPORT_MIGRATIONS')
 
 BASE_DIR = root()
 PROJECT_DIR = os.path.join(BASE_DIR, 'mocaf')

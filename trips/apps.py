@@ -1,3 +1,4 @@
+import sys
 from functools import partial
 from django.apps import AppConfig
 from django.db.models import Sum
@@ -16,7 +17,13 @@ class TripsConfig(AppConfig):
 
     def ready(self):
         """Set up Prometheus gauges."""
-        from trips.models import TransportMode
-        gauge = Gauge('trips_length_meters_total', "Total meters by mode of transportation", ['mode'])
-        for mode in TransportMode.objects.all():
-            gauge.labels(mode.identifier).set_function(partial(length_for_mode, mode))
+        # Don't do this in management commands other than runserver
+        # https://stackoverflow.com/questions/65072296/django-execute-code-only-for-manage-py-runserver-not-for-migrate-help-e
+        is_manage_py = any(arg.endswith("manage.py") for arg in sys.argv)
+        is_runserver = any(arg == "runserver" for arg in sys.argv)
+
+        if (is_manage_py and is_runserver) or (not is_manage_py):
+            from trips.models import TransportMode
+            gauge = Gauge('trips_length_meters_total', "Total meters by mode of transportation", ['mode'])
+            for mode in TransportMode.objects.all():
+                gauge.labels(mode.identifier).set_function(partial(length_for_mode, mode))
