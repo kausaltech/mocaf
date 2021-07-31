@@ -20,7 +20,6 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 from modeltrans.fields import TranslationField
-from prometheus_client import Gauge
 
 from budget.enums import EmissionUnit, TimeResolution
 from trips_ingest.models import DeviceHeartbeat, Location

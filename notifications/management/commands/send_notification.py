@@ -1,4 +1,6 @@
+import datetime
 from django.core.management.base import BaseCommand
+from django.utils.timezone import utc
 
 from trips.models import Device
 from notifications.engine import NotificationEngine
@@ -18,6 +20,9 @@ class Command(BaseCommand):
                             help="Class of the task to be executed")
         parser.add_argument('--api-url', nargs='?')
         parser.add_argument('--api-token', nargs='?')
+        parser.add_argument('--date',
+                            type=datetime.date.fromisoformat,
+                            help="Date (ISO format) to use instead of the current one")
         parser.add_argument('--dry-run', action='store_true', help="Do not send notifications but print them instead")
         parser.add_argument('--force',
                             action='store_true',
@@ -43,13 +48,14 @@ class Command(BaseCommand):
                                options.get('all_devices'),
                                api_url=options.get('api_url'),
                                api_token=options.get('api_token'),
+                               date=options.get('date'),
                                dry_run=options.get('dry_run'),
                                force=options.get('force'),
                                restrict_average=options.get('restrict_average'),
                                min_active_days=options.get('min_active_days'))
 
     def send_notification(
-        self, task_class, uuids, all_devices=False, api_url=None, api_token=None, dry_run=False, force=False,
+        self, task_class, uuids, all_devices=False, api_url=None, api_token=None, date=None, dry_run=False, force=False,
         restrict_average=False, min_active_days=0
     ):
         for uuid in uuids:
@@ -61,10 +67,16 @@ class Command(BaseCommand):
         else:
             devices = Device.objects.filter(uuid__in=uuids)
 
+        if date:
+            now = datetime.datetime.combine(date, datetime.time(), utc)
+        else:
+            now = None
+
         engine = NotificationEngine(api_url, api_token)
         kwargs = {
             'engine': engine,
             'dry_run': dry_run,
+            'now': now,
             'force': force,
             'min_active_days': min_active_days,
         }

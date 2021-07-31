@@ -137,6 +137,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         end_date = self.now.date().replace(day=1) - datetime.timedelta(days=1)
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.summary_month_start = start_date
+        self.summary_month_end = end_date
 
         # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
         if restrict_average:
@@ -182,7 +183,26 @@ class MonthlySummaryNotificationTask(NotificationTask):
         contexts = super().contexts(device)
         for language, context in contexts.items():
             context['average_carbon_footprint'] = rounded_float(self.average_footprint)
-            context['carbon_footprint'] = rounded_float(self.footprints[device])
+            # FIXME: The commented-out line reports the footprint as used for prize determination. However, in the app,
+            # device.get_carbon_footprint_summary() is used for the footprint and this does not fill in "default
+            # emissions" for days without any data. So the numbers differ. Ideally, the app should display the corrected
+            # footprint (i.e., containing the filled-in value), but it does not for now.
+            # context['carbon_footprint'] = rounded_float(self.footprints[device])
+            footprint_summary = device.get_carbon_footprint_summary(
+                self.summary_month_start,
+                self.summary_month_end,
+                time_resolution=TimeResolution.MONTH,
+                units=EmissionUnit.KG,
+            )
+            if not footprint_summary:
+                sum_footprints = 0.0
+            else:
+                assert len(footprint_summary) == 1
+                footprint_summary = footprint_summary[0]
+                assert footprint_summary['date'] == self.summary_month_start
+                sum_footprints = sum(mode_footprint['carbon_footprint']
+                                     for mode_footprint in footprint_summary['per_mode'])
+            context['carbon_footprint'] = rounded_float(sum_footprints)
             with override(language):
                 context['month'] = date_format(self.summary_month_start, 'F')
         return contexts
