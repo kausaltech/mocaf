@@ -195,14 +195,13 @@ class MonthlySummaryNotificationTask(NotificationTask):
                 units=EmissionUnit.KG,
             )
             if not footprint_summary:
-                sum_footprints = 0.0
+                carbon_footprint = 0.0
             else:
                 assert len(footprint_summary) == 1
                 footprint_summary = footprint_summary[0]
                 assert footprint_summary['date'] == self.summary_month_start
-                sum_footprints = sum(mode_footprint['carbon_footprint']
-                                     for mode_footprint in footprint_summary['per_mode'])
-            context['carbon_footprint'] = rounded_float(sum_footprints)
+                carbon_footprint = footprint_summary['carbon_footprint']
+            context['carbon_footprint'] = rounded_float(carbon_footprint)
             with override(language):
                 context['month'] = date_format(self.summary_month_start, 'F')
         return contexts
