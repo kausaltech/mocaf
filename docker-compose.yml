@@ -21,6 +21,7 @@ x-django-environment: &django-environment
   - OIDC_ISSUER_URL
   - OIDC_CLIENT_ID
   - OIDC_CLIENT_SECRET
+  - PROMETHEUS_METRICS_AUTH_TOKEN
 
 x-django-build: &django-build
   context: .
