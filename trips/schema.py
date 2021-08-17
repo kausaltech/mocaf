@@ -74,8 +74,18 @@ class LegNode(DjangoNode, AuthenticatedDeviceNode):
         return root.can_user_update()
 
     def resolve_geometry(root: Leg, info):
-        points = list(root.locations.values_list('loc', flat=True).order_by('time'))
+        if not root.can_user_update():
+            points = []
+        else:
+            points = list(root.locations.active().values_list('loc', flat=True).order_by('time'))
         return LineString(points)
+
+    def resolve_locations(root: Leg, info):
+        if not root.can_user_update():
+            points = []
+        else:
+            points = root.locations.active()
+        return points
 
     class Meta:
         model = Leg

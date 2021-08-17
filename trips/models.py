@@ -378,7 +378,7 @@ class Trip(ExportModelOperationsMixin('trip'), models.Model):
         end_time = getattr(self, '_update_end_time', None)
         if not end_time:
             # Hard-code to two weeks for now
-            end_time = self.get_start_time() + timedelta(days=14)
+            end_time = self.get_start_time() + timedelta(hours=settings.ALLOWED_TRIP_UPDATE_HOURS)
         self._update_end_time = end_time
         return end_time
 
@@ -501,11 +501,27 @@ class UserLegUpdate(models.Model):
         return 'Update for %s (created at %s)' % (self.leg, self.created_at)
 
 
+class LegLocationQuerySet(models.QuerySet):
+    def _get_expired_query(self):
+        now = timezone.now()
+        expiry_time = now - timedelta(hours=settings.ALLOWED_TRIP_UPDATE_HOURS)
+        qs = Q(leg__start_time__lte=expiry_time)
+        return qs
+
+    def expired(self):
+        return self.filter(self._get_expired_query())
+
+    def active(self):
+        return self.exclude(self._get_expired_query())
+
+
 class LegLocation(models.Model):
     leg = models.ForeignKey(Leg, on_delete=models.CASCADE, related_name='locations')
     loc = models.PointField(null=False, srid=4326)
     time = models.DateTimeField()
     speed = models.FloatField()
+
+    objects = LegLocationQuerySet.as_manager()
 
     class Meta:
         ordering = ('leg', 'time')

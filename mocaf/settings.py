@@ -328,6 +328,9 @@ BASE_URL = 'http://example.com'
 
 LOCAL_SRS = 3067  # ETRS-TM35-FIN
 
+# How many hours a trip leg is editable by the user
+ALLOWED_TRIP_UPDATE_HOURS = 3 * 24
+
 # Notification engine
 GENIEM_NOTIFICATION_API_BASE = env('GENIEM_NOTIFICATION_API_BASE')
 GENIEM_NOTIFICATION_API_TOKEN = env('GENIEM_NOTIFICATION_API_TOKEN')
