@@ -33,14 +33,11 @@ class MonthlyPrizeTask:
         """
         if now is None:
             now = timezone.now()
-        if devices is None:
-            devices = Device.objects.all()
         if prize_api is None:
             prize_api = PrizeApi()
 
         self.now = now
         self.dry_run = dry_run
-        self.devices = devices
         self.force = force
         self.prize_api = prize_api
         self.min_active_days = min_active_days
@@ -51,6 +48,14 @@ class MonthlyPrizeTask:
         end_date = self.now.date().replace(day=1) - datetime.timedelta(days=1)
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.prize_month_start = start_date
+
+        if devices is None:
+            devices = Device.objects.all()
+
+        # Ensure the processed devices have at least one detected trip during the
+        # time period.
+        devices = devices.has_trips_during(start_date, end_date)
+        self.devices = devices
 
         # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
         for device in devices:

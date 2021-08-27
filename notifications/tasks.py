@@ -141,9 +141,11 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
         # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
         if restrict_average:
-            device_universe = devices
+            qs = devices
         else:
-            device_universe = Device.objects.filter(enabled_at__isnull=False)
+            qs = Device.objects.all()
+
+        device_universe = qs.has_trips_during(start_date, end_date)
 
         for device in device_universe:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do

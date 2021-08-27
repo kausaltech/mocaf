@@ -36,6 +36,12 @@ class DeviceQuerySet(models.QuerySet):
     def by_name(self, name):
         return self.filter(friendly_name__iexact=name)
 
+    def has_trips_during(self, start_date: date, end_date: date):
+        start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
+        end_time = LOCAL_TZ.localize(datetime.combine(end_date + timedelta(days=1), time(0)))
+        legs = Leg.objects.filter(start_time__gte=start_time, start_time__lt=end_time)
+        return self.filter(trips__legs__in=legs).distinct()
+
 
 class Device(ExportModelOperationsMixin('device'), models.Model):
     uuid = models.UUIDField(null=False, unique=True, db_index=True)
