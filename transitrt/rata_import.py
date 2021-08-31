@@ -70,7 +70,12 @@ class RataImporter(TransitRTImporter):
         journey_ref = '%s:%s' % (d['departureDate'], route_ref)
         vehicle_ref = d['trainNumber']
 
-        train_loc = d['trainLocations'][0]
+        locs = d['trainLocations']
+        if not locs:
+            logger.warn('No locations for route %s' % route_ref)
+            return None
+
+        train_loc = locs[0]
         coords = train_loc['location']
 
         act = dict(
