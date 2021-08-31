@@ -25,6 +25,15 @@ transport_modes:
     name: Pyöräily
     name_en: Bicycling
     emission_factor: 5
+    variants:
+      - identifier: electric_bicycle
+        emission_factor: 12
+        name: Sähköpyörä
+        name_en: Electric bicycle
+      - identifier: normal_bicycle
+        emission_factor: 5
+        name: Tavallinen pyörä
+        name_en: Normal bicycle
   - identifier: car
     name: Henkilöauto
     name_en: Car
