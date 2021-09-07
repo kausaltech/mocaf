@@ -171,6 +171,7 @@ INSTALLED_APPS = [
 
     'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.gis',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -187,6 +188,7 @@ INSTALLED_APPS = [
     'feedback',
     'pages',
     'notifications',
+    'analytics',
 ]
 
 MIDDLEWARE = [

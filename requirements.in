@@ -32,3 +32,4 @@ pytest-lazy-fixture
 responses
 ranking
 django-prometheus
+OWSLib

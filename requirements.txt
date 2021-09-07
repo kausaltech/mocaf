@@ -156,6 +156,8 @@ openpyxl==3.0.7
     # via tablib
 orjson==3.5.2
     # via -r requirements.in
+owslib==0.25.0
+    # via -r requirements.in
 packaging==20.9
     # via pytest
 pandas==1.2.4
@@ -190,7 +192,9 @@ pyparsing==2.4.7
     #   matplotlib
     #   packaging
 pyproj==3.0.1
-    # via geopandas
+    # via
+    #   geopandas
+    #   owslib
 pytest==6.2.4
     # via
     #   pytest-django
@@ -207,6 +211,7 @@ python-dateutil==2.8.1
     #   arrow
     #   faker
     #   matplotlib
+    #   owslib
     #   pandas
 python-dotenv==0.17.1
     # via -r requirements.in
@@ -216,15 +221,19 @@ pytz==2021.1
     #   django
     #   django-modelcluster
     #   l18n
+    #   owslib
     #   pandas
 pyyaml==5.4.1
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   owslib
 ranking==0.3.2
     # via -r requirements.in
 redis==3.5.3
     # via -r requirements.in
 requests==2.25.1
     # via
+    #   owslib
     #   responses
     #   wagtail
 responses==0.13.3
