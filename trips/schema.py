@@ -239,9 +239,12 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
             if mode_obj:
                 obj.user_corrected_mode = mode_obj
                 obj.mode = mode_obj
-                if not mode_obj.variants.exists():
-                    obj.mode_variant = None
-                    update_fields += ['mode_variant']
+                # Check if we need to reset the mode variant
+                if not mode_variant and obj.mode_variant is not None:
+                    available_variants = list(mode_obj.variants.all())
+                    if obj.mode_variant not in available_variants:
+                        obj.mode_variant = None
+                        update_fields += ['mode_variant']
                 update_fields += ['user_corrected_mode', 'mode']
             else:
                 mode_obj = obj.mode
@@ -268,7 +271,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.update_carbon_footprint()
                 obj.updated_at = timezone.now()
                 update_fields += ['carbon_footprint', 'updated_at']
-                obj.save(update_fields=update_fields)
+                obj.save(update_fields=set(update_fields))
 
             obj.user_updates.create(data=update_data)
 
