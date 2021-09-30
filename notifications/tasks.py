@@ -14,6 +14,7 @@ from pprint import pprint
 
 from budget.enums import TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
+from budget.tasks import MonthlyPrizeTask
 from trips.models import Device
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
@@ -335,3 +336,13 @@ def send_notifications(task_class, devices=None, **kwargs):
         task_class = getattr(module, class_name)
     task = task_class(devices=devices, **kwargs)
     task.send_notifications()
+
+
+@shared_task
+def award_prizes_and_send_notifications(devices=None, **kwargs):
+    MonthlyPrizeTask('bronze', 'silver', devices=devices, **kwargs).award_prizes()
+    MonthlyPrizeTask('silver', 'gold', devices=devices, **kwargs).award_prizes()
+    MonthlyPrizeTask('gold', devices=devices, **kwargs).award_prizes()
+    MonthlySummaryBronzeOrWorseNotificationTask(devices=devices, **kwargs).send_notifications()
+    MonthlySummarySilverNotificationTask(devices=devices, **kwargs).send_notifications()
+    MonthlySummaryGoldNotificationTask(devices=devices, **kwargs).send_notifications()
