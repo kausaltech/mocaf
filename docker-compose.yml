@@ -85,6 +85,16 @@ services:
       - redis
     command: celery worker transitrt
 
+  celery-notifications-worker:
+    container_name: mocaf_celery_notifications_worker
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery worker notifications
+
   celery-beat:
     container_name: mocaf_celery_beat
     build: *django-build

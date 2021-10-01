@@ -141,6 +141,7 @@ CELERY_TASK_ROUTES = {
     'transitrt.tasks.*': {'queue': 'transitrt'},
     'trips.tasks.*': {'queue': 'trips'},
     'trips_ingest.tasks.*': {'queue': 'trips'},
+    'notifications.tasks.*': {'queue': 'notifications'},
 }
 
 # Required for Celery exporter: https://github.com/OvalMoney/celery-exporter
