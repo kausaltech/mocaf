@@ -113,7 +113,7 @@ CELERY_BEAT_SCHEDULE = {
         'kwargs': {
             'min_active_days': 10,
         },
-        'schedule': crontab(hour=9, minute=0, day_of_month=1),
+        'schedule': crontab(hour=6, minute=0, day_of_month=1),
         'options': {
             'expires': 2 * 24 * 60 * 60,  # 2 days
         }
