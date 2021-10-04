@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('identifier', models.CharField(editable=False, max_length=20, verbose_name='Identifier')),
                 ('name', models.CharField(max_length=50, verbose_name='Name')),
-                ('geometry', django.contrib.gis.db.models.fields.PolygonField(db_index=True, srid=settings.LOCAL_SRS)),
+                ('geometry', django.contrib.gis.db.models.fields.MultiPolygonField(db_index=True, srid=settings.LOCAL_SRS)),
                 ('i18n', modeltrans.fields.TranslationField(fields=('name',), required_languages=(), virtual_fields=True)),
                 ('type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='analytics.areatype')),
             ],

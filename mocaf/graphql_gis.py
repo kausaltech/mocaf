@@ -46,9 +46,17 @@ class LineStringScalar(GISScalar):
         description = "A GIS LineString geojson"
 
 
+class PolygonScalar(GISScalar):
+    geom_typeid = 3
+
+    class Meta:
+        description = "A GIS Polygon geojson"
+
+
 GIS_FIELD_SCALAR = {
     "PointField": PointScalar,
     "LineStringField": LineStringScalar,
+    "PolygonField": PolygonScalar,
     "GeometryField": GISScalar
 }
 
@@ -56,6 +64,7 @@ GIS_FIELD_SCALAR = {
 @convert_django_field.register(gis_models.GeometryField)
 @convert_django_field.register(gis_models.LineStringField)
 @convert_django_field.register(gis_models.PointField)
+@convert_django_field.register(gis_models.PolygonField)
 def gis_converter(field, registry=None):
     class_name = field.__class__.__name__
     return GIS_FIELD_SCALAR[class_name](

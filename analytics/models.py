@@ -23,6 +23,12 @@ class AreaType(models.Model):
     wfs_url = models.URLField(null=True)
     wfs_type_name = models.CharField(max_length=200, null=True)
 
+    # Topologies of all of the areas in TopoJSON (EPSG:4326)
+    topojson = models.TextField(null=True)
+
+    # Metadata for optional properties
+    properties_meta = models.JSONField(null=True)
+
     i18n = TranslationField(fields=('name',))
 
     def __str__(self):
@@ -30,12 +36,14 @@ class AreaType(models.Model):
 
 
 class Area(models.Model):
-    type = models.ForeignKey(AreaType, on_delete=models.CASCADE)
+    type = models.ForeignKey(AreaType, on_delete=models.CASCADE, related_name='areas')
     identifier = models.CharField(
         max_length=20, verbose_name=_('Identifier'), editable=False,
     )
     name = models.CharField(max_length=50, verbose_name=_('Name'))
-    geometry = models.PolygonField(null=False, srid=settings.LOCAL_SRS, db_index=True)
+    geometry = models.MultiPolygonField(null=False, srid=settings.LOCAL_SRS, db_index=True)
+
+    properties = models.JSONField(null=True)
 
     i18n = TranslationField(fields=('name',))
 
@@ -113,10 +121,11 @@ class DailyModeSummary(models.Model):
 
 class DailyTripSummary(models.Model):
     date = models.DateField(db_index=True)
-    origin = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+')
-    dest = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+')
-    mode = models.ForeignKey('trips.TransportMode', on_delete=models.CASCADE)
+    origin = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+', null=True)
+    dest = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+', null=True)
+    mode = models.ForeignKey('trips.TransportMode', on_delete=models.CASCADE, null=True)
+    mode_specifier = models.CharField(max_length=20, null=True)
     trips = models.IntegerField()
 
     class Meta:
-        unique_together = (('date', 'origin', 'dest', 'mode'),)
+        unique_together = (('date', 'origin', 'dest', 'mode', 'mode_specifier'),)

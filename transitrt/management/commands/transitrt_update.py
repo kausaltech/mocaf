@@ -20,7 +20,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         rt_importer = make_importer(options['importer'])
-        print(options)
         if options['url'] and options['files']:
             raise CommandError("Specify either --url or files, not both")
 

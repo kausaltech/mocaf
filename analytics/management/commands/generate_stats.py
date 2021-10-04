@@ -7,7 +7,7 @@ from analytics.models import Area
 from django.conf import settings
 
 from trips.models import Trip, Leg, TransportMode, LOCAL_TZ
-from analytics.models import TripSummary
+from analytics.models import TripSummary, AreaType
 
 
 LEG_TABLE = 'trips_leg'
@@ -56,28 +56,36 @@ def get_daily_area_lengths():
         start_date += timedelta(days=1)
 
 
-def get_daily_od():
+def get_daily_od(area_type: AreaType):
+    tz = str(LOCAL_TZ)
+
     query = """
+        INSERT INTO analytics_dailytripsummary (date, origin_id, dest_id, mode_id, trips)
         SELECT
-            (SELECT area.name FROM analytics_area area WHERE ST_Contains(area.geometry, t.start_loc)) AS origin,
-            (SELECT area.name FROM analytics_area area WHERE ST_Contains(area.geometry, t.end_loc)) AS dest,
-            (SELECT tm.identifier FROM trips_transportmode tm WHERE tm.id = t.primary_mode_id) AS mode,
+            %(date)s AS date,
+            (SELECT area.id FROM analytics_area area WHERE
+                ST_Contains(area.geometry, t.start_loc)
+                AND area.type_id = %(area_type)s
+            ) AS origin_id,
+            (SELECT area.id FROM analytics_area area WHERE
+                ST_Contains(area.geometry, t.end_loc)
+                AND area.type_id = %(area_type)s
+            ) AS dest_id,
+            t.primary_mode_id AS mode_id,
             COUNT(*) AS trips
         FROM
             analytics_tripsummary t
         WHERE
-            t.start_time >= %(start_time)s AND
-            t.end_time <= %(end_time)s
+            t.start_time >= (%(date)s :: date + '00:00' :: time) AT TIME ZONE %(tz)s AND
+            t.end_time < (%(date)s :: date + '00:00' :: time + interval '1 day') AT TIME ZONE %(tz)s
         GROUP BY
-            origin, dest, mode
+            origin_id, dest_id, mode_id
     """
 
     start_date = date(2021, 6, 1)
     end_date = date.today()
     cursor = connection.cursor()
-    f = open('od.csv', 'w')
-    out = csv.writer(f)
-    out.writerow(['date', 'origin', 'dest', 'mode', 'trips'])
+
     modes = list(TransportMode.objects.all())
     while start_date < end_date:
         print(start_date)
@@ -87,20 +95,18 @@ def get_daily_od():
             .prefetch_related(
                 Prefetch('legs', queryset=Leg.objects.active().order_by('start_time'))
             )
-
-        print('Generating for %d trips' % len(trips))
-        for trip in trips:
-            trip._ordered_legs = list(trip.legs.all())
-            obj = TripSummary.from_trip(trip, modes)
-            obj.save()
+        if len(trips):
+            print('Generating summaries for %d trips' % len(trips))
+            for trip in trips:
+                trip._ordered_legs = list(trip.legs.all())
+                obj = TripSummary.from_trip(trip, modes)
+                obj.save()
 
         cursor.execute(query, params=dict(
-            start_time=start_time,
-            end_time=start_date + timedelta(days=1))
-        )
-        rows = cursor.fetchall()
-        for row in rows:
-            out.writerow([start_date.isoformat()] + list(row))
+            date=start_date,
+            area_type=area_type.id,
+            tz=tz,
+        ))
 
         start_date += timedelta(days=1)
 
@@ -109,11 +115,17 @@ class Command(BaseCommand):
     help = 'Generate statistics'
 
     def add_arguments(self, parser):
+        parser.add_argument('--area-type', type=str)
         parser.add_argument('--lengths', action='store_true')
         parser.add_argument('--od', action='store_true')
 
     def handle(self, *args, **options):
+        if options['area_type']:
+            area_type = AreaType.objects.get(identifier=options['area_type'])
+        else:
+            area_type = AreaType.objects.first()
+        print(area_type)
         if options['lengths']:
             get_daily_area_lengths()
         if options['od']:
-            get_daily_od()
+            get_daily_od(area_type)
