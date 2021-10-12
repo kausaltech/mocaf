@@ -103,5 +103,7 @@ def enable_mocaf(graphql_client_query_data):
 
 
 @pytest.fixture
-def token(enable_mocaf, uuid):
-    return enable_mocaf(uuid)
+def token(enable_mocaf, device):
+    assert device.enabled
+    assert device.token
+    return str(device.token)

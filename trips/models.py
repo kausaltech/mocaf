@@ -66,7 +66,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
         assert not self.token
         self.token = uuid.uuid4()
 
-    def set_enabled(self, enabled: bool):
+    def set_enabled(self, enabled: bool, time=None):
         with transaction.atomic():
             dev = Device.objects.select_for_update().filter(pk=self.pk).first()
             try:
@@ -76,13 +76,15 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             except EnableEvent.DoesNotExist:
                 pass
 
-            dev.enable_events.create(time=timezone.now(), enabled=enabled)
+            if time is None:
+                time = timezone.now()
+            dev.enable_events.create(time=time, enabled=enabled)
             if enabled:
-                dev.enabled_at = timezone.now()
+                dev.enabled_at = time
                 dev.disabled_at = None
             else:
                 dev.enabled_at = None
-                dev.disabled_at = timezone.now()
+                dev.disabled_at = time
             dev.save(update_fields=['enabled_at', 'disabled_at'])
 
     @property

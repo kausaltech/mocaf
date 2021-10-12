@@ -131,7 +131,7 @@ def test_only_list_own_trips(graphql_client_query_data, uuid, token, trip):
     assert data == expected
 
 
-def test_trip_missing_token(graphql_client_query, contains_error, uuid, trip):
+def test_device_directive_missing_token(graphql_client_query, contains_error, uuid, trip):
     response = graphql_client_query(
         '''
         query($uuid: String!)
@@ -147,7 +147,7 @@ def test_trip_missing_token(graphql_client_query, contains_error, uuid, trip):
     assert contains_error(response, code='AUTH_FAILED', message='Token required')
 
 
-def test_trip_missing_uuid(graphql_client_query, contains_error, uuid, token, trip):
+def test_device_directive_missing_uuid(graphql_client_query, contains_error, uuid, token, trip):
     response = graphql_client_query(
         '''
         query($token: String!)
@@ -164,8 +164,9 @@ def test_trip_missing_uuid(graphql_client_query, contains_error, uuid, token, tr
                           message='Directive "device" argument "uuid" of type "String!" is required but not provided.')
 
 
-def test_trip_mocaf_not_enabled(graphql_client_query, contains_error, uuid, trip):
-    assert trip.device.token is None
+def test_device_directive_mocaf_not_enabled(graphql_client_query, contains_error):
+    device = DeviceFactory(enable_after_creation=False)
+    assert device.token is None
     token = '12345678-1234-1234-1234-123456789012'
     response = graphql_client_query(
         '''
@@ -177,12 +178,12 @@ def test_trip_mocaf_not_enabled(graphql_client_query, contains_error, uuid, trip
           }
         }
         ''',
-        variables={'uuid': uuid, 'token': token}
+        variables={'uuid': str(device.uuid), 'token': token}
     )
     assert contains_error(response, code='AUTH_FAILED', message='Invalid token')
 
 
-def test_trip_invalid_token(graphql_client_query, contains_error, uuid, token, trip):
+def test_device_directive_invalid_token(graphql_client_query, contains_error, uuid, token, trip):
     invalid_token = '12345678-1234-1234-1234-123456789012'
     assert token != invalid_token
     response = graphql_client_query(
@@ -200,7 +201,7 @@ def test_trip_invalid_token(graphql_client_query, contains_error, uuid, token, t
     assert contains_error(response, code='AUTH_FAILED', message='Invalid token')
 
 
-def test_trip_mocaf_disabled(graphql_client_query, disable_mocaf, contains_error, uuid, token, trip):
+def test_device_directive_mocaf_disabled(graphql_client_query, disable_mocaf, contains_error, uuid, token, trip):
     assert trip.device
     disable_mocaf(uuid, token)
     assert not trip.device.enabled
@@ -219,17 +220,19 @@ def test_trip_mocaf_disabled(graphql_client_query, disable_mocaf, contains_error
     assert contains_error(response, code='AUTH_FAILED', message='Mocaf disabled')
 
 
-def test_enable_mocaf_without_token(graphql_client_query_data, enable_mocaf, device, uuid):
+def test_enable_mocaf_without_token(graphql_client_query_data, enable_mocaf):
+    device = DeviceFactory(enable_after_creation=False)
     assert not device.enabled
     assert device.token is None
-    token = enable_mocaf(uuid)
+    token = enable_mocaf(device.uuid)
     assert token
     device.refresh_from_db()
     assert device.enabled
     assert device.token == token
 
 
-def test_enable_mocaf_with_token(disable_mocaf, enable_mocaf, device):
+def test_enable_mocaf_with_token(disable_mocaf, enable_mocaf):
+    device = DeviceFactory(enable_after_creation=False)
     # To have a token, we need to have enabled Mocaf at least once. To enable Mocaf again, it must be disabled before.
     token = enable_mocaf(device.uuid)
     disable_mocaf(device.uuid, token)

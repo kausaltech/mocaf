@@ -335,6 +335,12 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(
     # send_monthly_summary_notifications() should call update_daily_carbon_footprint() to be sure that values are
     # substituted for all days on which there is no data.
     device = DeviceFactory()
+    # We need a trip in the notification period, otherwise the device doesn't get notified
+    LegFactory(
+        trip__device=device,
+        start_time=device.created_at,
+        end_time=device.created_at + relativedelta(hours=1),
+    )
     NotificationTemplateFactory(event_type=task_class.event_type)
     responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 

@@ -1,5 +1,5 @@
 from django.utils.timezone import make_aware, utc
-from factory import Sequence, SubFactory
+from factory import post_generation, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from datetime import datetime
 from uuid import UUID
@@ -15,8 +15,22 @@ class DeviceFactory(DjangoModelFactory):
     system_version = None
     brand = None
     model = None
-    enabled_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
+    enabled_at = None
     created_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
+
+    @post_generation
+    def enable_after_creation(obj, create, extracted, **kwargs):
+        if not create:
+            return
+        # Enable by default
+        if extracted is None:
+            extracted = True
+        if extracted is True:
+            time = make_aware(datetime(2020, 1, 1, 0, 0), utc)
+            obj.set_enabled(True, time)
+            obj.refresh_from_db()
+            obj.generate_token()
+            obj.save()
 
 
 class TransportModeFactory(DjangoModelFactory):
