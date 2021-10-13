@@ -108,7 +108,7 @@ class MonthlyPrizeTask:
         ]
 
         return (self.devices
-                .filter(enabled_at__isnull=False)
+                .enabled()
                 .filter(id__in=eligible_footprint_devices)
                 .filter(id__in=sufficiently_active_devices)
                 .exclude(id__in=earlier_recipients))

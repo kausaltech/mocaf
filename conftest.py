@@ -5,6 +5,7 @@ from pytest_factoryboy import register
 
 from trips.tests import factories as trips_factories
 
+register(trips_factories.AccountFactory)
 register(trips_factories.DeviceFactory)
 register(trips_factories.TripFactory)
 
@@ -103,7 +104,37 @@ def enable_mocaf(graphql_client_query_data):
 
 
 @pytest.fixture
-def token(enable_mocaf, device):
+def token(device):
     assert device.enabled
     assert device.token
     return str(device.token)
+
+
+@pytest.fixture
+def device1(account):
+    return trips_factories.DeviceFactory(account=account)
+
+
+@pytest.fixture
+def device2(account):
+    return trips_factories.DeviceFactory(account=account)
+
+
+@pytest.fixture
+def trip1(device1):
+    return trips_factories.TripFactory(device=device1)
+
+
+@pytest.fixture
+def trip2(device2):
+    return trips_factories.TripFactory(device=device2)
+
+
+@pytest.fixture
+def leg1(trip1):
+    return trips_factories.LegFactory(trip=trip1)
+
+
+@pytest.fixture
+def leg2(trip2):
+    return trips_factories.LegFactory(trip=trip2)

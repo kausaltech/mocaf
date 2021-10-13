@@ -58,6 +58,7 @@ class CarbonFootprintSummary(graphene.ObjectType):
                 root['date'], root['time_resolution'], root['units'],
             )
         levels = sorted(levels, key=lambda level: level.carbon_footprint)
+        level = None
         for level in levels:
             if root['carbon_footprint'] < level.carbon_footprint:
                 break

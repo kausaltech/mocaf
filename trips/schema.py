@@ -15,7 +15,7 @@ from budget.models import EmissionBudgetLevel
 from mocaf.graphql_gis import LineStringScalar, PointScalar
 from mocaf.graphql_helpers import paginate_queryset
 from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
-from trips_ingest.models import Location
+from trips_ingest.models import Location, ReceiveData
 
 from .models import (
     Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
@@ -183,13 +183,17 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
     def mutate(root, info):
-        dev = info.context.device
+        devices = info.context.devices
         now = timezone.now()
         with transaction.atomic():
-            dev.trips.all().delete()
-            Location.objects.filter(uuid=dev.uuid).update(deleted_at=now)
-            dev.receive_data.all().delete()
-            dev.delete()
+            Trip.objects.filter(device__in=devices).delete()
+            device_uuids = [dev.uuid for dev in devices]
+            Location.objects.filter(uuid__in=device_uuids).update(deleted_at=now)
+            ReceiveData.objects.filter(device__in=devices).delete()
+            device_ids = [dev.id for dev in devices]
+            Device.objects.filter(id__in=device_ids).delete()
+            if info.context.account:
+                info.context.account.delete()
 
         return dict(ok=True)
 
@@ -371,10 +375,10 @@ class Query(graphene.ObjectType):
         return dict(sensor_sampling_delay=15, sensor_sampling_distance=500, sensor_sampling_period=3000)
 
     def resolve_trips(root, info, **kwargs):
-        dev = info.context.device
-        if not dev:
+        devices = info.context.devices
+        if not devices:
             raise GraphQLError("Authentication required", [info])
-        qs = dev.trips.active().annotate_times()
+        qs = Trip.objects.filter(device__in=devices).active().annotate_times()
         qs = paginate_queryset(qs, info, kwargs, orderable_fields=['start_time'])
         qs = gql_optimizer.query(qs, info)
         set_emission_budget_levels(info, qs)
@@ -384,7 +388,7 @@ class Query(graphene.ObjectType):
         dev = info.context.device
         if not dev:
             raise GraphQLError("Authentication required", [info])
-        qs = dev.trips.active().annotate_times().filter(id=id)
+        qs = Trip.objects.filter(device__in=info.context.devices).active().annotate_times().filter(id=id)
         qs = gql_optimizer.query(qs, info)
         obj = qs.first()
         if obj is None:

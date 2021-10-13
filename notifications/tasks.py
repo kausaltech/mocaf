@@ -53,7 +53,7 @@ class NotificationTask:
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
-        return self.devices.filter(enabled_at__isnull=False)
+        return self.devices.enabled()
 
     def contexts(self, device):
         """Return a dict mapping languages to a context for rendering notification templates for the given device."""

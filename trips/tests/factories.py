@@ -5,6 +5,13 @@ from datetime import datetime
 from uuid import UUID
 
 
+class AccountFactory(DjangoModelFactory):
+    class Meta:
+        model = 'trips.Account'
+
+    key = Sequence(lambda i: f'key{i}')
+
+
 class DeviceFactory(DjangoModelFactory):
     class Meta:
         model = 'trips.Device'
@@ -15,6 +22,7 @@ class DeviceFactory(DjangoModelFactory):
     system_version = None
     brand = None
     model = None
+    account = SubFactory(AccountFactory)
     enabled_at = None
     created_at = make_aware(datetime(2020, 1, 1, 0, 0), utc)
 

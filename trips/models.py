@@ -32,6 +32,11 @@ class InvalidStateError(Exception):
     pass
 
 
+class Account(models.Model):
+    key = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class DeviceQuerySet(models.QuerySet):
     def by_name(self, name):
         return self.filter(friendly_name__iexact=name)
@@ -41,6 +46,9 @@ class DeviceQuerySet(models.QuerySet):
         end_time = LOCAL_TZ.localize(datetime.combine(end_date + timedelta(days=1), time(0)))
         legs = Leg.objects.filter(start_time__gte=start_time, start_time__lt=end_time)
         return self.filter(trips__legs__in=legs).distinct()
+
+    def enabled(self, enabled=True):
+        return self.filter(enabled_at__isnull=not enabled)
 
 
 class Device(ExportModelOperationsMixin('device'), models.Model):
@@ -55,6 +63,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     debug_log_level = models.PositiveIntegerField(null=True)
     debugging_enabled_at = models.DateTimeField(null=True)
     custom_config = models.JSONField(null=True)
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, blank=True, null=True, related_name='devices')
 
     enabled_at = models.DateTimeField(null=True)
     disabled_at = models.DateTimeField(null=True)
@@ -141,7 +150,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
         last_day = calendar.monthrange(start_date.year, start_date.month)[1]
         end_date = start_date.replace(day=last_day)
         date_filter = Q(daily_carbon_footprints__date__gte=start_date, daily_carbon_footprints__date__lte=end_date)
-        active_devs = Device.objects.filter(enabled_at__isnull=False)
+        active_devs = Device.objects.enabled()
         devs = active_devs.annotate(
             carbon_sum=Sum('daily_carbon_footprints__carbon_footprint', filter=date_filter)
         ).filter(carbon_sum__isnull=False).order_by('carbon_sum')
