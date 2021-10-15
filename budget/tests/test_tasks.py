@@ -55,7 +55,7 @@ def test_monthly_prize_recipients_reach_level(now, zero_emission_budget_level, r
     task = MonthlyPrizeTask(budget_level.identifier, now=now, default_emissions=zero_emission_budget_level)
     result = list(task.recipients())
     if reach_level:
-        assert result == [device]
+        assert result == [device.account]
     else:
         assert result == []
 
@@ -77,7 +77,7 @@ def test_monthly_prize_recipients_reach_next_level(zero_emission_budget_level, r
     if reach_next_level:
         assert result == []
     else:
-        assert result == [device]
+        assert result == [device.account]
 
 
 @pytest.mark.parametrize('already_awarded', [False, True])
@@ -89,14 +89,14 @@ def test_monthly_prize_recipients_already_awarded(zero_emission_budget_level, al
         last_prize_month = datetime.date(2020, 2, 1)
     device = DeviceFactory()
     budget_level = EmissionBudgetLevelFactory()
-    PrizeFactory(device=device, prize_month_start=last_prize_month)
+    PrizeFactory(account=device.account, prize_month_start=last_prize_month)
     budget_level_leg(budget_level, device, date=datetime.datetime(2020, 3, 1))
     task = MonthlyPrizeTask(budget_level.identifier, now=now, default_emissions=zero_emission_budget_level)
     result = list(task.recipients())
     if already_awarded:
         assert result == []
     else:
-        assert result == [device]
+        assert result == [device.account]
 
 
 @pytest.mark.parametrize('already_awarded', [False, True])

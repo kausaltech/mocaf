@@ -18,7 +18,8 @@ from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
 from trips_ingest.models import Location, ReceiveData
 
 from .models import (
-    Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
+    Account, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant,
+    Trip
 )
 
 
@@ -180,20 +181,25 @@ class DisableMocafMutation(graphene.Mutation, AuthenticatedDeviceNode):
 
 
 class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        keep_other_devices = graphene.Boolean(default_value=False)
+
     ok = graphene.Boolean()
 
-    def mutate(root, info):
-        devices = info.context.devices
+    def mutate(root, info, keep_other_devices):
+        if keep_other_devices:
+            devices = Device.objects.filter(id=info.context.device.id)
+        else:
+            devices = info.context.account.devices.all()
         now = timezone.now()
         with transaction.atomic():
             Trip.objects.filter(device__in=devices).delete()
-            device_uuids = [dev.uuid for dev in devices]
+            device_uuids = devices.values_list('uuid')
             Location.objects.filter(uuid__in=device_uuids).update(deleted_at=now)
             ReceiveData.objects.filter(device__in=devices).delete()
-            device_ids = [dev.id for dev in devices]
-            Device.objects.filter(id__in=device_ids).delete()
-            if info.context.account:
-                info.context.account.delete()
+            Device.objects.filter(id__in=devices).delete()
+            if not keep_other_devices:
+                Account.objects.filter(id=info.context.account.id).delete()
 
         return dict(ok=True)
 
@@ -361,7 +367,7 @@ def set_emission_budget_levels(info, qs):
 class Query(graphene.ObjectType):
     trips = graphene.List(
         TripNode, offset=graphene.Int(), limit=graphene.Int(),
-        order_by=graphene.String(),
+        order_by=graphene.String(), include_other_devices=graphene.Boolean(default_value=True)
     )
     trip = graphene.Field(TripNode, id=graphene.ID(required=True))
     transport_modes = graphene.List(TransportModeNode)
@@ -375,7 +381,11 @@ class Query(graphene.ObjectType):
         return dict(sensor_sampling_delay=15, sensor_sampling_distance=500, sensor_sampling_period=3000)
 
     def resolve_trips(root, info, **kwargs):
-        devices = info.context.devices
+        include_other_devices = kwargs.pop('include_other_devices')
+        if include_other_devices:
+            devices = info.context.enabled_devices
+        else:
+            devices = [info.context.device]
         if not devices:
             raise GraphQLError("Authentication required", [info])
         qs = Trip.objects.filter(device__in=devices).active().annotate_times()
@@ -388,7 +398,7 @@ class Query(graphene.ObjectType):
         dev = info.context.device
         if not dev:
             raise GraphQLError("Authentication required", [info])
-        qs = Trip.objects.filter(device__in=info.context.devices).active().annotate_times().filter(id=id)
+        qs = Trip.objects.filter(device__in=info.context.enabled_devices).active().annotate_times().filter(id=id)
         qs = gql_optimizer.query(qs, info)
         obj = qs.first()
         if obj is None:

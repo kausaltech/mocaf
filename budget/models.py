@@ -57,24 +57,24 @@ class EmissionBudgetLevel(models.Model):
         return '%s [%d]' % (self.name, self.year)
 
 
-class DeviceDailyCarbonFootprint(models.Model):
-    device = models.ForeignKey(
-        'trips.Device', on_delete=models.CASCADE, related_name='daily_carbon_footprints'
+class AccountDailyCarbonFootprint(models.Model):
+    account = models.ForeignKey(
+        'trips.Account', on_delete=models.CASCADE, related_name='daily_carbon_footprints'
     )
     date = models.DateField()
     carbon_footprint = models.FloatField(help_text=_('Carbon footprint in kg CO2e'))
     average_footprint_used = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ('device', 'date',)
-        unique_together = (('device', 'date'),)
+        ordering = ('account', 'date',)
+        unique_together = (('account', 'date'),)
 
     def __str__(self):
-        return '%s: %s (%.1f kg)' % (str(self.device), self.date.isoformat(), self.carbon_footprint)
+        return '%s: %s (%.1f kg)' % (str(self.account), self.date.isoformat(), self.carbon_footprint)
 
 
 class Prize(models.Model):
-    device = models.ForeignKey('trips.Device', on_delete=models.CASCADE, related_name='prizes')
+    account = models.ForeignKey('trips.Account', on_delete=models.CASCADE, related_name='prizes')
     budget_level = models.ForeignKey(
         EmissionBudgetLevel, blank=True, null=True, on_delete=models.SET_NULL, related_name='prizes'
     )
@@ -84,4 +84,4 @@ class Prize(models.Model):
     def __str__(self):
         year = self.prize_month_start.year
         month = str(self.prize_month_start.month).zfill(2)
-        return f'{self.device} [{year}-{month}]: {self.budget_level}'
+        return f'{self.account} [{year}-{month}]: {self.budget_level}'

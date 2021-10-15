@@ -35,9 +35,9 @@ class CarbonFootprintSummary(graphene.ObjectType):
     ranking = graphene.Int()
     maximum_rank = graphene.Int()
     current_level = graphene.Field('budget.schema.EmissionBudgetLevelNode')
-    average_footprint_used = graphene.Boolean()
+    data_missing = graphene.Boolean()
 
-    def resolve_average_footprint_used(root, info):
+    def resolve_data_missing(root, info):
         return False
 
     def resolve_per_mode(root, info, order_by=None):
@@ -122,8 +122,8 @@ class Query(graphene.ObjectType):
     def resolve_carbon_footprint_summary(
         root, info, start_date, end_date=None, time_resolution=None, units=None
     ):
-        dev = info.context.device
-        if not dev:
+        account = info.context.account
+        if not account:
             raise GraphQLError("Authentication required", [info])
 
         if units is None:
@@ -140,7 +140,7 @@ class Query(graphene.ObjectType):
             if start_date > end_date:
                 raise GraphQLError("startDate must be less than or equal to endDate", [info])
 
-        summary = dev.get_carbon_footprint_summary(
+        summary = account.get_carbon_footprint_summary(
             start_date, end_date, time_resolution, units
         )
         return [dict(time_resolution=time_resolution, units=units, **x) for x in summary]

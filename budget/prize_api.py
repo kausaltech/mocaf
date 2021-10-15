@@ -12,10 +12,12 @@ class PrizeApi(GeniemApi):
         super().__init__(api_url, api_token)
 
     def award(self, prizes):
+        # FIXME: This awards prizes to all devices of an account, but prizes should be specific to an account.
+        # Seems to be not yet supported by API.
         data = [{
-            'uuid': str(prize.device.uuid),
+            'uuid': str(device.uuid),
             'level': prize.budget_level.identifier,
             'year': prize.prize_month_start.year,
             'month': prize.prize_month_start.month,
-        } for prize in prizes]
+        } for prize in prizes for device in prize.account.devices.all()]
         return self.post(data)

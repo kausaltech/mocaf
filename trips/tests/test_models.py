@@ -12,6 +12,7 @@ pytestmark = pytest.mark.django_db
 
 def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_level_bronze):
     device = DeviceFactory()
+    account = device.account
     trip1 = TripFactory(device=device)
     start_time = make_aware(datetime(2020, 1, 1, 0, 0), utc)
     end_time = make_aware(datetime(2020, 1, 3, 20, 0), utc)
@@ -30,11 +31,11 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_leve
                carbon_footprint=5000)
     # There is no leg on 2020-01-02, so there the bronze level budget should be used
 
-    assert not device.daily_carbon_footprints.exists()
-    device.update_daily_carbon_footprint(start_time, end_time)
-    assert device.daily_carbon_footprints.count() == 3
+    assert not account.daily_carbon_footprints.exists()
+    account.update_daily_carbon_footprint(start_time, end_time)
+    assert account.daily_carbon_footprints.count() == 3
     expected = [3.0, emission_budget_level_bronze.calculate_for_date(date(2020, 1, 2), TimeResolution.DAY), 5.0]
-    assert list(device.daily_carbon_footprints.values_list('carbon_footprint', flat=True)) == expected
+    assert list(account.daily_carbon_footprints.values_list('carbon_footprint', flat=True)) == expected
 
 
 @pytest.mark.parametrize('month', [
@@ -45,6 +46,7 @@ def test_update_daily_carbon_footprint_padding_on_idle_days(emission_budget_leve
 ])
 def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
     device = DeviceFactory()
+    account = device.account
     # 1 leg in January, total footprint 5 kg
     LegFactory(trip__device=device,
                start_time=make_aware(datetime(2020, 1, 1, 0, 0), utc),
@@ -59,19 +61,20 @@ def test_monthly_carbon_footprint(month, emission_budget_level_bronze):
                start_time=make_aware(datetime(2020, 2, 1, 0, 30), utc),
                end_time=make_aware(datetime(2020, 2, 1, 1, 30), utc),
                carbon_footprint=2000)
-    device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
-                                         make_aware(datetime(2020, 3, 1, 0, 0), utc))
+    account.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
+                                          make_aware(datetime(2020, 3, 1, 0, 0), utc))
     # For the days on which there are no trips and we don't know if the device moved, the bronze-level footprint is used
     if month.month == 1:
         expected = 5 + 30 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
     elif month.month == 2:
         expected = 3 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
-    assert device.monthly_carbon_footprint(month) == pytest.approx(expected)
+    assert account.monthly_carbon_footprint(month) == pytest.approx(expected)
 
 
 def test_monthly_carbon_footprint_device_stationary(emission_budget_level_bronze):
     month = date(2020, 1, 1)
     device = DeviceFactory()
+    account = device.account
     # 1 leg in January, total footprint 5 kg
     LegFactory(trip__device=device,
                start_time=make_aware(datetime(2020, 1, 1, 0, 0), utc),
@@ -84,19 +87,20 @@ def test_monthly_carbon_footprint_device_stationary(emission_budget_level_bronze
     Location.objects.create(time=make_aware(datetime(2020, 1, 3, 0, 0), utc),
                             uuid=device.uuid,
                             loc=make_point(0, 0))
-    device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
-                                         make_aware(datetime(2020, 2, 1, 0, 0), utc))
+    account.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
+                                          make_aware(datetime(2020, 2, 1, 0, 0), utc))
     expected = 5 + 2 * 0 + 28 * emission_budget_level_bronze.calculate_for_date(month, TimeResolution.DAY)
-    assert device.monthly_carbon_footprint(month) == pytest.approx(expected)
+    assert account.monthly_carbon_footprint(month) == pytest.approx(expected)
 
 
 def test_num_active_days():
     device = DeviceFactory()
+    account = device.account
     num_active_days = 3
     for i in range(num_active_days):
         LegFactory(trip__device=device,
                    start_time=make_aware(datetime(2020, 1, i+1, 0, 0), utc),
                    end_time=make_aware(datetime(2020, 1, i+1, 0, 30), utc))
-    device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
-                                         make_aware(datetime(2020, 2, 1, 0, 0), utc))
-    assert device.num_active_days(make_aware(datetime(2020, 1, 1, 0, 0))) == num_active_days
+    account.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
+                                          make_aware(datetime(2020, 2, 1, 0, 0), utc))
+    assert account.num_active_days(make_aware(datetime(2020, 1, 1, 0, 0))) == num_active_days

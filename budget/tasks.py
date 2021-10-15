@@ -8,14 +8,14 @@ from django.utils import timezone
 from budget.enums import TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel, Prize
 from budget.prize_api import PrizeApi
-from trips.models import Device
+from trips.models import Account
 
 logger = logging.getLogger(__name__)
 
 
 class MonthlyPrizeTask:
     def __init__(
-        self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, devices=None,
+        self, budget_level_identifier, next_budget_level_identifier=None, now=None, dry_run=False, accounts=None,
         force=False, prize_api=None, default_emissions=None, min_active_days=0
     ):
         """
@@ -25,10 +25,10 @@ class MonthlyPrizeTask:
         `next_budget_level_identifier` is the next lower budget level; if footprint is smaller, do not award the
         `budget_level_identifier` prize (but you should make sure to award the better one by creating a new
         `MonthlyPrizeTask` with that level as `budget_level_identifier`).
-        `devices` can be set to a QuerySet smaller than Device.objects.all() to limit the potential recipients.
-        If `force` is True, attempt to award the prize to all devices in `devices` (or all if `devices` is not set)
+        `accounts` can be set to a QuerySet smaller than Account.objects.all() to limit the potential recipients.
+        If `force` is True, attempt to award the prize to all accounts in `accounts` (or all if `accounts` is not set)
         regardless of whether they qualify for the prize.
-        `min_active_days` is the number of days of the relevant month that the device must have been active in order to
+        `min_active_days` is the number of days of the relevant month that the account must have been active in order to
         receive a prize.
         """
         if now is None:
@@ -49,20 +49,20 @@ class MonthlyPrizeTask:
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         self.prize_month_start = start_date
 
-        if devices is None:
-            devices = Device.objects.all()
+        if accounts is None:
+            accounts = Account.objects.all()
 
-        # Ensure the processed devices have at least one detected trip during the
+        # Ensure the processed accounts have at least one detected trip during the
         # time period.
-        devices = devices.has_trips_during(start_date, end_date)
-        self.devices = devices
+        accounts = accounts.has_trips_during(start_date, end_date)
+        self.accounts = accounts
 
-        # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
-        for device in devices:
+        # Update carbon footprints of all relevant accounts to make sure there are no gaps on days without data
+        for account in accounts:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
-            device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
-        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in devices}
-        self.num_active_days = {device: device.num_active_days(start_date) for device in devices}
+            account.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
+        self.footprints = {account: account.monthly_carbon_footprint(start_date) for account in accounts}
+        self.num_active_days = {account: account.num_active_days(start_date) for account in accounts}
 
         self.budget_level = EmissionBudgetLevel.objects.get(
             identifier=budget_level_identifier,
@@ -84,51 +84,51 @@ class MonthlyPrizeTask:
 
     def award_prizes(self):
         if self.force:
-            recipients = self.devices
+            recipients = self.accounts
         else:
             recipients = self.recipients()
         logger.info("Awarding prizes")
-        logger.debug(f"Awarding prizes to {len(recipients)} devices")
-        for device in recipients:
-            self.award_prize(device)
+        logger.debug(f"Awarding prizes to {len(recipients)} accounts")
+        for account in recipients:
+            self.award_prize(account)
 
     def recipients(self):
-        """Return devices that should receive a prize for the calendar month preceding the one of `self.now`."""
-        # Don't send anything to devices that already got a prize for that month
+        """Return accounts that should receive a prize for the calendar month preceding the one of `self.now`."""
+        # Don't send anything to accounts that already got a prize for that month
         earlier_recipients = (Prize.objects
                               .filter(prize_month_start=self.prize_month_start)
-                              .values('device'))
+                              .values('account'))
 
-        eligible_footprint_devices = [
-            dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)
+        eligible_footprint_accounts = [
+            account.id for account, footprint in self.footprints.items() if self.footprint_eligible(footprint)
         ]
 
-        sufficiently_active_devices = [
-            dev.id for dev, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
+        sufficiently_active_accounts = [
+            acc.id for acc, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
         ]
 
-        return (self.devices
-                .enabled()
-                .filter(id__in=eligible_footprint_devices)
-                .filter(id__in=sufficiently_active_devices)
+        return (self.accounts
+                .has_enabled_device()
+                .filter(id__in=eligible_footprint_accounts)
+                .filter(id__in=sufficiently_active_accounts)
                 .exclude(id__in=earlier_recipients))
 
     def footprint_eligible(self, footprint):
-        """Return true iff devices with the given footprint are eligible for getting the prize."""
+        """Return true iff accounts with the given footprint are eligible for getting the prize."""
         eligible = footprint <= self.prize_threshold
         if self.next_prize_threshold is not None:
             eligible = eligible and footprint > self.next_prize_threshold
         return eligible
 
     @transaction.atomic
-    def award_prize(self, device):
-        message = f"Awarding prize {self.budget_level} to device {device.uuid} for month {self.prize_month_start}"
+    def award_prize(self, account):
+        message = f"Awarding prize {self.budget_level} to account {account.id} for month {self.prize_month_start}"
         if self.dry_run:
             print(message)
         else:
             logger.info(message)
             prize = Prize.objects.create(
-                device=device,
+                account=account,
                 budget_level=self.budget_level,
                 prize_month_start=self.prize_month_start
             )
@@ -137,6 +137,6 @@ class MonthlyPrizeTask:
 
 
 @shared_task
-def award_prizes(budget_level_identifier, next_budget_level_identifier=None, devices=None, **kwargs):
-    task = MonthlyPrizeTask(budget_level_identifier, next_budget_level_identifier, devices=devices, **kwargs)
+def award_prizes(budget_level_identifier, next_budget_level_identifier=None, accounts=None, **kwargs):
+    task = MonthlyPrizeTask(budget_level_identifier, next_budget_level_identifier, accounts=accounts, **kwargs)
     task.award_prizes()

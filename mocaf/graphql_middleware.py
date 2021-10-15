@@ -15,7 +15,6 @@ class APITokenMiddleware:
     def process_device_directive(self, info, directive):
         dev = None
         token = None
-        account = None
         variable_vals = info.variable_values
         for arg in directive.arguments:
             if arg.name.value == 'uuid':
@@ -37,24 +36,12 @@ class APITokenMiddleware:
                     val = arg.value.value
                 token = val
 
-            elif arg.name.value == 'account':
-                if isinstance(arg.value, Variable):
-                    val = variable_vals.get(arg.value.name.value)
-                else:
-                    val = arg.value.value
-                try:
-                    account = Account.objects.get(key=val)
-                except Account.DoesNotExist:
-                    raise GraphQLAuthFailedError("Account not found", [arg])
-
         if not token:
             raise GraphQLAuthFailedError("Token required", [directive])
         if not dev:
             raise GraphQLAuthFailedError("Device required", [directive])
         if dev.token != token:
             raise GraphQLAuthFailedError("Invalid token", [directive])
-        if account and account.key != dev.account.key:
-            raise GraphQLAuthFailedError("Invalid account", [directive])
 
         ALLOWED_MUTATIONS_WHEN_DISABLED = (
             'enableMocaf', 'disableMocaf', 'clearUserData',
@@ -63,12 +50,9 @@ class APITokenMiddleware:
             raise GraphQLAuthFailedError("Mocaf disabled", [directive])
 
         info.context.device = dev
-        info.context.account = account
-        # Convenient access to account devices if available
-        if account:
-            info.context.devices = list(account.devices.enabled())
-        else:
-            info.context.devices = [dev]
+        info.context.account = dev.account
+        # Convenient access to all enabled devices of the account
+        info.context.enabled_devices = dev.account.devices.enabled()
 
     def resolve(self, next, root, info, **kwargs):
         context = info.context

@@ -267,42 +267,8 @@ def test_enable_mocaf_device_directive_missing(graphql_client_query, contains_er
     assert contains_error(response, message='Device exists, specify token with the @device directive')
 
 
-def test_device_directive_account_not_found(graphql_client_query, contains_error, uuid, token, trip):
-    account_key = 'foo'
-    response = graphql_client_query(
-        '''
-        query($uuid: String!, $token: String!, $account: String)
-        @device(uuid: $uuid, token: $token, account: $account)
-        {
-          trips {
-            id
-          }
-        }
-        ''',
-        variables={'uuid': uuid, 'token': token, 'account': account_key}
-    )
-    assert contains_error(response, code='AUTH_FAILED', message='Account not found')
-
-
-def test_device_directive_invalid_account(graphql_client_query, contains_error, uuid, token, trip, account):
-    new_account = AccountFactory()
-    assert new_account.key != account.key
-    response = graphql_client_query(
-        '''
-        query($uuid: String!, $token: String!, $account: String)
-        @device(uuid: $uuid, token: $token, account: $account)
-        {
-          trips {
-            id
-          }
-        }
-        ''',
-        variables={'uuid': uuid, 'token': token, 'account': new_account.key}
-    )
-    assert contains_error(response, code='AUTH_FAILED', message='Invalid account')
-
-
-def test_trips_all_enabled_devices_of_account(graphql_client_query_data):
+@pytest.mark.parametrize('include_other_devices', [False, True])
+def test_trips_all_enabled_devices_of_account_if_requested(graphql_client_query_data, include_other_devices):
     account = AccountFactory()
 
     # We will only use the first device's token
@@ -323,22 +289,29 @@ def test_trips_all_enabled_devices_of_account(graphql_client_query_data):
     assert account.devices.count() == 3
     response = graphql_client_query_data(
         '''
-        query($uuid: String!, $token: String!, $account: String)
-        @device(uuid: $uuid, token: $token, account: $account)
+        query($uuid: String!, $token: String!, $includeOtherDevices: Boolean!)
+        @device(uuid: $uuid, token: $token)
         {
-          trips {
+          trips(includeOtherDevices: $includeOtherDevices) {
             id
           }
         }
         ''',
-        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'account': account.key}
+        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'includeOtherDevices': include_other_devices}
     )
-    assert response == {
-        'trips': [
-            {'id': str(trip1.id)},
-            {'id': str(trip2.id)},
-        ]
-    }
+    if include_other_devices:
+        assert response == {
+            'trips': [
+                {'id': str(trip1.id)},
+                {'id': str(trip2.id)},
+            ]
+        }
+    else:
+        assert response == {
+            'trips': [
+                {'id': str(trip1.id)},
+            ]
+        }
 
 
 @pytest.mark.parametrize('reverse', [False, True])
@@ -380,7 +353,6 @@ def test_trips_ordered_by_time(graphql_client_query_data, reverse):
 @pytest.mark.parametrize('reverse', [False, True])
 def test_trips_ordered_by_time_different_devices(graphql_client_query_data, reverse):
     account = AccountFactory()
-
     if reverse:
         start1, start2 = make_aware(datetime(2020, 3, 2), utc), make_aware(datetime(2020, 3, 1), utc)
     else:
@@ -398,15 +370,15 @@ def test_trips_ordered_by_time_different_devices(graphql_client_query_data, reve
 
     response = graphql_client_query_data(
         '''
-        query($uuid: String!, $token: String!, $account: String)
-        @device(uuid: $uuid, token: $token, account: $account)
+        query($uuid: String!, $token: String!)
+        @device(uuid: $uuid, token: $token)
         {
           trips(orderBy: "startTime") {
             id
           }
         }
         ''',
-        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'account': account.key}
+        variables={'uuid': str(device1.uuid), 'token': str(device1.token)}
     )
     if reverse:
         expected_order = [trip2, trip1]
@@ -420,15 +392,15 @@ def test_trips_ordered_by_time_different_devices(graphql_client_query_data, reve
 def test_trip_different_device(graphql_client_query_data, account, device1, leg1, leg2, trip2):
     response = graphql_client_query_data(
         '''
-        query($uuid: String!, $token: String!, $account: String, $trip: ID!)
-        @device(uuid: $uuid, token: $token, account: $account)
+        query($uuid: String!, $token: String!, $trip: ID!)
+        @device(uuid: $uuid, token: $token)
         {
           trip(id: $trip) {
             id
           }
         }
         ''',
-        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'account': account.key, 'trip': trip2.id}
+        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'trip': trip2.id}
     )
     assert response == {
         'trip': {
@@ -437,20 +409,26 @@ def test_trip_different_device(graphql_client_query_data, account, device1, leg1
     }
 
 
-def test_clear_user_data(graphql_client_query_data, account, device1, device2, trip1, trip2, leg1, leg2):
+@pytest.mark.parametrize('keep_other_devices', [False, True])
+def test_clear_user_data(
+    graphql_client_query_data, account, device1, device2, trip1, trip2, leg1, leg2, keep_other_devices
+):
     data = graphql_client_query_data(
         '''
-        mutation($uuid: String!, $token: String!, $account: String)
-        @device(uuid: $uuid, token: $token, account: $account) {
-          clearUserData {
+        mutation($uuid: String!, $token: String!, $keepOtherDevices: Boolean!)
+        @device(uuid: $uuid, token: $token) {
+          clearUserData(keepOtherDevices: $keepOtherDevices) {
             ok
           }
         }
         ''',
-        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'account': account.key}
+        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'keepOtherDevices': keep_other_devices}
     )
     assert data['clearUserData']['ok'] is True
-    assert not Device.objects.filter(id__in=[device1.id, device2.id]).exists()
-    assert not Account.objects.filter(id=account.id).exists()
-    assert not Leg.objects.filter(id__in=[leg1.id, leg2.id]).exists()
-    assert not Trip.objects.filter(id__in=[trip1.id, trip2.id]).exists()
+    assert not Device.objects.filter(id=device1.id).exists()
+    assert not Leg.objects.filter(id=leg1.id).exists()
+    assert not Trip.objects.filter(id=trip1.id).exists()
+    assert Device.objects.filter(id=device2.id).exists() == keep_other_devices
+    assert Account.objects.filter(id=account.id).exists() == keep_other_devices
+    assert Leg.objects.filter(id=leg2.id).exists() == keep_other_devices
+    assert Trip.objects.filter(id=trip2.id).exists() == keep_other_devices

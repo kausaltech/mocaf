@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.db.models.query_utils import Q
-from budget.models import DeviceDailyCarbonFootprint, EmissionBudgetLevel
+from budget.models import AccountDailyCarbonFootprint, EmissionBudgetLevel
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
@@ -32,77 +32,25 @@ class InvalidStateError(Exception):
     pass
 
 
-class Account(models.Model):
-    key = models.CharField(max_length=50, blank=True, null=True, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-class DeviceQuerySet(models.QuerySet):
-    def by_name(self, name):
-        return self.filter(friendly_name__iexact=name)
+class AccountQuerySet(models.QuerySet):
+    def has_enabled_device(self):
+        # We could also avoid the subquery and use distinct, but that might eliminate duplicates also in cases we don't
+        # mind them.
+        account_ids = Device.objects.enabled().values_list('account')
+        return self.filter(id__in=account_ids)
 
     def has_trips_during(self, start_date: date, end_date: date):
         start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
         end_time = LOCAL_TZ.localize(datetime.combine(end_date + timedelta(days=1), time(0)))
         legs = Leg.objects.filter(start_time__gte=start_time, start_time__lt=end_time)
-        return self.filter(trips__legs__in=legs).distinct()
-
-    def enabled(self, enabled=True):
-        return self.filter(enabled_at__isnull=not enabled)
+        return self.filter(devices__trips__legs__in=legs).distinct()
 
 
-class Device(ExportModelOperationsMixin('device'), models.Model):
-    uuid = models.UUIDField(null=False, unique=True, db_index=True)
-    token = models.CharField(max_length=50, null=True)
-    platform = models.CharField(max_length=20, null=True)
-    system_version = models.CharField(max_length=20, null=True)
-    brand = models.CharField(max_length=20, null=True)
-    model = models.CharField(max_length=40, null=True)
+class Account(models.Model):
+    key = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    friendly_name = models.CharField(max_length=40, null=True)
-    debug_log_level = models.PositiveIntegerField(null=True)
-    debugging_enabled_at = models.DateTimeField(null=True)
-    custom_config = models.JSONField(null=True)
-    account = models.ForeignKey(Account, on_delete=models.PROTECT, blank=True, null=True, related_name='devices')
-
-    enabled_at = models.DateTimeField(null=True)
-    disabled_at = models.DateTimeField(null=True)
-    created_at = models.DateTimeField(null=True)
-
-    objects = DeviceQuerySet.as_manager()
-
-    def generate_token(self):
-        assert not self.token
-        self.token = uuid.uuid4()
-
-    def set_enabled(self, enabled: bool, time=None):
-        with transaction.atomic():
-            dev = Device.objects.select_for_update().filter(pk=self.pk).first()
-            try:
-                latest_event = dev.enable_events.latest()
-                if latest_event.enabled == enabled:
-                    raise InvalidStateError()
-            except EnableEvent.DoesNotExist:
-                pass
-
-            if time is None:
-                time = timezone.now()
-            dev.enable_events.create(time=time, enabled=enabled)
-            if enabled:
-                dev.enabled_at = time
-                dev.disabled_at = None
-            else:
-                dev.enabled_at = None
-                dev.disabled_at = time
-            dev.save(update_fields=['enabled_at', 'disabled_at'])
-
-    @property
-    def enabled(self):
-        try:
-            latest_event = self.enable_events.latest()
-            return latest_event.enabled
-        except EnableEvent.DoesNotExist:
-            return False
+    objects = AccountQuerySet.as_manager()
 
     def update_daily_carbon_footprint(
         self, start_time: datetime, end_time: datetime, default_emissions: EmissionBudgetLevel = None
@@ -124,22 +72,22 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
                 cur_summary = date_summary.get(cur_date)
                 carbon_footprint = cur_summary['carbon_footprint'] if cur_summary is not None else None
                 default_footprint = default_emissions.calculate_for_date(cur_date, TimeResolution.DAY, EmissionUnit.KG)
-                obj = self.create_device_daily_carbon_footprint(cur_date, carbon_footprint, default_footprint)
+                obj = self.create_account_daily_carbon_footprint(cur_date, carbon_footprint, default_footprint)
                 objs.append(obj)
-            DeviceDailyCarbonFootprint.objects.bulk_create(objs)
+            AccountDailyCarbonFootprint.objects.bulk_create(objs)
 
-    def create_device_daily_carbon_footprint(self, date, carbon_footprint, default_footprint):
+    def create_account_daily_carbon_footprint(self, date, carbon_footprint, default_footprint):
         average_footprint_used = False
         if carbon_footprint is None:
-            if self.has_any_data_on_date(date):
-                # Device has data, so has not moved
+            if self.all_devices_have_data_on_date(date):
+                # All devices have data, so we assume the user has not moved
                 carbon_footprint = 0
             else:
-                # We don't know if the device has moved, so assume default footprint
+                # There is a device of which we don't know if it moved, so assume default footprint
                 carbon_footprint = default_footprint
                 average_footprint_used = True
-        return DeviceDailyCarbonFootprint(
-            device=self,
+        return AccountDailyCarbonFootprint(
+            account=self,
             date=date,
             carbon_footprint=carbon_footprint,
             average_footprint_used=average_footprint_used,
@@ -150,13 +98,12 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
         last_day = calendar.monthrange(start_date.year, start_date.month)[1]
         end_date = start_date.replace(day=last_day)
         date_filter = Q(daily_carbon_footprints__date__gte=start_date, daily_carbon_footprints__date__lte=end_date)
-        active_devs = Device.objects.enabled()
-        devs = active_devs.annotate(
+        accounts = Account.objects.has_enabled_device().annotate(
             carbon_sum=Sum('daily_carbon_footprints__carbon_footprint', filter=date_filter)
         ).filter(carbon_sum__isnull=False).order_by('carbon_sum')
-        total = len(devs)
-        for rank, dev in Ranking(devs, key=lambda x: x.carbon_sum, reverse=True):
-            if dev == self:
+        total = len(accounts)
+        for rank, account in Ranking(accounts, key=lambda x: x.carbon_sum, reverse=True):
+            if account == self:
                 break
         else:
             rank = 0
@@ -219,7 +166,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
 
         annotation = {'date': Trunc('start_time', trunc_kind, tzinfo=LOCAL_TZ)}
 
-        legs = Leg.objects.active().filter(trip__device=self)\
+        legs = Leg.objects.active().filter(trip__device__in=self.devices.all())\
             .filter(start_time__gte=start_time, start_time__lt=end_time)\
             .annotate(**annotation)\
             .values('date', 'mode').annotate(
@@ -248,9 +195,76 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
 
         return out
 
-    def has_any_data_on_date(self, date):
-        return (DeviceHeartbeat.objects.filter(time__date=date, uuid=self.uuid).exists()
-                or Location.objects.filter(time__date=date, uuid=self.uuid).exists())
+    def all_devices_have_data_on_date(self, date):
+        # We could do this in a more clever way and avoid the loop, but we may assume that there are very few devices
+        # per account.
+        for dev_uuid in self.devices.values_list('uuid', flat=True):
+            if not (DeviceHeartbeat.objects.filter(time__date=date, uuid=dev_uuid).exists()
+                    or Location.objects.filter(time__date=date, uuid=dev_uuid).exists()):
+                return False
+        return True
+
+
+class DeviceQuerySet(models.QuerySet):
+    def by_name(self, name):
+        return self.filter(friendly_name__iexact=name)
+
+    def enabled(self, enabled=True):
+        return self.filter(enabled_at__isnull=not enabled)
+
+
+class Device(ExportModelOperationsMixin('device'), models.Model):
+    uuid = models.UUIDField(null=False, unique=True, db_index=True)
+    token = models.CharField(max_length=50, null=True)
+    platform = models.CharField(max_length=20, null=True)
+    system_version = models.CharField(max_length=20, null=True)
+    brand = models.CharField(max_length=20, null=True)
+    model = models.CharField(max_length=40, null=True)
+
+    friendly_name = models.CharField(max_length=40, null=True)
+    debug_log_level = models.PositiveIntegerField(null=True)
+    debugging_enabled_at = models.DateTimeField(null=True)
+    custom_config = models.JSONField(null=True)
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='devices')
+
+    enabled_at = models.DateTimeField(null=True)
+    disabled_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(null=True)
+
+    objects = DeviceQuerySet.as_manager()
+
+    def generate_token(self):
+        assert not self.token
+        self.token = uuid.uuid4()
+
+    def set_enabled(self, enabled: bool, time=None):
+        with transaction.atomic():
+            dev = Device.objects.select_for_update().filter(pk=self.pk).first()
+            try:
+                latest_event = dev.enable_events.latest()
+                if latest_event.enabled == enabled:
+                    raise InvalidStateError()
+            except EnableEvent.DoesNotExist:
+                pass
+
+            if time is None:
+                time = timezone.now()
+            dev.enable_events.create(time=time, enabled=enabled)
+            if enabled:
+                dev.enabled_at = time
+                dev.disabled_at = None
+            else:
+                dev.enabled_at = None
+                dev.disabled_at = time
+            dev.save(update_fields=['enabled_at', 'disabled_at'])
+
+    @property
+    def enabled(self):
+        try:
+            latest_event = self.enable_events.latest()
+            return latest_event.enabled
+        except EnableEvent.DoesNotExist:
+            return False
 
     def __str__(self):
         return str(self.uuid)

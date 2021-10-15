@@ -15,7 +15,7 @@ from pprint import pprint
 from budget.enums import TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
 from budget.tasks import MonthlyPrizeTask
-from trips.models import Device
+from trips.models import Account, Device
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
 
@@ -121,9 +121,9 @@ class MonthlySummaryNotificationTask(NotificationTask):
         restrict_average=False, min_active_days=0
     ):
         """
-        If `restrict_average` is True, consider only devices in `devices` for the average footprint and only regenerate
-        the carbon footprints for these. (Useful for testing since regenerating footprints is expensive.)
-        `min_active_days` is the number of days of the relevant month that the device must have been active in order to
+        If `restrict_average` is True, consider only accounts linked to `devices` for the average footprint and only
+        regenerate the carbon footprints for these. (Useful for testing since regenerating footprints is expensive.)
+        `min_active_days` is the number of days of the relevant month that the account must have been active in order to
         receive a notification.
         """
         if getattr(self, 'event_type', None) is None:
@@ -142,20 +142,20 @@ class MonthlySummaryNotificationTask(NotificationTask):
 
         # Update carbon footprints of all relevant devices to make sure there are no gaps on days without data
         if restrict_average:
-            qs = devices
+            qs = Account.objects.filter(id__in=devices.values_list('account'))
         else:
-            qs = Device.objects.all()
+            qs = Account.objects.all()
 
-        device_universe = qs.has_trips_during(start_date, end_date)
+        accounts = qs.has_trips_during(start_date, end_date)
 
-        for device in device_universe:
+        for account in accounts:
             # We shouldn't call this if dry_run is True, but it probably doesn't break things if we do
-            device.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
-        self.footprints = {device: device.monthly_carbon_footprint(start_date) for device in device_universe}
+            account.update_daily_carbon_footprint(start_datetime, end_datetime, default_emissions)
+        self.footprints = {account: account.monthly_carbon_footprint(start_date) for account in accounts}
         self.average_footprint = None
         if self.footprints:
             self.average_footprint = statistics.mean(self.footprints.values())
-        self.num_active_days = {device: device.num_active_days(start_date) for device in device_universe}
+        self.num_active_days = {account: account.num_active_days(start_date) for account in accounts}
 
     def recipients(self):
         """Return devices that should receive a summary for the calendar month preceding the one of `self.now`."""
@@ -167,17 +167,17 @@ class MonthlySummaryNotificationTask(NotificationTask):
                               .filter(sent_at__date__gte=this_month)
                               .values('device'))
 
-        eligible_footprint_devices = [
-            dev.id for dev, footprint in self.footprints.items() if self.footprint_eligible(footprint)
+        eligible_footprint_accounts = [
+            account.id for account, footprint in self.footprints.items() if self.footprint_eligible(footprint)
         ]
 
-        sufficiently_active_devices = [
-            dev.id for dev, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
+        sufficiently_active_accounts = [
+            acc.id for acc, num_active_days in self.num_active_days.items() if num_active_days >= self.min_active_days
         ]
 
         return (super().recipients()
-                .filter(id__in=eligible_footprint_devices)
-                .filter(id__in=sufficiently_active_devices)
+                .filter(account__in=eligible_footprint_accounts)
+                .filter(account__in=sufficiently_active_accounts)
                 .exclude(id__in=earlier_recipients))
 
     def contexts(self, device):
@@ -187,11 +187,11 @@ class MonthlySummaryNotificationTask(NotificationTask):
         for language, context in contexts.items():
             context['average_carbon_footprint'] = rounded_float(self.average_footprint)
             # FIXME: The commented-out line reports the footprint as used for prize determination. However, in the app,
-            # device.get_carbon_footprint_summary() is used for the footprint and this does not fill in "default
+            # device.account.get_carbon_footprint_summary() is used for the footprint and this does not fill in "default
             # emissions" for days without any data. So the numbers differ. Ideally, the app should display the corrected
             # footprint (i.e., containing the filled-in value), but it does not for now.
-            # context['carbon_footprint'] = rounded_float(self.footprints[device])
-            footprint_summary = device.get_carbon_footprint_summary(
+            # context['carbon_footprint'] = rounded_float(self.footprints[device.account])
+            footprint_summary = device.account.get_carbon_footprint_summary(
                 self.summary_month_start,
                 self.summary_month_end,
                 time_resolution=TimeResolution.MONTH,
@@ -210,7 +210,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
         return contexts
 
     def footprint_eligible(self, footprint):
-        """Return true iff devices with the given footprint are eligible for getting the notification."""
+        """Return true iff devices whose account has the given footprint are eligible for getting the notification."""
         return True
 
 
@@ -339,10 +339,14 @@ def send_notifications(task_class, devices=None, **kwargs):
 
 
 @shared_task
-def award_prizes_and_send_notifications(devices=None, **kwargs):
-    MonthlyPrizeTask('bronze', 'silver', devices=devices, **kwargs).award_prizes()
-    MonthlyPrizeTask('silver', 'gold', devices=devices, **kwargs).award_prizes()
-    MonthlyPrizeTask('gold', devices=devices, **kwargs).award_prizes()
+def award_prizes_and_send_notifications(accounts=None, **kwargs):
+    MonthlyPrizeTask('bronze', 'silver', accounts=accounts, **kwargs).award_prizes()
+    MonthlyPrizeTask('silver', 'gold', accounts=accounts, **kwargs).award_prizes()
+    MonthlyPrizeTask('gold', accounts=accounts, **kwargs).award_prizes()
+    if accounts:
+        devices = Device.objects.filter(account__in=accounts)
+    else:
+        devices = Device.objects.all()
     MonthlySummaryBronzeOrWorseNotificationTask(devices=devices, **kwargs).send_notifications()
     MonthlySummarySilverNotificationTask(devices=devices, **kwargs).send_notifications()
     MonthlySummaryGoldNotificationTask(devices=devices, **kwargs).send_notifications()

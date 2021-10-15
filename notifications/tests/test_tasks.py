@@ -345,10 +345,10 @@ def test_send_monthly_summary_notifications_updates_carbon_footprints(
     responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=1)
-    assert not device.daily_carbon_footprints.exists()
+    assert not device.account.daily_carbon_footprints.exists()
     send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     # Gaps (i.e., every day since there are no legs) should have been filled
-    assert device.daily_carbon_footprints.exists()
+    assert device.account.daily_carbon_footprints.exists()
 
 
 @responses.activate
@@ -365,10 +365,10 @@ def test_send_monthly_summary_notifications_updates_only_summary_month(
     responses.add(responses.POST, NOTIFICATION_API_URL, json=SUCCESS_RESPONSE, status=200)
 
     now = device.created_at + relativedelta(months=2)
-    assert not device.daily_carbon_footprints.exists()
+    assert not device.account.daily_carbon_footprints.exists()
     send_notifications(task_class, now=now, default_emissions=zero_emission_budget_level)
     # Only one month of filler data should have been generated
-    assert device.daily_carbon_footprints.count() <= 31
+    assert device.account.daily_carbon_footprints.count() <= 31
 
 
 def test_no_recent_trips_notification_recipients_exist():

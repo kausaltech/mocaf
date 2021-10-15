@@ -34,10 +34,6 @@ class DeviceDirective(GraphQLDirective):
                     type_=GraphQLString,
                     description='Device authentication token'
                 ),
-                'account': GraphQLArgument(
-                    type_=GraphQLString,
-                    description='Account key'
-                ),
             },
             locations=[DirectiveLocation.QUERY, DirectiveLocation.MUTATION]
         )

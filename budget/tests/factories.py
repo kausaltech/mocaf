@@ -1,7 +1,7 @@
 from factory import LazyAttribute, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 
-from trips.tests.factories import DeviceFactory
+from trips.tests.factories import AccountFactory
 
 
 class EmissionBudgetLevelFactory(DjangoModelFactory):
@@ -17,6 +17,6 @@ class PrizeFactory(DjangoModelFactory):
     class Meta:
         model = 'budget.Prize'
 
-    device = SubFactory(DeviceFactory)
+    account = SubFactory(AccountFactory)
     budget_level = SubFactory(EmissionBudgetLevelFactory)
-    prize_month_start = LazyAttribute(lambda f: f.device.created_at.replace(day=1))
+    prize_month_start = LazyAttribute(lambda f: f.account.created_at.replace(day=1))
