@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.gis.geos import Point
 from django.contrib.gis.gdal import SpatialReference, CoordTransform
 from calc.trips import LOCAL_2D_CRS
-from trips.models import Device
+from trips.models import Account, Device
 from .models import ReceiveData, Location, DeviceHeartbeat, ActivityTypeChoices, SensorSample
 
 
@@ -134,7 +134,8 @@ class EventProcessor:
 
         dev = Device.objects.filter(uuid=uid).first()
         if dev is None:
-            dev = Device(uuid=uid)
+            account = Account.objects.create()
+            dev = Device(uuid=uid, account=account)
         dev.brand = data.get('brand')
         dev.model = data.get('model')
         dev.platform = data.get('os')

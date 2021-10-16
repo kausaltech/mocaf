@@ -151,7 +151,8 @@ class EnableMocafMutation(graphene.Mutation):
 
             dev = Device.objects.filter(uuid=uuid).first()
             if dev is None:
-                dev = Device(uuid=uuid)
+                account = Account.objects.create()
+                dev = Device(uuid=uuid, account=account)
             else:
                 if dev.token:
                     raise GraphQLError("Device exists, specify token with the @device directive", [info])
@@ -190,7 +191,7 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
         if keep_other_devices:
             devices = Device.objects.filter(id=info.context.device.id)
         else:
-            devices = info.context.account.devices.all()
+            devices = info.context.device.account.devices.all()
         now = timezone.now()
         with transaction.atomic():
             Trip.objects.filter(device__in=devices).delete()
@@ -199,7 +200,35 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
             ReceiveData.objects.filter(device__in=devices).delete()
             Device.objects.filter(id__in=devices).delete()
             if not keep_other_devices:
-                Account.objects.filter(id=info.context.account.id).delete()
+                Account.objects.filter(id=info.context.device.account.id).delete()
+
+        return dict(ok=True)
+
+
+class RegisterDeviceMutation(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        account_key = graphene.String()
+
+    ok = graphene.Boolean()
+
+    def mutate(root, info, account_key):
+        device = info.context.device
+        if device.account.key:
+            raise GraphQLError("Device already registered")
+
+        with transaction.atomic():
+            try:
+                account = Account.objects.get(key=account_key)
+            except Account.DoesNotExist:
+                # Create account with given key and migrate data from old "virtual" account to this
+                account = Account.objects.create(key=account_key)
+
+            virtual_account = device.account
+            device.account = account
+            device.save()
+            virtual_account.delete()
+            # Trips of the account may have changed, so regenerate carbon footprints
+            account.regenerate_all_carbon_footprints()
 
         return dict(ok=True)
 
@@ -289,7 +318,7 @@ class UpdateLeg(graphene.Mutation, AuthenticatedDeviceNode):
                 obj.trip.handle_leg_deletion(obj)
 
             if update_fields:
-                obj.trip.update_device_carbon_footprint()
+                obj.trip.update_account_carbon_footprint()
 
         return dict(ok=True, leg=obj)
 
@@ -383,7 +412,7 @@ class Query(graphene.ObjectType):
     def resolve_trips(root, info, **kwargs):
         include_other_devices = kwargs.pop('include_other_devices')
         if include_other_devices:
-            devices = info.context.enabled_devices
+            devices = info.context.device.account.devices.enabled()
         else:
             devices = [info.context.device]
         if not devices:
@@ -398,7 +427,8 @@ class Query(graphene.ObjectType):
         dev = info.context.device
         if not dev:
             raise GraphQLError("Authentication required", [info])
-        qs = Trip.objects.filter(device__in=info.context.enabled_devices).active().annotate_times().filter(id=id)
+        enabled_devices = info.context.device.account.devices.enabled()
+        qs = Trip.objects.filter(device__in=enabled_devices).active().annotate_times().filter(id=id)
         qs = gql_optimizer.query(qs, info)
         obj = qs.first()
         if obj is None:
@@ -421,5 +451,6 @@ class Mutations(graphene.ObjectType):
     enable_mocaf = EnableMocafMutation.Field()
     disable_mocaf = DisableMocafMutation.Field()
     clear_user_data = ClearUserDataMutation.Field()
+    register_device = RegisterDeviceMutation.Field()
     set_default_transport_mode_variant = SetDefaultTransportModeVariant.Field()
     update_leg = UpdateLeg.Field()

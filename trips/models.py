@@ -15,6 +15,7 @@ from ranking import Ranking
 import pytz
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Max, Min
 from django.contrib.gis.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -51,6 +52,16 @@ class Account(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = AccountQuerySet.as_manager()
+
+    def generate_key(self):
+        assert not self.key
+        self.key = uuid.uuid4()
+
+    def regenerate_all_carbon_footprints(self):
+        agg = (Leg.objects.filter(trip__device__account=self)
+               .aggregate(start=Min('start_time'), end=Max('end_time')))
+        if agg.get('start') and agg.get('end'):
+            self.update_daily_carbon_footprint(agg['start'], agg['end'])
 
     def update_daily_carbon_footprint(
         self, start_time: datetime, end_time: datetime, default_emissions: EmissionBudgetLevel = None
@@ -413,10 +424,10 @@ class Trip(ExportModelOperationsMixin('trip'), models.Model):
         self._update_end_time = end_time
         return end_time
 
-    def update_device_carbon_footprint(self):
+    def update_account_carbon_footprint(self):
         if self.first_leg is None or self.last_leg is None:
             return
-        self.device.update_daily_carbon_footprint(
+        self.device.account.update_daily_carbon_footprint(
             start_time=self.first_leg.start_time,
             end_time=self.last_leg.end_time
         )

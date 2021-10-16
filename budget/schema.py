@@ -122,8 +122,8 @@ class Query(graphene.ObjectType):
     def resolve_carbon_footprint_summary(
         root, info, start_date, end_date=None, time_resolution=None, units=None
     ):
-        account = info.context.account
-        if not account:
+        device = info.context.device
+        if not device:
             raise GraphQLError("Authentication required", [info])
 
         if units is None:
@@ -140,7 +140,7 @@ class Query(graphene.ObjectType):
             if start_date > end_date:
                 raise GraphQLError("startDate must be less than or equal to endDate", [info])
 
-        summary = account.get_carbon_footprint_summary(
+        summary = device.account.get_carbon_footprint_summary(
             start_date, end_date, time_resolution, units
         )
         return [dict(time_resolution=time_resolution, units=units, **x) for x in summary]

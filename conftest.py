@@ -112,11 +112,13 @@ def token(device):
 
 @pytest.fixture
 def device1(account):
+    """A device linked to `account`"""
     return trips_factories.DeviceFactory(account=account)
 
 
 @pytest.fixture
 def device2(account):
+    """Another device linked to `account`"""
     return trips_factories.DeviceFactory(account=account)
 
 
@@ -138,3 +140,22 @@ def leg1(trip1):
 @pytest.fixture
 def leg2(trip2):
     return trips_factories.LegFactory(trip=trip2)
+
+
+@pytest.fixture
+def register_device(graphql_client_query_data):
+    def func(uuid, token, account_key):
+        data = graphql_client_query_data(
+            '''
+            mutation($uuid: String!, $token: String!, $accountKey: String!)
+            @device(uuid: $uuid, token: $token)
+            {
+              registerDevice(accountKey: $accountKey) {
+                ok
+              }
+            }
+            ''',
+            variables={'uuid': str(uuid), 'token': token, 'accountKey': account_key}
+        )
+        assert data['registerDevice']['ok']
+    return func

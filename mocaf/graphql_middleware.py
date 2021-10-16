@@ -4,7 +4,7 @@ from graphql.error import GraphQLError
 from .graphql_helpers import GraphQLAuthFailedError, GraphQLAuthRequiredError
 from graphql.language.ast import Variable
 
-from trips.models import Account, Device
+from trips.models import Device
 from .graphql_types import AuthenticatedDeviceNode
 
 
@@ -50,17 +50,12 @@ class APITokenMiddleware:
             raise GraphQLAuthFailedError("Mocaf disabled", [directive])
 
         info.context.device = dev
-        info.context.account = dev.account
-        # Convenient access to all enabled devices of the account
-        info.context.enabled_devices = dev.account.devices.enabled()
 
     def resolve(self, next, root, info, **kwargs):
         context = info.context
 
         if root is None:
-            info.context.account = None
             info.context.device = None
-            info.context.devices = None
             operation = info.operation
             for directive in operation.directives:
                 if directive.name.value == 'device':

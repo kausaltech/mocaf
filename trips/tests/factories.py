@@ -9,7 +9,7 @@ class AccountFactory(DjangoModelFactory):
     class Meta:
         model = 'trips.Account'
 
-    key = Sequence(lambda i: f'key{i}')
+    key = None
 
 
 class DeviceFactory(DjangoModelFactory):
@@ -39,6 +39,19 @@ class DeviceFactory(DjangoModelFactory):
             obj.refresh_from_db()
             obj.generate_token()
             obj.save()
+
+    @post_generation
+    def register_after_creation(obj, create, extracted, **kwargs):
+        if not create:
+            return
+        # Do not register by default
+        if extracted is None:
+            extracted = False
+        if extracted is True:
+            assert obj.account.key is None
+            obj.account.generate_key()
+            obj.account.save()
+            obj.account.regenerate_all_carbon_footprints()
 
 
 class TransportModeFactory(DjangoModelFactory):
