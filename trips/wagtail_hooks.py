@@ -30,8 +30,7 @@ class StatisticsPanel:
 @hooks.register('construct_homepage_panels')
 def add_statistics_panel(request, panels):
     # Calculate number of active devices per day in the last 14 days
-    # two_weeks_ago = timezone.now() - relativedelta(days=14)
-    two_weeks_ago = timezone.now() - relativedelta(days=1000)
+    two_weeks_ago = timezone.now() - relativedelta(days=14)
     active_devices_per_day = (Leg.objects
                               .values(start=TruncDate('start_time'))
                               .filter(start__gte=two_weeks_ago)
