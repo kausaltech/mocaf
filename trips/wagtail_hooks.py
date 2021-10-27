@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from django.db.models import Count, F, Sum
@@ -8,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from wagtail.core import hooks
 
 from budget.models import DeviceDailyCarbonFootprint, Prize
-from trips.models import Leg
+from trips.models import Device, Leg
 
 
 class StatisticsPanel:
@@ -30,19 +31,18 @@ class StatisticsPanel:
 @hooks.register('construct_homepage_panels')
 def add_statistics_panel(request, panels):
     # Calculate number of active devices per day in the last 14 days
-    two_weeks_ago = timezone.now() - relativedelta(days=14)
-    active_devices_per_day = (Leg.objects
-                              .values(start=TruncDate('start_time'))
-                              .filter(start__gte=two_weeks_ago)
-                              .annotate(count=Count('trip__device'))
-                              .order_by('start'))
-    active_devices_per_day = pd.DataFrame(
-        data=[{'day': item['start'].isoformat(), 'value': item['count']} for item in active_devices_per_day]
-    )
-    if not active_devices_per_day.empty:
-        active_devices_per_day = active_devices_per_day.set_index('day')
-        active_devices_per_day = active_devices_per_day.rename(columns={'value': str(_("Number of devices"))})
-        panels.append(StatisticsPanel(request, _("Active devices per day"), active_devices_per_day))
+    NR_DAYS = 14
+    active_devices_per_day = []
+    for nr_days in range(NR_DAYS + 1):
+        day = date.today() - timedelta(days=NR_DAYS + nr_days)
+        nr_devs = Device.objects.has_trips_during(day, day).count()
+        active_devices_per_day.append(dict(day=day.isoformat(), value=nr_devs))
+
+    if active_devices_per_day:
+        df = pd.DataFrame.from_records(active_devices_per_day)
+        df = df.set_index('day')
+        df = df.rename(columns={'value': str(_("Number of devices"))})
+        panels.append(StatisticsPanel(request, _("Active devices per day"), df))
 
     # Calculate number of devices in each prize level
     one_year_ago = timezone.now() - relativedelta(years=1)
