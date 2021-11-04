@@ -34,7 +34,7 @@ def add_statistics_panel(request, panels):
     NR_DAYS = 14
     active_devices_per_day = []
     for nr_days in range(NR_DAYS + 1):
-        day = date.today() - timedelta(days=NR_DAYS + nr_days)
+        day = date.today() - timedelta(days=NR_DAYS - nr_days)
         nr_devs = Device.objects.has_trips_during(day, day).count()
         active_devices_per_day.append(dict(day=day.isoformat(), value=nr_devs))
 
