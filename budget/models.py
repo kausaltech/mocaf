@@ -1,10 +1,12 @@
 import calendar
-from datetime import date
-from modeltrans.fields import TranslationField
 import pytz
+from datetime import date
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from modeltrans.fields import TranslationField
+from wagtail.admin.edit_handlers import FieldPanel
+
 from .enums import TimeResolution, EmissionUnit
 
 
@@ -24,6 +26,13 @@ class EmissionBudgetLevel(models.Model):
     )
 
     i18n = TranslationField(fields=('name',))
+
+    panels = [
+        FieldPanel('identifier'),
+        FieldPanel('name'),
+        FieldPanel('carbon_footprint'),
+        FieldPanel('year'),
+    ]
 
     class Meta:
         verbose_name = _('Emission budget level')
