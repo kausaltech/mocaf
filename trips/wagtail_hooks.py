@@ -44,6 +44,17 @@ def add_statistics_panel(request, panels):
         df = df.rename(columns={'value': str(_("Number of devices"))})
         panels.append(StatisticsPanel(request, _("Active devices per day"), df))
 
+    # Calculate number of active devices per month in the last year
+    NR_MONTHS = 12
+    active_devices_per_month = {}
+    for i in range(NR_MONTHS + 1):
+        start_date = date.today() - relativedelta(months=NR_MONTHS - i, day=1)
+        end_date = date.today() - relativedelta(months=NR_MONTHS - i, day=31)
+        nr_devs = Device.objects.has_trips_during(start_date, end_date).count()
+        month_str = start_date.strftime('%Y-%m')
+        active_devices_per_month[month_str] = nr_devs
+    # We won't display a separate panel for active_devices_per_month, but use it to augment other panels
+
     # Calculate number of devices in each prize level
     one_year_ago = timezone.now() - relativedelta(years=1)
     prizes = (Prize.objects
@@ -60,6 +71,7 @@ def add_statistics_panel(request, panels):
         prizes['date'] = prizes['date'].dt.strftime('%Y-%m')
         prizes = prizes.set_index('date')
         prizes = prizes.groupby(['date', 'prize'], sort=False)['count'].sum().unstack('prize')
+        prizes[str(_('Total active devices'))] = [active_devices_per_month.get(month, 0) for month in prizes.index]
         panels.append(StatisticsPanel(request, _("Awarded prizes per month"), prizes))
 
     # Calculate histograms of carbon footprints for certain months
@@ -86,4 +98,6 @@ def add_statistics_panel(request, panels):
         histograms_df['index'] = pd.to_datetime(histograms_df['index'])
         histograms_df['index'] = histograms_df['index'].dt.strftime('%Y-%m')
         histograms_df = histograms_df.set_index('index')
+        histograms_df[str(_('Total active devices'))] = [active_devices_per_month.get(month, 0)
+                                                         for month in histograms_df.index]
         panels.append(StatisticsPanel(request, _("Number of devices by carbon footprint"), histograms_df))
