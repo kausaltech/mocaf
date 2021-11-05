@@ -1,31 +1,52 @@
-from datetime import date, timedelta
+import base64
+import io
+import matplotlib.pyplot as plt
 import pandas as pd
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.db.models import Count, F, Sum
-from django.db.models.functions import TruncDate, TruncMonth
+from django.db.models.functions import TruncMonth
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from wagtail.core import hooks
 
 from budget.models import DeviceDailyCarbonFootprint, Prize
-from trips.models import Device, Leg
+from trips.models import Device
 
 
 class StatisticsPanel:
     name = 'statistics'
     order = 200
 
-    def __init__(self, request, heading, df):
+    def __init__(self, request, heading, df=None, image_url=None):
         self.request = request
         self.heading = heading
         self.df = df
+        self.image_url = image_url
 
     def render(self):
+        if self.df is not None:
+            table_html = self.df.to_html(index_names=False)
+        else:
+            table_html = None
         return render_to_string('trips/statistics.html', {
             'heading': self.heading,
-            'table_html': self.df.to_html(index_names=False),
+            'table_html': table_html,
+            'image_url': self.image_url,
         }, request=self.request)
+
+
+def series_to_image_url(series, plot_kwargs=None):
+    if plot_kwargs is None:
+        plot_kwargs = {'figsize': (15, 3)}
+    series.plot(**plot_kwargs)
+    bytes_io = io.BytesIO()
+    plt.savefig(bytes_io, format='png')
+    plt.close()
+    bytes_io.seek(0)
+    return 'data:image/png;base64,' + base64.b64encode(bytes_io.read()).decode()
 
 
 @hooks.register('construct_homepage_panels')
@@ -41,8 +62,12 @@ def add_statistics_panel(request, panels):
     if active_devices_per_day:
         df = pd.DataFrame.from_records(active_devices_per_day)
         df = df.set_index('day')
-        df = df.rename(columns={'value': str(_("Number of devices"))})
-        panels.append(StatisticsPanel(request, _("Active devices per day"), df))
+        # df = df.rename(columns={'value': str(_("Number of devices"))})
+        # panels.append(StatisticsPanel(request, _("Active devices per day"), df))
+
+        # FIXME: We might not want to generate a plot every time the page loads
+        image_url = series_to_image_url(df['value'])
+        panels.append(StatisticsPanel(request, _("Active devices per day"), image_url=image_url))
 
     # Calculate number of active devices per month in the last year
     NR_MONTHS = 12
@@ -54,6 +79,10 @@ def add_statistics_panel(request, panels):
         month_str = start_date.strftime('%Y-%m')
         active_devices_per_month[month_str] = nr_devs
     # We won't display a separate panel for active_devices_per_month, but use it to augment other panels
+
+    # FIXME: We might not want to generate a plot every time the page loads
+    image_url = series_to_image_url(pd.Series(active_devices_per_month))
+    panels.append(StatisticsPanel(request, _("Active devices per month"), image_url=image_url))
 
     # Calculate number of devices in each prize level
     one_year_ago = timezone.now() - relativedelta(years=1)
