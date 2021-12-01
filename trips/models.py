@@ -537,3 +537,20 @@ class LegLocation(models.Model):
     def __str__(self):
         time = self.time.astimezone(LOCAL_TZ)
         return '%s: %s (%.1f km/h)' % (time, self.loc, self.speed * 3.6)
+
+
+class BackgroundInfoQuestion(models.Model):
+    device = models.ForeignKey(
+        Device, on_delete=models.CASCADE, related_name='background_info_questions'
+    )
+    question = models.CharField(max_length=100)
+    answer = models.TextField(null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('device', 'question')
+
+    def __str__(self):
+        return '%s: %s' % (str(self.device), self.question)

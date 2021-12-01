@@ -1,3 +1,4 @@
+# pylint: disable=no-self-argument
 from datetime import timedelta
 from typing import Any
 
@@ -18,7 +19,7 @@ from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
 from trips_ingest.models import Location
 
 from .models import (
-    Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
+    BackgroundInfoQuestion, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
 )
 
 
@@ -102,7 +103,9 @@ class TripNode(DjangoNode, AuthenticatedDeviceNode):
     start_time = graphene.DateTime()
     end_time = graphene.DateTime()
     carbon_footprint = graphene.Float()
-    budget_level_impact = graphene.Float(description='How much does this trip reduce the remaining carbon budget for the month?')
+    budget_level_impact = graphene.Float(
+        description='How much does this trip reduce the remaining carbon budget for the month?'
+    )
     length = graphene.Float()
 
     class Meta:
@@ -403,9 +406,37 @@ class Query(graphene.ObjectType):
         return modes
 
 
+class BackgroundQuestionInput(graphene.InputObjectType):
+    question_id = graphene.ID(required=True)
+    answer = graphene.String(required=False)
+
+
+class UpdateBackgroundInfo(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        questions = graphene.List(BackgroundQuestionInput)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, questions):
+        dev = info.context.device
+        with transaction.atomic():
+            dev.background_info_questions.all().delete()
+            new_objs = []
+            for q in questions:
+                new_objs.append(BackgroundInfoQuestion(
+                    device=dev,
+                    question=q.question_id,
+                    answer=q.answer
+                ))
+            BackgroundInfoQuestion.objects.bulk_create(new_objs)
+        return dict(ok=True)
+
+
 class Mutations(graphene.ObjectType):
     enable_mocaf = EnableMocafMutation.Field()
     disable_mocaf = DisableMocafMutation.Field()
+    update_background_info = UpdateBackgroundInfo.Field()
     clear_user_data = ClearUserDataMutation.Field()
     set_default_transport_mode_variant = SetDefaultTransportModeVariant.Field()
     update_leg = UpdateLeg.Field()
