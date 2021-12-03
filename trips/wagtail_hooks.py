@@ -40,10 +40,11 @@ class StatisticsPanel:
 
 def series_to_image_url(series, plot_kwargs=None):
     if plot_kwargs is None:
-        plot_kwargs = {'figsize': (15, 3)}
+        plot_kwargs = {'figsize': (5, 2)}
     series.plot(**plot_kwargs)
     bytes_io = io.BytesIO()
-    plt.savefig(bytes_io, format='png')
+    plt.xticks(rotation=60, ha='right')
+    plt.savefig(bytes_io, format='png', bbox_inches='tight')
     plt.close()
     bytes_io.seek(0)
     return 'data:image/png;base64,' + base64.b64encode(bytes_io.read()).decode()
@@ -62,27 +63,32 @@ def add_statistics_panel(request, panels):
     if active_devices_per_day:
         df = pd.DataFrame.from_records(active_devices_per_day)
         df = df.set_index('day')
+        df.index.name = ''  # Avoid displaying 'day'
         # df = df.rename(columns={'value': str(_("Number of devices"))})
         # panels.append(StatisticsPanel(request, _("Active devices per day"), df))
 
         # FIXME: We might not want to generate a plot every time the page loads
         image_url = series_to_image_url(df['value'])
-        panels.append(StatisticsPanel(request, _("Active devices per day"), image_url=image_url))
+        panels.append(StatisticsPanel(request, _("Active devices per day"), df=df, image_url=image_url))
 
     # Calculate number of active devices per month in the last year
     NR_MONTHS = 12
-    active_devices_per_month = {}
+    active_devices_per_month = []
     for i in range(NR_MONTHS + 1):
         start_date = date.today() - relativedelta(months=NR_MONTHS - i, day=1)
         end_date = date.today() - relativedelta(months=NR_MONTHS - i, day=31)
         nr_devs = Device.objects.has_trips_during(start_date, end_date).count()
         month_str = start_date.strftime('%Y-%m')
-        active_devices_per_month[month_str] = nr_devs
+        active_devices_per_month.append({'month': month_str, 'value': nr_devs})
+    active_devices_per_month_dict = {record['month']: record['value'] for record in active_devices_per_month}
     # We won't display a separate panel for active_devices_per_month, but use it to augment other panels
 
     # FIXME: We might not want to generate a plot every time the page loads
-    image_url = series_to_image_url(pd.Series(active_devices_per_month))
-    panels.append(StatisticsPanel(request, _("Active devices per month"), image_url=image_url))
+    df = pd.DataFrame.from_records(active_devices_per_month)
+    df = df.set_index('month')
+    df.index.name = ''  # Avoid displaying 'month'
+    image_url = series_to_image_url(df['value'])
+    panels.append(StatisticsPanel(request, _("Active devices per month"), df=df, image_url=image_url))
 
     # Calculate number of devices in each prize level
     one_year_ago = timezone.now() - relativedelta(years=1)
@@ -100,8 +106,17 @@ def add_statistics_panel(request, panels):
         prizes['date'] = prizes['date'].dt.strftime('%Y-%m')
         prizes = prizes.set_index('date')
         prizes = prizes.groupby(['date', 'prize'], sort=False)['count'].sum().unstack('prize')
-        prizes[str(_('Total active devices'))] = [active_devices_per_month.get(month, 0) for month in prizes.index]
+        prizes[str(_('Total active devices'))] = [active_devices_per_month_dict.get(month, 0) for month in prizes.index]
         panels.append(StatisticsPanel(request, _("Awarded prizes per month"), prizes))
+
+    # Percentage of devices in each prize level
+    if not prizes.empty:
+        prize_percentages = prizes.copy()
+        totals_column = prize_percentages.iloc[:, -1]
+        for column_name in prize_percentages.columns[:-1]:
+            prize_percentages[column_name] = 100 * (prize_percentages[column_name] / totals_column)
+            prize_percentages[column_name] = prize_percentages[column_name].apply(lambda v: f'{v:6.2f} %')
+        panels.append(StatisticsPanel(request, _("Awarded prizes per month in percent"), prize_percentages))
 
     # Calculate histograms of carbon footprints for certain months
     monthly_footprints = (DeviceDailyCarbonFootprint.objects
@@ -127,6 +142,6 @@ def add_statistics_panel(request, panels):
         histograms_df['index'] = pd.to_datetime(histograms_df['index'])
         histograms_df['index'] = histograms_df['index'].dt.strftime('%Y-%m')
         histograms_df = histograms_df.set_index('index')
-        histograms_df[str(_('Total active devices'))] = [active_devices_per_month.get(month, 0)
+        histograms_df[str(_('Total active devices'))] = [active_devices_per_month_dict.get(month, 0)
                                                          for month in histograms_df.index]
         panels.append(StatisticsPanel(request, _("Number of devices by carbon footprint"), histograms_df))
