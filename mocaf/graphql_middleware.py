@@ -8,6 +8,13 @@ from trips.models import Device
 from .graphql_types import AuthenticatedDeviceNode
 
 
+def _get_arg_value(arg, info):
+    variable_vals = info.variable_values
+    if isinstance(arg.value, Variable):
+        return variable_vals.get(arg.value.name.value)
+    return arg.value.value
+
+
 class APITokenMiddleware:
     def authenticate_device(self, info):
         raise GraphQLError('Token not found', [info])
@@ -15,13 +22,9 @@ class APITokenMiddleware:
     def process_device_directive(self, info, directive):
         dev = None
         token = None
-        variable_vals = info.variable_values
         for arg in directive.arguments:
             if arg.name.value == 'uuid':
-                if isinstance(arg.value, Variable):
-                    val = variable_vals.get(arg.value.name.value)
-                else:
-                    val = arg.value.value
+                val = _get_arg_value(arg, info)
                 try:
                     dev = Device.objects.get(uuid=val)
                 except Device.DoesNotExist:
@@ -30,11 +33,7 @@ class APITokenMiddleware:
                     raise GraphQLAuthFailedError("Invalid UUID", [arg])
 
             elif arg.name.value == 'token':
-                if isinstance(arg.value, Variable):
-                    val = variable_vals.get(arg.value.name.value)
-                else:
-                    val = arg.value.value
-                token = val
+                token = _get_arg_value(arg, info)
 
         if not token:
             raise GraphQLAuthFailedError("Token required", [directive])
@@ -73,7 +72,7 @@ class LocaleMiddleware:
     def process_locale_directive(self, info, directive):
         for arg in directive.arguments:
             if arg.name.value == 'lang':
-                lang = arg.value.value
+                lang = _get_arg_value(arg, info)
                 if lang not in settings.MODELTRANS_AVAILABLE_LANGUAGES:
                     raise GraphQLError("unsupported language: %s" % lang, [info])
                 info.context.language = lang
