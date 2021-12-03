@@ -26,6 +26,7 @@ numba
 orjson
 jinja2
 factory-boy
+wagtail-factories
 pytest-django
 pytest-factoryboy
 pytest-lazy-fixture

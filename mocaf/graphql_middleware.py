@@ -79,7 +79,7 @@ class LocaleMiddleware:
 
     def resolve(self, next, root, info, **kwargs):
         if root is None:
-            info.context.language = None
+            info.context.language = settings.LANGUAGE_CODE
             operation = info.operation
             for directive in operation.directives:
                 if directive.name.value == 'locale':
