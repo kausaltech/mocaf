@@ -11,9 +11,13 @@ class BlogPost(DjangoObjectType):
         fields = ['id', 'title', 'tagline', 'body', 'first_published_at']
 
     body = graphene.String()
+    language = graphene.String()
 
     def resolve_body(root, info):
         return expand_db_html(root.body)
+
+    def resolve_language(root, info):
+        return root.locale.language_code
 
 
 class InfoPage(DjangoObjectType):
