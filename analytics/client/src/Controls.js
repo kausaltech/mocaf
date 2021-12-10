@@ -1,26 +1,31 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
+
 import {Select} from 'baseui/select';
 import {Block} from 'baseui/block';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 
-const cities = [
-  {value: 'cincinnati', label: 'Cincinnati'},
-  {value: 'london', label: 'London'},
-  {value: 'nairobi', label: 'Nairobi'},
-  {value: 'new-york', label: 'New York'},
-  {value: 'san-francisco', label: 'San Francisco'},
-  {value: 'seattle', label: 'Seattle'}
-];
-
-const mapTypes = [
-  {value: 0, label: 'Base Map'},
-  {value: 1, label: 'Node Distance'},
-  {value: 2, label: 'Average Speed'},
-  {value: 3, label: 'Isochronic Map'}
+const WEEK_SUBSETS = [
+  {value: 'workday', label: 'workdays only'},
+  {value: 'weekend', label: 'weekends only'},
+  {value: 'all', label: 'all days'}
 ]
 
-const Controls = () => (
+function WeekSubsetControl ({setWeekSubset}) {
+  [ weekSubset, setWeekSubset ] = useState('workday');
+
+  return <FormControl label="Include">
+    <Select value={[WEEK_SUBSETS.find(d => d.value === weekSubset)]}
+            clearable={false}
+            options={WEEK_SUBSETS}
+            labelKey="label"
+            valueKey="value"
+            onChange={({value}) => { setWeekSubset(value[0].value); }}
+    />
+  </FormControl>
+};
+
+const Controls = ({setWeekSubset}) => (
   <Block className='controls' style={{
     position: 'fixed',
     top: 20,
@@ -30,29 +35,9 @@ const Controls = () => (
     backgroundColor: 'white',
     border: `1px solid #eee`,
   }}>
-    <FormControl label="City">
-    <Select value={[cities.find(d => d.value === 'cincinnati')]}
-      clearable={false}
-      options={cities}
-      labelKey="label"
-      valueKey="value"
-      onChange={({value}) => {
-        setCity(value[0].value);
-      }}
-    />
-     </FormControl>
-     <FormControl label="Map Type">
-    <Select value={[mapTypes.find(d => d.value === 0)]}
-      clearable={false}
-      options={mapTypes}
-      labelKey="label"
-      valueKey="value"
-      onChange={({value}) => {
-        setMapType(value[0].value);
-      }}
-    />
-    </FormControl>
-    
+
+    <WeekSubsetControl setWeekSubset={setWeekSubset} />
+
     <FormControl label="Hour">
       <Slider
         min={0}
