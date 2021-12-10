@@ -40,12 +40,23 @@ const GET_AREAS = gql`
   }
 `;
 
+function useUserChoiceState() {
+  const [weekSubset, setWeekSubset] = useState('workday');
+  return {
+    weekSubset: {
+      value: weekSubset,
+      set: setWeekSubset
+    }
+  };
+}
+
 
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
   const areaType = data?.analytics.areaTypes[1];
   const transportModes = data?.transportModes;
   const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === 'car')[0];
+  const userChoices = useUserChoiceState();
 
   const areaData = useAnalyticsData({
     type: 'lengths',
@@ -70,7 +81,7 @@ export function App() {
       <BaseProvider theme={LightTheme}>
         <div style={{display: 'flex', height: '100vh'}}>
           <div style={{width: '280px', height: '100vh'}}>
-            <Controls />
+            <Controls userChoices={userChoices} />
           </div>
           <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
             {main}
