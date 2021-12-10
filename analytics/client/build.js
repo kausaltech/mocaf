@@ -26,7 +26,7 @@ const BUILD_OPTS = {
   loader: {
     '.js': 'tsx',
   },
-  color: true,
+  color: process.env.COLOR === "false" ? false : true,
   logLevel: 'info',
   sourcemap: true,
   define: {
