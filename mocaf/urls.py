@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import TemplateView
 from django.contrib import admin
 from django_prometheus import urls as django_prometheus_urls
 
@@ -20,12 +21,14 @@ urlpatterns = [
     path('admin/', include(wagtailadmin_urls)),
     path('documents/', include(wagtaildocs_urls)),
     path('v1/health/', csrf_exempt(health_view)),
-    path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True))),
+    path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True)), name='graphql'),
     path('v1/area-type-<int:id>.topojson', area_type_topojson, name='area-type-topojson'),
     path('v1/area-type-<int:id>-stats-<str:type>.csv', area_type_stats, name='area-type-stats'),
     path('v1/ingest/', csrf_exempt(ingest_view)),
     path('v1/upload-log/<slug:uuid>/', csrf_exempt(upload_log_view), name='upload-debug-log'),
-    path("metrics", prometheus_exporter_view, name="prometheus-django-metrics")
+    path('v1/area-type-<int:id>-stats-<str:type>.csv', area_type_stats, name='area-type-stats'),
+    path('analytics/', TemplateView.as_view(template_name='analytics/home.html')),
+    path('metrics', prometheus_exporter_view, name="prometheus-django-metrics")
 ]
 
 

@@ -1,9 +1,14 @@
+import hashlib
+import random
 import csv
+
 from datetime import date, timedelta, datetime, time
+from typing import Optional
+import dateutil.parser
 from django.core.management.base import BaseCommand
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from django.db import connection
-from analytics.models import Area
+from analytics.models import Area, DailyModeSummary
 from django.conf import settings
 
 from trips.models import Trip, Leg, TransportMode, LOCAL_TZ
@@ -15,12 +20,12 @@ LOC_TABLE = 'trips_leglocation'
 LOCAL_SRS = settings.LOCAL_SRS
 
 
-def get_daily_area_lengths():
+def get_daily_area_lengths(area_type, start_date: Optional[date] = None, end_date: Optional[date] = None):
     cursor = connection.cursor()
     sql = f"""
         WITH day_legs AS (
             SELECT
-                (SELECT identifier FROM trips_transportmode WHERE id = mode_id) AS mode_id,
+                mode_id,
                 ST_Transform(
                     (SELECT ST_MakeLine(loc ORDER BY time) FROM {LOC_TABLE} WHERE {LOC_TABLE}.leg_id = {LEG_TABLE}.id),
                     {LOCAL_SRS}
@@ -31,32 +36,59 @@ def get_daily_area_lengths():
                 end_time <= %(end_time)s
         )
         SELECT
-            area.name,
+            area.id,
             day_legs.mode_id,
             SUM(ST_Length(ST_Intersection(area.geometry, day_legs.line))) AS length
         FROM
             day_legs,
             analytics_area area
+        WHERE
+            area.type_id = %(area_type)s
         GROUP BY
-            area.name,
+            area.id,
             day_legs.mode_id
         ORDER BY
             length DESC
     """
-    start_date = date(2021, 6, 1)
-    end_date = date.today()
+
+    areas_by_id = {area.id: area for area in area_type.areas.all()}
+    modes_by_id = {mode.id: mode for mode in TransportMode.objects.all()}
+
+    if start_date is None:
+        start_date = date(2021, 6, 1)
+    if end_date is None:
+        end_date = date.today() - timedelta(days=1)
+
     f = open('lengths.csv', 'w')
     out = csv.writer(f)
     while start_date < end_date:
         print(start_date)
-        cursor.execute(sql, params=dict(start_time=start_date.isoformat(), end_time=start_date + timedelta(days=1)))
+        cursor.execute(sql, params=dict(
+            start_time=start_date.isoformat(),
+            end_time=start_date + timedelta(days=1),
+            area_type=area_type.id
+        ))
         rows = cursor.fetchall()
+        print(len(rows))
+        DailyModeSummary.objects.filter(date=start_date, area__type=area_type).delete()
+        objs = []
         for row in rows:
-            out.writerow([start_date.isoformat()] + list(row))
+            out.writerow([
+                start_date.isoformat(),
+                areas_by_id[row[0]].name,
+                modes_by_id[row[1]].name,
+                row[2]
+            ])
+            obj = DailyModeSummary(date=start_date)
+            obj.area_id = row[0]
+            obj.mode_id = row[1]
+            obj.length = row[2]
+            objs.append(obj)
+        DailyModeSummary.objects.bulk_create(objs)
         start_date += timedelta(days=1)
 
 
-def get_daily_od(area_type: AreaType):
+def get_daily_od(area_type: AreaType, start_date: Optional[date] = None, end_date: Optional[date] = None):
     tz = str(LOCAL_TZ)
 
     query = """
@@ -82,8 +114,10 @@ def get_daily_od(area_type: AreaType):
             origin_id, dest_id, mode_id
     """
 
-    start_date = date(2021, 6, 1)
-    end_date = date.today()
+    if start_date is None:
+        start_date = date(2021, 6, 1)
+    if end_date is None:
+        end_date = date.today() - timedelta(days=1)
     cursor = connection.cursor()
 
     modes = list(TransportMode.objects.all())
@@ -111,13 +145,57 @@ def get_daily_od(area_type: AreaType):
         start_date += timedelta(days=1)
 
 
+def get_daily_device_trips():
+    start_date = date(2021, 6, 1)
+    end_date = date.today()
+
+    seed = random.randbytes(10)
+
+    def generate_id(uuid):
+        b = uuid.bytes + seed
+        return hashlib.sha1(b).hexdigest()[0:8]
+
+    f = open('device_daily_trips.csv', 'w')
+    out = csv.writer(f)
+    out.writerow(['date', 'device', 'mode', 'length', 'carbon_footprint'])
+
+    while start_date < end_date:
+        start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
+        end_time = start_time + timedelta(days=1)
+        data = Leg.objects.active().filter(start_time__gte=start_time, start_time__lt=end_time)\
+            .values('trip__device__uuid', 'mode__identifier').order_by()\
+            .annotate(total_length=Sum('length'), total_carbon_footprint=Sum('carbon_footprint'))
+
+        unique_uuids = set()
+        unique_ids = set()
+        for row in data:
+            user_id = generate_id(row['trip__device__uuid'])
+            unique_uuids.add(row['trip__device__uuid'])
+            unique_ids.add(user_id)
+            out.writerow([
+                start_date.isoformat(),
+                user_id,
+                row['mode__identifier'],
+                row['total_length'],
+                row['total_carbon_footprint'],
+            ])
+
+        if len(unique_uuids) != len(unique_ids):
+            print('ID collision')
+
+        print('%s: %d' % (start_date.isoformat(), len(unique_uuids)))
+        start_date += timedelta(days=1)
+
+
 class Command(BaseCommand):
     help = 'Generate statistics'
 
     def add_arguments(self, parser):
         parser.add_argument('--area-type', type=str)
+        parser.add_argument('--start-date', type=str)
         parser.add_argument('--lengths', action='store_true')
         parser.add_argument('--od', action='store_true')
+        parser.add_argument('--daily-device-trips', action='store_true')
 
     def handle(self, *args, **options):
         if options['area_type']:
@@ -125,7 +203,18 @@ class Command(BaseCommand):
         else:
             area_type = AreaType.objects.first()
         print(area_type)
+        if options['start_date']:
+            start_date = dateutil.parser.isoparse(options['start_date'])
+        else:
+            start_date = None
+        if options['end_date']:
+            end_date = dateutil.parser.isoparse(options['end_date'])
+        else:
+            end_date = None
         if options['lengths']:
-            get_daily_area_lengths()
+            get_daily_area_lengths(area_type, start_date=start_date, end_date=end_date)
         if options['od']:
-            get_daily_od(area_type)
+            get_daily_od(area_type, start_date=start_date, end_date=end_date)
+        if options['daily_device_trips']:
+            get_daily_device_trips()
+
