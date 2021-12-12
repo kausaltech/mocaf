@@ -37,6 +37,7 @@ env = environ.Env(
     DEFAULT_FROM_EMAIL=(str, 'noreply@kausal.tech'),
     CELERY_BROKER_URL=(str, 'redis://localhost:6379'),
     CELERY_RESULT_BACKEND=(str, 'redis://localhost:6379'),
+    CUBEJS_URL=(str, 'http://localhost:4000'),
     GENIEM_NOTIFICATION_API_BASE=(str, ''),
     GENIEM_NOTIFICATION_API_TOKEN=(str, ''),
     GENIEM_PRIZE_API_BASE=(str, ''),
@@ -344,6 +345,8 @@ GENIEM_NOTIFICATION_API_TOKEN = env('GENIEM_NOTIFICATION_API_TOKEN')
 GENIEM_PRIZE_API_BASE = env('GENIEM_PRIZE_API_BASE')
 GENIEM_PRIZE_API_TOKEN = env('GENIEM_PRIZE_API_TOKEN')
 
+# CubeJS
+CUBEJS_URL = env('CUBEJS_URL')
 
 # local_settings.py can be used to override environment-specific settings
 # like database and email that differ between development and production.

@@ -6,10 +6,12 @@ import { gql, useQuery } from "@apollo/client";
 import {Client as Styletron} from 'styletron-engine-atomic';
 import {Provider as StyletronProvider} from 'styletron-react';
 import {LightTheme, BaseProvider} from 'baseui';
-import {Spinner} from 'baseui/spinner';
+import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
 
-import Map from './Map';
+import i18n from './common/i18n';
+import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
+import { useAnalyticsData } from './data';
 
 
 const engine = new Styletron();
@@ -22,6 +24,7 @@ const GET_AREAS = gql`
         id
         topojsonUrl
         dailyTripsUrl
+        dailyLengthsUrl
         areas {
           id
           identifier
@@ -29,36 +32,34 @@ const GET_AREAS = gql`
         }
       }
     }
+    transportModes {
+      id
+      identifier
+      name
+    }
   }
 `;
 
 
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const areaType = data?.analytics.areaTypes[1];
+  const transportModes = data?.transportModes;
+  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === 'car')[0];
 
-  const areaType = data?.analytics.areaTypes[0];
-
-  useEffect(() => {
-    if (!areaType) return;
-
-    Papa.parse(areaType.dailyTripsUrl, {
-      download: true,
-      header: true,
-      complete: (results) => {
-        console.log(results);
-      },
-    })
-  }, [areaType]);
+  const areaData = useAnalyticsData({
+    type: 'lengths',
+    weekend: false,
+  });
 
   if (error) {
     return <div>GraphQL error: {error}</div>
   }
 
   let main;
-  if (!loading) {
+  if (!loading && areaData) {
     main = (
-      <Map areaType={areaType} />
+      <TransportModeShareMap areaType={areaType} areaData={areaData} mode={selectedTransportMode} transportModes={transportModes} />
     );
   } else {
     main = <Spinner />;

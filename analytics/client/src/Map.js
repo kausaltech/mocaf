@@ -1,55 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import * as topojson from 'topojson-client';
 import {LineLayer, GeoJsonLayer} from '@deck.gl/layers';
 import {StaticMap} from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
-import { Spinner } from 'baseui/spinner';
+import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
+import chroma from 'chroma-js';
+import numbro from 'numbro';
+
+import { useAreaTopo } from './data';
 
 
-export default function VizMap({ areaType }) {
-  const [mapData, setMapData] = useState(null);
-
-  console.log('map render');
-  console.log(areaType);
-
-  const processTopo = (topo) => {
-    const areas = new Map(areaType.areas.map((area) => [area.id, area]));
-    const { bbox } = topo;
-    const geojson = topojson.feature(topo, topo.objects['-']);
-    geojson.features = geojson.features.map((feat) => {
-      const area = areas.get(feat.properties.id.toString());
-      const out = {
-        ...feat,
-        properties: {
-          ...feat.properties,
-          name: area.name,
-          identifier: area.identifier,
-        },
-      };
-      return out;
-    })
-    return { bbox, geojson };
-  };
-
-  useEffect(() => {
-    fetch(areaType.topojsonUrl)
-      .then(res => res.json())
-      .then(
-        (res) => {
-          setMapData(processTopo(res));
-        },
-        (error) => {
-          console.error(error);
-        }
-      )
-  }, []);
-
-  if (!mapData) return <Spinner />;
-
-  console.log('mapdata', mapData);
-  const { bbox, geojson } = mapData;
-  console.log(geojson);
-
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip }) {
+  const { bbox, geojson } = geoData;
   const initialView = {
     longitude: (bbox[0] + bbox[2]) / 2,
     latitude: (bbox[1] + bbox[3]) / 2,
@@ -64,23 +25,20 @@ export default function VizMap({ areaType }) {
       pickable: true,
       stroked: true,
       filled: true,
-      getFillColor: [160, 160, 180, 200],
-      getLineColor: [0, 0, 0,200],
+      //extruded: !!getElevation,
+      getFillColor: getFillColor,
+      getLineColor: [0, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
+      //getElevation,
     })
   ];
-  const renderTooltip = ({object}) => {
-    if (!object) return;
-    const { name, identifier } = object.properties;
-    return `${name} (${identifier})`;
-  };
   return (
     <div><DeckGL
       initialViewState={initialView}
       controller={true}
       layers={layers}
-      getTooltip={renderTooltip}
+      getTooltip={getTooltip}
       style={{
         left: '280px',
         width: 'calc(100vw - 280px)'
@@ -88,5 +46,55 @@ export default function VizMap({ areaType }) {
     >
       <StaticMap mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
     </DeckGL></div>
+  );
+}
+
+
+export function TransportModeShareMap({ areaType, areaData, transportModes, mode }) {
+  const geoData = useAreaTopo(areaType);
+
+  const relativeVals = Object.values(areaData).map(({ relative }) => relative[mode.identifier] * 100);
+  const absoluteVals = Object.values(areaData).map(({ absolute }) => absolute[mode.identifier]);
+  absoluteVals.sort((a, b) => a - b);
+  const minLength = absoluteVals[0];
+  const maxLength = absoluteVals[absoluteVals.length - 1];
+  const limits = chroma.limits(relativeVals, 'q', 8);
+  const scales = chroma.scale('RdBu').domain([limits[limits.length - 1], limits[0]]);
+
+  const getElevation = (d) => {
+    const id = d.properties.identifier;
+    const area = areaData[id];
+    const val = area.absolute[mode.identifier];
+    return (val - minLength) / (maxLength - minLength) * 5000;
+  }
+
+  const getColor = (d) => {
+    const id = d.properties.identifier;
+    const area = areaData[id];
+    const val = area.relative[mode.identifier] * 100;
+    return [...scales(val).rgb(), 200];
+  };
+  const renderTooltip = ({object}) => {
+    if (!object) return;
+    const { id, name, identifier } = object.properties;
+    const area = areaData[identifier];
+    const rel = numbro(area.relative[mode.identifier] * 100).format({mantissa: 1});
+    const abs = numbro(area.absolute[mode.identifier] / 1000).format({mantissa: 0});
+    return {
+      html: `
+        <div>
+          <b>${name}</b> (${identifier})<br />
+          ${rel} % (${mode.name}), ${abs} km
+        </div>
+      `,
+    }
+  };
+  if (!geoData) return <Spinner />;
+  return (
+    <AreaMap
+      geoData={geoData}
+      getFillColor={getColor}
+      getTooltip={renderTooltip}
+    />
   );
 }

@@ -1,0 +1,13 @@
+{
+  "name": "cubeserver",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "AGPLv3",
+  "dependencies": {
+    "@cubejs-backend/postgres-driver": "^0.28.65",
+    "@cubejs-backend/server": "^0.28.65"
+  },
+  "scripts": {
+    "start": "NODE_ENV=production node index.js"
+  }
+}

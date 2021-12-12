@@ -25,6 +25,7 @@ class AreaTypeNode(DjangoNode):
     topojson_url = graphene.String()
     properties_meta = graphene.List(PropertyMeta)
     daily_trips_url = graphene.String()
+    daily_lengths_url = graphene.String()
 
     def resolve_areas(root, info):
         return root.areas.all().values('id', 'identifier', 'name')
@@ -37,6 +38,11 @@ class AreaTypeNode(DjangoNode):
     def resolve_daily_trips_url(root: AreaType, info):
         request = info.context
         url = reverse('area-type-stats', kwargs=dict(id=root.id, type='daily-trips'))
+        return request.build_absolute_uri(url)
+
+    def resolve_daily_lengths_url(root: AreaType, info):
+        request = info.context
+        url = reverse('area-type-stats', kwargs=dict(id=root.id, type='daily-lengths'))
         return request.build_absolute_uri(url)
 
     def resolve_properties_meta(root: AreaType, info):

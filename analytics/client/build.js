@@ -22,6 +22,7 @@ const TARGET_BROWSERS = resolveToEsbuildTarget(browserslist(), {
 const BUILD_OPTS = {
   bundle: true,
   target: TARGET_BROWSERS,
+//  target: ['es2020'],
   loader: {
     '.js': 'tsx',
   },
@@ -32,8 +33,6 @@ const BUILD_OPTS = {
     'MAPBOX_ACCESS_TOKEN': `"${process.env.MAPBOX_ACCESS_TOKEN}"`,
   }
 }
-
-console.log(BUILD_OPTS);
 
 async function doBuild(isProd, opts) {
   console.log(`Generating ${isProd ? 'production' : 'development'} build`);
