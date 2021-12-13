@@ -2,7 +2,7 @@
   "name": "cubeserver",
   "version": "1.0.0",
   "main": "index.js",
-  "license": "AGPLv3",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@cubejs-backend/postgres-driver": "^0.28.65",
     "@cubejs-backend/server": "^0.28.65"

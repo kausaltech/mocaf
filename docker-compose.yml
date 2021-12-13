@@ -22,6 +22,8 @@ x-django-environment: &django-environment
   - OIDC_CLIENT_ID
   - OIDC_CLIENT_SECRET
   - PROMETHEUS_METRICS_AUTH_TOKEN
+  - CUBEJS_URL=http://cubeserver:4000
+  - CUBEJS_DB_PASS
 
 x-django-build: &django-build
   context: .
@@ -34,12 +36,13 @@ services:
   db:
     container_name: mocaf-db
     build:
-      context: .
-      dockerfile: ./docker/db/Dockerfile
+      context: ./docker/db
+      dockerfile: ./Dockerfile
     restart: always
     environment:
       - POSTGRES_USER=mocaf
       - POSTGRES_PASSWORD
+      - CUBEJS_DB_PASS
     volumes:
       - db_data:/var/lib/postgresql/data/
     ports:
@@ -63,6 +66,7 @@ services:
     depends_on:
       - db
       - redis
+      - cubeserver
     command: uwsgi
 
   celery-trips-worker:
@@ -113,6 +117,21 @@ services:
     ports:
       - "${CELERY_EXPORTER_PORT:-127.0.0.1:9540}:9540"
     command: --enable-events
+
+  cubeserver:
+    container_name: mocaf_cubeserver
+    restart: always
+    environment:
+      - CUBEJS_DB_USER=mocafcube
+      - CUBEJS_DB_PASS=${CUBEJS_DB_PASS}
+      - CUBEJS_DB_NAME=mocaf
+      - CUBEJS_DB_HOST=db
+      - CUBEJS_CACHE_AND_QUEUE_DRIVER=memory
+    build:
+      context: ./analytics/cubeserver
+      dockerfile: ./Dockerfile
+    depends_on:
+      - db
 
 volumes:
   db_data:

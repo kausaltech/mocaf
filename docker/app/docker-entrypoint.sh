@@ -6,6 +6,12 @@ if [ "$1" = 'uwsgi' -o "$1" = 'celery' ]; then
     /wait-for-it.sh db:5432
     cd /code
     python manage.py migrate --no-input
+    if [ -d '/docker-entrypoint.d' ]; then
+        for scr in /docker-entrypoint.d/*.sh ; do
+            echo "Running $scr"
+            /bin/bash $scr
+        done
+    fi
 fi
 
 if [ "$1" = 'uwsgi' ]; then

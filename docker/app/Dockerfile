@@ -24,6 +24,7 @@ RUN apt-get install -y python3.9 python3-pip libpython3.9-dev \
 
 # Geodjango dependencies
 RUN apt-get install -y libproj-dev gdal-bin
+RUN apt-get install -y nodejs yarnpkg
 
 RUN ln -fs /usr/bin/python3.9 /usr/bin/python3
 RUN ln -fs /usr/bin/python3 /usr/bin/python
@@ -35,14 +36,15 @@ RUN pip install -r /code/requirements-prod.txt -r /code/requirements.txt
 # Install ipython for convenience
 RUN pip install ipython
 
-#COPY package.json package-lock.json /code/
+COPY package.json yarn.lock /code/
 WORKDIR /code
-#RUN npm install
+RUN yarnpkg install
 
 COPY . /code/
 RUN ./manage.py collectstatic --no-input
 RUN ./manage.py compilemessages
 COPY ./docker/app/docker-entrypoint.sh /
 COPY ./docker/app/wait-for-it.sh /
-
+RUN mkdir /docker-entrypoint.d
+COPY ./docker/app/scripts/*.sh /docker-entrypoint.d
 ENTRYPOINT ["/bin/bash", "/docker-entrypoint.sh"]

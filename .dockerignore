@@ -2,6 +2,7 @@
 /media/
 /static/
 *.sqlite3
+/*.dump
 
 # Python and others
 __pycache__
@@ -12,7 +13,7 @@ __pycache__
 /tmp/
 /.vagrant/
 /Vagrantfile.local
-node_modules/
+**/node_modules/
 /npm-debug.log
 /.idea/
 .vscode
@@ -40,7 +41,7 @@ wheels/
 
 /data
 
-/.env
-/.env.*
+**/.env
+**/.env.*
 /db.sqlite3
 **/__pycache__/
