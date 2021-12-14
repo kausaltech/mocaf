@@ -2,9 +2,13 @@ import pytest
 from datetime import date, datetime
 from django.utils.timezone import make_aware, utc
 
+from budget.tests.factories import DeviceDailyCarbonFootprintFactory, PrizeFactory
 from budget.enums import TimeResolution
-from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
+from trips.tests.factories import (
+    BackgroundInfoQuestionFactory, DeviceDefaultModeVariantFactory, DeviceFactory, LegFactory, TripFactory
+)
 from trips.generate import make_point
+from trips.models import Device
 from trips_ingest.models import DeviceHeartbeat, Location
 
 pytestmark = pytest.mark.django_db
@@ -100,3 +104,89 @@ def test_num_active_days():
     device.update_daily_carbon_footprint(make_aware(datetime(2020, 1, 1, 0, 0), utc),
                                          make_aware(datetime(2020, 2, 1, 0, 0), utc))
     assert device.num_active_days(make_aware(datetime(2020, 1, 1, 0, 0))) == num_active_days
+
+
+def test_device_register_sets_account_key():
+    device = DeviceFactory()
+    assert not device.account_key
+    account_key = '12345678-1234-1234-1234-123456789012'
+    assert not Device.objects.filter(account_key=account_key).exists()
+    device.register(account_key)
+    device.refresh_from_db()
+    assert device.account_key == account_key
+
+
+def test_device_register_removes_account_key_from_old_device(registered_device):
+    assert registered_device.account_key
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    registered_device.refresh_from_db()
+    assert not registered_device.account_key
+
+
+def test_device_register_already_registered(registered_device):
+    with pytest.raises(Exception):
+        registered_device.register(registered_device.account_key)
+
+
+def test_device_register_moves_trip(registered_device):
+    trip = TripFactory(device=registered_device)
+    assert list(registered_device.trips.all()) == [trip]
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    assert not registered_device.trips.exists()
+    assert list(new_device.trips.all()) == [trip]
+
+
+def test_device_register_moves_background_info_question(registered_device):
+    question = BackgroundInfoQuestionFactory(device=registered_device)
+    assert list(registered_device.background_info_questions.all()) == [question]
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    assert not registered_device.background_info_questions.exists()
+    assert list(new_device.background_info_questions.all()) == [question]
+
+
+def test_device_register_does_not_move_background_info_question_if_one_exists(registered_device):
+    question = BackgroundInfoQuestionFactory(device=registered_device)
+    new_device = DeviceFactory()
+    new_question = BackgroundInfoQuestionFactory(device=new_device)
+    new_device.register(registered_device.account_key)
+    assert list(registered_device.background_info_questions.all()) == [question]
+    assert list(new_device.background_info_questions.all()) == [new_question]
+
+
+def test_device_register_moves_default_mode_variant(registered_device):
+    variant = DeviceDefaultModeVariantFactory(device=registered_device)
+    assert list(registered_device.default_mode_variants.all()) == [variant]
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    assert not registered_device.default_mode_variants.exists()
+    assert list(new_device.default_mode_variants.all()) == [variant]
+
+
+def test_device_register_does_not_move_default_mode_variant_if_one_exists(registered_device):
+    variant = DeviceDefaultModeVariantFactory(device=registered_device)
+    new_device = DeviceFactory()
+    new_variant = DeviceDefaultModeVariantFactory(device=new_device)
+    new_device.register(registered_device.account_key)
+    assert list(registered_device.default_mode_variants.all()) == [variant]
+    assert list(new_device.default_mode_variants.all()) == [new_variant]
+
+
+def test_device_register_moves_daily_carbon_footprint(registered_device):
+    footprint = DeviceDailyCarbonFootprintFactory(device=registered_device)
+    assert list(registered_device.daily_carbon_footprints.all()) == [footprint]
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    assert not registered_device.daily_carbon_footprints.exists()
+    assert list(new_device.daily_carbon_footprints.all()) == [footprint]
+
+
+def test_device_register_moves_prize(registered_device):
+    prize = PrizeFactory(device=registered_device)
+    assert list(registered_device.prizes.all()) == [prize]
+    new_device = DeviceFactory()
+    new_device.register(registered_device.account_key)
+    assert not registered_device.prizes.exists()
+    assert list(new_device.prizes.all()) == [prize]

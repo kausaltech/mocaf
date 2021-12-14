@@ -10,6 +10,7 @@ class DeviceFactory(DjangoModelFactory):
         model = 'trips.Device'
 
     uuid = Sequence(lambda i: UUID(int=i))
+    account_key = Sequence(lambda i: UUID(int=i))  # will be set to None unless register_after_creation is set to True
     token = None
     platform = None
     system_version = None
@@ -32,6 +33,20 @@ class DeviceFactory(DjangoModelFactory):
             obj.generate_token()
             obj.save()
 
+    @post_generation
+    def register_after_creation(obj, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted is None:
+            extracted = False
+        # obj.account_key was set to something by Sequence. Set it to None if register_after_creation is not requested.
+        account_key = obj.account_key
+        assert account_key
+        obj.account_key = None
+        if extracted is True:
+            obj.register(account_key)
+        obj.save()
+
 
 class TransportModeFactory(DjangoModelFactory):
     class Meta:
@@ -41,6 +56,17 @@ class TransportModeFactory(DjangoModelFactory):
     identifier = 'bicycle'
     name = "Bicycle"
     emission_factor = 5.0
+
+
+class TransportModeVariantFactory(DjangoModelFactory):
+    class Meta:
+        model = 'trips.TransportModeVariant'
+        django_get_or_create = ('mode', 'identifier',)
+
+    mode = SubFactory(TransportModeFactory)
+    identifier = 'good_old_bike'
+    name = "Good old bike"
+    emission_factor = 4.0
 
 
 class TripFactory(DjangoModelFactory):
@@ -70,3 +96,21 @@ class LegFactory(DjangoModelFactory):
     length = 1860.702302423133
     carbon_footprint = 9303.511512115665
     nr_passengers = 0
+
+
+class BackgroundInfoQuestionFactory(DjangoModelFactory):
+    class Meta:
+        model = 'trips.BackgroundInfoQuestion'
+
+    device = SubFactory(DeviceFactory)
+    question = 'Q'
+    answer = 'A'
+
+
+class DeviceDefaultModeVariantFactory(DjangoModelFactory):
+    class Meta:
+        model = 'trips.DeviceDefaultModeVariant'
+
+    device = SubFactory(DeviceFactory)
+    mode = SubFactory(TransportModeFactory)
+    variant = SubFactory(TransportModeVariantFactory)

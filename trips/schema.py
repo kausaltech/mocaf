@@ -19,7 +19,8 @@ from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
 from trips_ingest.models import Location
 
 from .models import (
-    BackgroundInfoQuestion, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation, TransportMode, TransportModeVariant, Trip
+    AlreadyRegistered, BackgroundInfoQuestion, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation,
+    TransportMode, TransportModeVariant, Trip
 )
 
 
@@ -194,6 +195,19 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
             dev.receive_data.all().delete()
             dev.delete()
 
+        return dict(ok=True)
+
+
+class RegisterDeviceMutation(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        account_key = graphene.String()
+        # TODO: add argument confirm_device_migration
+
+    ok = graphene.Boolean()
+
+    def mutate(root, info, account_key):
+        device = info.context.device
+        device.register(account_key)
         return dict(ok=True)
 
 
@@ -438,5 +452,6 @@ class Mutations(graphene.ObjectType):
     disable_mocaf = DisableMocafMutation.Field()
     update_background_info = UpdateBackgroundInfo.Field()
     clear_user_data = ClearUserDataMutation.Field()
+    register_device = RegisterDeviceMutation.Field()
     set_default_transport_mode_variant = SetDefaultTransportModeVariant.Field()
     update_leg = UpdateLeg.Field()

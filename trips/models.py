@@ -32,6 +32,11 @@ class InvalidStateError(Exception):
     pass
 
 
+class AlreadyRegistered(Exception):
+    def __init__(self):
+        super().__init__("Device already registered")
+
+
 class DeviceQuerySet(models.QuerySet):
     def by_name(self, name):
         return self.filter(friendly_name__iexact=name)
@@ -55,6 +60,8 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     debug_log_level = models.PositiveIntegerField(null=True)
     debugging_enabled_at = models.DateTimeField(null=True)
     custom_config = models.JSONField(null=True)
+
+    account_key = models.CharField(max_length=50, blank=True, null=True, unique=True)
 
     enabled_at = models.DateTimeField(null=True)
     disabled_at = models.DateTimeField(null=True)
@@ -242,6 +249,27 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     def has_any_data_on_date(self, date):
         return (DeviceHeartbeat.objects.filter(time__date=date, uuid=self.uuid).exists()
                 or Location.objects.filter(time__date=date, uuid=self.uuid).exists())
+
+    @transaction.atomic
+    def register(self, account_key):
+        if self.account_key:
+            raise AlreadyRegistered()
+        try:
+            old_device = Device.objects.get(account_key=account_key)
+        except Device.DoesNotExist:
+            pass
+        else:
+            old_device.account_key = None
+            old_device.trips.update(device=self)
+            if not self.background_info_questions.exists():
+                old_device.background_info_questions.update(device=self)
+            if not self.default_mode_variants.exists():
+                old_device.default_mode_variants.update(device=self)
+            old_device.daily_carbon_footprints.update(device=self)
+            old_device.prizes.update(device=self)
+            old_device.save()
+        self.account_key = account_key
+        self.save()
 
     def __str__(self):
         return str(self.uuid)

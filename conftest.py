@@ -33,6 +33,11 @@ def uuid(device):
 
 
 @pytest.fixture
+def registered_device():
+    return trips_factories.DeviceFactory(register_after_creation=True)
+
+
+@pytest.fixture
 def contains_error():
     def func(response, code=None, message=None):
         if 'errors' not in response:
@@ -103,7 +108,26 @@ def enable_mocaf(graphql_client_query_data):
 
 
 @pytest.fixture
-def token(enable_mocaf, device):
+def token(device):
     assert device.enabled
     assert device.token
     return str(device.token)
+
+
+@pytest.fixture
+def register_device(graphql_client_query_data):
+    def func(uuid, token, account_key):
+        data = graphql_client_query_data(
+            '''
+            mutation($uuid: String!, $token: String!, $accountKey: String!)
+            @device(uuid: $uuid, token: $token)
+            {
+              registerDevice(accountKey: $accountKey) {
+                ok
+              }
+            }
+            ''',
+            variables={'uuid': str(uuid), 'token': token, 'accountKey': account_key}
+        )
+        assert data['registerDevice']['ok']
+    return func
