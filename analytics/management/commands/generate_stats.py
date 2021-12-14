@@ -193,6 +193,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--area-type', type=str)
         parser.add_argument('--start-date', type=str)
+        parser.add_argument('--end-date', type=str)
         parser.add_argument('--lengths', action='store_true')
         parser.add_argument('--od', action='store_true')
         parser.add_argument('--daily-device-trips', action='store_true')
@@ -217,4 +218,3 @@ class Command(BaseCommand):
             get_daily_od(area_type, start_date=start_date, end_date=end_date)
         if options['daily_device_trips']:
             get_daily_device_trips()
-
