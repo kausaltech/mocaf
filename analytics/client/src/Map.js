@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import {LineLayer, GeoJsonLayer} from '@deck.gl/layers';
-import {StaticMap} from 'react-map-gl';
+import React, { useCallback } from 'react';
+import { GeoJsonLayer } from '@deck.gl/layers';
+import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import chroma from 'chroma-js';
 import numbro from 'numbro';
 import * as aq from 'arquero';
+
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { useAreaTopo } from './data';
 

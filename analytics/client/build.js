@@ -1,4 +1,5 @@
 const esbuild = require('esbuild');
+const alias = require('esbuild-plugin-alias');
 const path = require('path');
 const { program } = require('commander');
 const { resolveToEsbuildTarget } = require('esbuild-plugin-browserslist');
@@ -29,6 +30,11 @@ const BUILD_OPTS = {
   color: process.env.COLOR === "false" ? false : true,
   logLevel: 'info',
   sourcemap: true,
+  plugins: [
+    alias({
+      'mapbox-gl': require.resolve('maplibre-gl'),
+    }),
+  ],
   define: {
     'MAPBOX_ACCESS_TOKEN': `"${process.env.MAPBOX_ACCESS_TOKEN}"`,
   }

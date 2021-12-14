@@ -27,7 +27,7 @@
     "graphql": "^16.1.0",
     "i18next": "^21.6.0",
     "lodash": "^4.17.21",
-    "mapbox-gl": "^2.4.1",
+    "maplibre-gl": "^1.15.2",
     "numbro": "^2.3.5",
     "papaparse": "^5.3.1",
     "plotly.js": "^2.8.0",
@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "babel-eslint": "^10.1.0",
+    "esbuild-plugin-alias": "^0.2.1",
     "eslint": "^8.4.1",
     "eslint-plugin-react": "^7.27.1",
     "eslint-plugin-react-hooks": "^4.3.0"

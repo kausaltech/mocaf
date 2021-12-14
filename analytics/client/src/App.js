@@ -1,6 +1,4 @@
-import React, { useEffect, useState, useReducer } from 'react';
-import Papa from 'papaparse';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import React, { useReducer } from 'react';
 import { gql, useQuery } from "@apollo/client";
 
 import {Client as Styletron} from 'styletron-engine-atomic';
@@ -11,7 +9,7 @@ import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
 import i18n from './common/i18n';
 import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
-import { useAnalyticsData } from './data';
+import { useAnalyticsData } from './data';
 import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
 import { OriginDestinationMatrix } from './Plots';
 
