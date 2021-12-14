@@ -42,16 +42,16 @@ const GET_AREAS = gql`
 
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
-  const userChoices = useReducer(userChoiceReducer, initialUserChoiceState);
+  const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
 
   const areaTypes = data?.analytics.areaTypes;
   const transportModes = data?.transportModes;
-  const areaType = areaTypes?.filter((areaType) => areaType.id == userChoices[0].areaType)[0];
-  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === userChoices[0].transportMode)[0];
+  const areaType = areaTypes?.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
+  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
 
   const areaData = useAnalyticsData({
     type: 'lengths',
-    weekend: false,
+    weekend: userChoiceState.weekSubset === 'weekend',
   });
 
   if (error) {
@@ -76,7 +76,7 @@ export function App() {
       <BaseProvider theme={LightTheme}>
         <div style={{display: 'flex', height: '100vh'}}>
           <div style={{width: '280px', height: '100vh'}}>
-            <Controls userChoices={userChoices}
+            <Controls userChoices={[userChoiceState, dispatch]}
                       dynamicOptions={{transportModes}}
             />
           </div>
