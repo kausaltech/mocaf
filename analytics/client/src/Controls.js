@@ -11,17 +11,29 @@ const WEEK_SUBSETS = [
   {value: 'all', label: 'all days'}
 ]
 
-const WeekSubsetControl = ({weekSubset}) => (
-  <FormControl label="Include">
-    <Select value={[WEEK_SUBSETS.find((d) => d.value === weekSubset.value)]}
-            clearable={false}
+const userChoiceSetAction = (key, value) => ({
+  'type': 'set',
+  'key': key,
+  'payload': value
+});
+
+
+function WeekSubsetControl ({userChoices: [userChoiceState, dispatch]}) {
+  const key = 'weekSubset';
+  const value = [
+    WEEK_SUBSETS.find((d) => (
+      d.value === userChoiceState[key]))]
+  return <FormControl label="Include">
+    <Select clearable={false}
             options={WEEK_SUBSETS}
             labelKey="label"
             valueKey="value"
-            onChange={({value}) => { weekSubset.set(value[0].value); }}
+            value={value}
+            onChange={({value}) => (
+              dispatch(userChoiceSetAction(key, value[0].value)))}
     />
   </FormControl>
-);
+};
 
 const Controls = ({userChoices}) => (
   <Block className='controls'
@@ -34,7 +46,7 @@ const Controls = ({userChoices}) => (
            backgroundColor: 'white',
            border: `1px solid #eee`,
          }}>
-    <WeekSubsetControl weekSubset={userChoices.weekSubset} />
+    <WeekSubsetControl userChoices={userChoices} />
   </Block>
 );
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useReducer } from 'react';
 import Papa from 'papaparse';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { gql, useQuery } from "@apollo/client";
@@ -12,7 +12,7 @@ import i18n from './common/i18n';
 import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
 import { useAnalyticsData } from './data';
-
+import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
 
 const engine = new Styletron();
 
@@ -40,23 +40,12 @@ const GET_AREAS = gql`
   }
 `;
 
-function useUserChoiceState() {
-  const [weekSubset, setWeekSubset] = useState('workday');
-  return {
-    weekSubset: {
-      value: weekSubset,
-      set: setWeekSubset
-    }
-  };
-}
-
-
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
-  const areaType = data?.analytics.areaTypes[1];
+  const areaType = data?.analytics.areaTypes[0];
   const transportModes = data?.transportModes;
   const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === 'car')[0];
-  const userChoices = useUserChoiceState();
+  const userChoices = useReducer(userChoiceReducer, initialUserChoiceState);
 
   const areaData = useAnalyticsData({
     type: 'lengths',
