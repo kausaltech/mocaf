@@ -78,6 +78,7 @@ const Controls = ({userChoices, dynamicOptions}) => (
            backgroundColor: 'white',
            border: `1px solid #eee`,
          }}>
+    <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
     <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
     <TransportModeControl
