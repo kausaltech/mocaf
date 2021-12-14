@@ -11,10 +11,6 @@ cube(`Areas`, {
     },
   },
   measures: {
-    count: {
-      type: `count`,
-      drillMembers: [id, identifier, name]
-    }
   },
   dimensions: {
     id: {
@@ -36,4 +32,12 @@ cube(`Areas`, {
     },
   },
   dataSource: `default`
+});
+
+cube(`OriginAreas`, {
+  extends: Areas,
+});
+
+cube(`DestAreas`, {
+  extends: Areas,
 });

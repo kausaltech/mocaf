@@ -21,8 +21,8 @@ const TARGET_BROWSERS = resolveToEsbuildTarget(browserslist(), {
 
 const BUILD_OPTS = {
   bundle: true,
-  target: TARGET_BROWSERS,
-//  target: ['es2020'],
+  //target: TARGET_BROWSERS,
+  target: ['es2020'],
   loader: {
     '.js': 'tsx',
   },

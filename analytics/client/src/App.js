@@ -13,6 +13,8 @@ import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
+import { OriginDestinationMatrix } from './Plots';
+
 
 const engine = new Styletron();
 
@@ -40,50 +42,61 @@ const GET_AREAS = gql`
   }
 `;
 
-export function App() {
-  const { loading, error, data } = useQuery(GET_AREAS);
+export function MocafAnalytics({ transportModes, areaTypes }) {
+  // FIXME: Generate initialUserChoiceState based on component props.
+  // Alternatively, use lazy init: https://reactjs.org/docs/hooks-reference.html#lazy-initialization
   const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
-
-  const areaTypes = data?.analytics.areaTypes;
-  const transportModes = data?.transportModes;
-  const areaType = areaTypes?.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
-  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
-
+  const areaType = areaTypes.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
+  const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
+    areaTypeId: areaType.id,
     weekend: userChoiceState.weekSubset === 'weekend',
   });
-
-  if (error) {
-    return <div>GraphQL error: {error}</div>
-  }
-
-  let main;
-  if (!loading && areaData) {
-    main = (
+  let visComponent;
+  if (!areaData) {
+    visComponent = <Spinner />
+  } else if (true) {
+    visComponent = (
       <TransportModeShareMap
         areaType={areaType}
         areaData={areaData}
-        mode={selectedTransportMode}
+        selectedTransportMode={selectedTransportMode}
         transportModes={transportModes} />
     );
   } else {
-    main = <Spinner />;
+    visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
   }
 
   return (
+    <div style={{display: 'flex', height: '100vh'}}>
+      <div style={{width: '280px', height: '100vh'}}>
+        <Controls userChoices={[userChoiceState, dispatch]}
+                  dynamicOptions={{transportModes}}
+        />
+      </div>
+    <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
+      {visComponent}
+    </div>
+  </div>
+)
+}
+
+export function App() {
+  const { loading, error, data } = useQuery(GET_AREAS);
+
+  let mainComponent;
+  if (error) {
+    mainComponent = <div>GraphQL error: {error}</div>;
+  } else if (loading) {
+    mainComponent = <Spinner />;
+  } else {
+    mainComponent = <MocafAnalytics transportModes={data.transportModes} areaTypes={data.analytics.areaTypes} />
+  }
+  return (
     <StyletronProvider value={engine}>
       <BaseProvider theme={LightTheme}>
-        <div style={{display: 'flex', height: '100vh'}}>
-          <div style={{width: '280px', height: '100vh'}}>
-            <Controls userChoices={[userChoiceState, dispatch]}
-                      dynamicOptions={{transportModes}}
-            />
-          </div>
-          <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
-            {main}
-          </div>
-        </div>
+        {mainComponent}
       </BaseProvider>
     </StyletronProvider>
   );

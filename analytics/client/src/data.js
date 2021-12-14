@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useCubeQuery }  from '@cubejs-client/react';
 import * as topojson from 'topojson-client';
 import Papa from 'papaparse';
-//import * as aq from 'arquero/dist/arquero';
+import lodash from 'lodash';
+import * as aq from 'arquero';
 
 
 function useRawData({ url, type }) {
@@ -36,12 +37,12 @@ function useRawData({ url, type }) {
   return rawData;
 }
 
-function processDailyLengths(resultSet) {
+function preprocessLengthsOld(resultSet) {
   const data = resultSet.tablePivot({
-    x: ['Areas.identifier'],
+    x: ['DailyLengths.areaId'],
     y: ['TransportModes.identifier', 'measures']
   });
-  const AREA_ID_KEY = 'Areas.identifier';
+  const AREA_ID_KEY = 'DailyLengths.areaId';
   const byArea = Object.fromEntries(data.map((row) => {
     const area = row[AREA_ID_KEY];
     let sum = 0;
@@ -51,27 +52,68 @@ function processDailyLengths(resultSet) {
       byMode[key.split(',')[0]] = val;
       sum += val;
     });
+    byMode.total = sum;
     return [area, {absolute: byMode}];
   }));
   Object.values(byArea).forEach((area) => {
-    const { absolute } = area;
-    const totalLength = Object.values(absolute).reduce((sum, val) => (sum + val));
-    area.relative = Object.fromEntries(Object.entries(absolute).map(([mode, length]) => ([mode, length / totalLength])));
-    absolute.total = totalLength;
+    const { absolute } = area;
+    area.relative = Object.fromEntries(Object.entries(absolute).map(([mode, length]) => ([mode, length / absolute.total])));
   });
   return byArea;
 }
 
-export function useAnalyticsData({ type, weekend, startDate, endDate }) {
+function preprocessLengths(resultSet) {
+  let table = aq.from(resultSet.rawData())
+    .select({
+      'DailyLengths.areaId': 'areaId',
+      'TransportModes.identifier': 'mode',
+      'DailyLengths.totalLength': 'length',
+    })
+    .groupby('areaId')
+    .pivot('mode', 'length');
+
+  const availableModes = table.columnNames((col) => col != 'areaId');
+  table = table
+    .derive({
+      total: aq.escape(d => lodash.sum(Object.values(lodash.pick(d, availableModes))))
+    })
+    .derive(Object.fromEntries(availableModes.map(mode =>
+      [`${mode}_rel`, aq.escape(d => d[mode] / d.total)]
+    )));
+  return table;
+}
+
+function preprocessTrips(resultSet) {
+  let table = aq.from(resultSet.rawData())
+    .derive({
+      trips: d => aq.op.parse_int(d['DailyTrips.totalTrips'])
+    })
+    .select({
+      'DailyTrips.originId': 'originId',
+      'DailyTrips.destId': 'destId',
+      'TransportModes.identifier': 'mode',
+      'trips': 'trips',
+    })
+    .filter(d => d.trips >= 5);
+  return table;
+}
+
+export function useAnalyticsData({ type, areaTypeId, weekend, startDate = '2021-06-01', endDate = '2022-01-01' }) {
   let queryOpts;
+  let dateField;
 
   if (type === 'lengths') {
     queryOpts = {
       measures: ['DailyLengths.totalLength'],
       dimensions: [
-        'Areas.identifier',
+        'DailyLengths.areaId',
         'TransportModes.identifier',
       ],
+      filters: [{
+        member: 'AreaTypes.id',
+        operator: 'equals',
+        values: [areaTypeId],
+      }],
       segments: [],
     }
     if (weekend === true) {
@@ -79,7 +121,8 @@ export function useAnalyticsData({ type, weekend, startDate, endDate }) {
     } else if (weekend === false) {
       queryOpts.segments.push('DailyLengths.weekdays');
     }
-  } else {
+    dateField = 'DailyLengths.date';
+  } else if (type === 'trips') {
     queryOpts = {
       measures: ['DailyTrips.totalTrips'],
       dimensions: [
@@ -87,15 +130,49 @@ export function useAnalyticsData({ type, weekend, startDate, endDate }) {
         'DailyTrips.destId',
         'TransportModes.identifier',
       ],
-      segments: [
-      ],
+      segments: [],
+      filters: [{
+        member: 'AreaTypes.id',
+        operator: 'equals',
+        values: [areaTypeId],
+      }, {
+        member: 'DailyTrips.totalTrips',
+        operator: 'gte',
+        values: [5],
+      }],
     }
+    if (weekend === true) {
+      queryOpts.segments.push('DailyTrips.weekends');
+    } else if (weekend === false) {
+      queryOpts.segments.push('DailyTrips.weekdays');
+    }
+    dateField = 'DailyTrips.date';
+  } else {
+    throw new Error('unknown datatype');
   }
+
+  if (startDate) {
+    queryOpts.filters.push({
+      member: dateField,
+      operator: 'gte',
+      values: [startDate],
+    })
+  }
+  if (endDate) {
+    queryOpts.filters.push({
+      member: dateField,
+      operator: 'lt',
+      values: [endDate],
+    })
+  }
+
   const cubeResp = useCubeQuery(queryOpts);
   const { resultSet } = cubeResp;
   if (!resultSet) return;
   if (type === 'lengths') {
-    return processDailyLengths(resultSet);
+    return preprocessLengths(resultSet);
+  } else {
+    return preprocessTrips(resultSet);
   }
 }
 

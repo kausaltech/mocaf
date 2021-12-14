@@ -6,6 +6,14 @@ cube(`DailyTrips`, {
     TransportModes: {
       relationship: `belongsTo`,
       sql: `${CUBE}.mode_id = ${TransportModes}.id`,
+    },
+    OriginAreas: {
+      relationship: `belongsTo`,
+      sql: `${CUBE}.origin_id = ${OriginAreas}.id`,
+    },
+    DestAreas: {
+      relationship: `belongsTo`,
+      sql: `${CUBE}.dest_id = ${DestAreas}.id`,
     }
   },
   measures: {
