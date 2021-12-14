@@ -8,8 +8,7 @@ import {Slider} from 'baseui/slider';
 const selectionValues = {
   'weekSubset': [
     {value: 'workday', label: 'workdays only'},
-    {value: 'weekend', label: 'weekends only'},
-    {value: 'all', label: 'all days'}
+    {value: 'weekend', label: 'weekends only'}
   ],
   'areaType': [
     {value: 5, label: 'Postal code area'},
