@@ -6,19 +6,24 @@ import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 
 const selectionValues = {
-  'weekSubset': [
+  weekSubset: [
     {value: 'workday', label: 'workdays only'},
     {value: 'weekend', label: 'weekends only'}
   ],
-  'areaType': [
+  areaType: [
     {value: 5, label: 'Postal code area'},
     {value: 6, label: 'Statistics area'}
-  ]}
+  ],
+  analyticsQuantity: [
+    {value: 'lengths', label: 'Length of trips'},
+    {value: 'count', label: 'Number of trips'}
+  ]
+}
 
 const userChoiceSetAction = (key, value) => ({
-  'type': 'set',
-  'key': key,
-  'payload': value
+  type: 'set',
+  key: key,
+  payload: value
 });
 
 
@@ -28,33 +33,19 @@ function getSelectedValue(key, userChoiceState) {
       d.value === userChoiceState[key]))];
 }
 
-function WeekSubsetControl ({userChoices: [userChoiceState, dispatch]}) {
-  const key = 'weekSubset';
-  return <FormControl label="Include days">
+function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dispatch]}) {
+  return <FormControl label={label}>
     <Select clearable={false}
-            options={selectionValues[key]}
+            options={selectionValues[lookup]}
             labelKey="label"
             valueKey="value"
-            value={getSelectedValue(key, userChoiceState)}
+            value={getSelectedValue(lookup, userChoiceState)}
             onChange={({value}) => (
-              dispatch(userChoiceSetAction(key, value[0].value)))}
+              dispatch(userChoiceSetAction(lookup, value[0].value)))}
     />
   </FormControl>
-};
+}
 
-function AreaTypeControl ({userChoices: [userChoiceState, dispatch]}) {
-  const key = 'areaType';
-  return <FormControl label="Area type">
-           <Select clearable={false}
-                   options={selectionValues[key]}
-                   labelKey="label"
-                   valueKey="value"
-                   value={getSelectedValue(key, userChoiceState)}
-                   onChange={({value}) => (
-                     dispatch(userChoiceSetAction(key, value[0].value)))}
-           />
-  </FormControl>
-};
 
 function TransportModeControl (
   {userChoices: [userChoiceState, dispatch], transportModes}) {
@@ -87,8 +78,8 @@ const Controls = ({userChoices, dynamicOptions}) => (
            backgroundColor: 'white',
            border: `1px solid #eee`,
          }}>
-    <WeekSubsetControl userChoices={userChoices} />
-    <AreaTypeControl userChoices={userChoices} />
+    <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
+    <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
     <TransportModeControl
       userChoices={userChoices}
       transportModes={dynamicOptions.transportModes} />

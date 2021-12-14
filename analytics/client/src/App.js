@@ -50,7 +50,7 @@ export function App() {
   const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
 
   const areaData = useAnalyticsData({
-    type: 'lengths',
+    type: userChoiceState.analyticsQuantity,
     weekend: userChoiceState.weekSubset === 'weekend',
   });
 
