@@ -31,7 +31,7 @@ function getSelectedValue(key, userChoiceState) {
 
 function WeekSubsetControl ({userChoices: [userChoiceState, dispatch]}) {
   const key = 'weekSubset';
-  return <FormControl label="Include">
+  return <FormControl label="Include days">
     <Select clearable={false}
             options={selectionValues[key]}
             labelKey="label"
@@ -45,7 +45,7 @@ function WeekSubsetControl ({userChoices: [userChoiceState, dispatch]}) {
 
 function AreaTypeControl ({userChoices: [userChoiceState, dispatch]}) {
   const key = 'areaType';
-  return <FormControl label="AreaChoice">
+  return <FormControl label="Area type">
            <Select clearable={false}
                    options={selectionValues[key]}
                    labelKey="label"
