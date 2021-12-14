@@ -57,9 +57,27 @@ function AreaTypeControl ({userChoices: [userChoiceState, dispatch]}) {
   </FormControl>
 };
 
+function TransportModeControl (
+  {userChoices: [userChoiceState, dispatch], transportModes}) {
+  const key = 'transportMode'
+  let value = null;
+  if (transportModes) {
+    value = [transportModes?.find((d) => d.identifier === userChoiceState[key])];
+  }
+  return <FormControl label="Mode of transportation">
+           <Select clearable={false}
+                   options={transportModes || []}
+                   disabled={transportModes===undefined}
+                   labelKey="name"
+                   valueKey="identifier"
+                   value={value}
+                   onChange={({value}) => (
+                     dispatch(userChoiceSetAction(key, value[0].identifier)))}
+           />
+  </FormControl>
+}
 
-
-const Controls = ({userChoices}) => (
+const Controls = ({userChoices, dynamicOptions}) => (
   <Block className='controls'
          style={{
            position: 'fixed',
@@ -72,6 +90,9 @@ const Controls = ({userChoices}) => (
          }}>
     <WeekSubsetControl userChoices={userChoices} />
     <AreaTypeControl userChoices={userChoices} />
+    <TransportModeControl
+      userChoices={userChoices}
+      transportModes={dynamicOptions.transportModes} />
   </Block>
 );
 

@@ -76,7 +76,9 @@ export function App() {
       <BaseProvider theme={LightTheme}>
         <div style={{display: 'flex', height: '100vh'}}>
           <div style={{width: '280px', height: '100vh'}}>
-            <Controls userChoices={userChoices} />
+            <Controls userChoices={userChoices}
+                      dynamicOptions={{transportModes}}
+            />
           </div>
           <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
             {main}
