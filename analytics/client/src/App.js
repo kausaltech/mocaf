@@ -70,7 +70,11 @@ export function App() {
   let main;
   if (!loading && areaData) {
     main = (
-      <TransportModeShareMap areaType={areaType} areaData={areaData} mode={selectedTransportMode} transportModes={transportModes} />
+      <TransportModeShareMap
+        areaType={areaType}
+        areaData={areaData}
+        mode={selectedTransportMode}
+        transportModes={transportModes} />
     );
   } else {
     main = <Spinner />;
