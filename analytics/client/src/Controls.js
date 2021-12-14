@@ -5,11 +5,16 @@ import {Block} from 'baseui/block';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 
-const WEEK_SUBSETS = [
-  {value: 'workday', label: 'workdays only'},
-  {value: 'weekend', label: 'weekends only'},
-  {value: 'all', label: 'all days'}
-]
+const selectionValues = {
+  'weekSubset': [
+    {value: 'workday', label: 'workdays only'},
+    {value: 'weekend', label: 'weekends only'},
+    {value: 'all', label: 'all days'}
+  ],
+  'areaType': [
+    {value: 5, label: 'Postal code area'},
+    {value: 6, label: 'Statistics area'}
+  ]}
 
 const userChoiceSetAction = (key, value) => ({
   'type': 'set',
@@ -18,22 +23,41 @@ const userChoiceSetAction = (key, value) => ({
 });
 
 
+function getSelectedValue(key, userChoiceState) {
+  return [
+    selectionValues[key].find((d) => (
+      d.value === userChoiceState[key]))];
+}
+
 function WeekSubsetControl ({userChoices: [userChoiceState, dispatch]}) {
   const key = 'weekSubset';
-  const value = [
-    WEEK_SUBSETS.find((d) => (
-      d.value === userChoiceState[key]))]
   return <FormControl label="Include">
     <Select clearable={false}
-            options={WEEK_SUBSETS}
+            options={selectionValues[key]}
             labelKey="label"
             valueKey="value"
-            value={value}
+            value={getSelectedValue(key, userChoiceState)}
             onChange={({value}) => (
               dispatch(userChoiceSetAction(key, value[0].value)))}
     />
   </FormControl>
 };
+
+function AreaTypeControl ({userChoices: [userChoiceState, dispatch]}) {
+  const key = 'areaType';
+  return <FormControl label="AreaChoice">
+           <Select clearable={false}
+                   options={selectionValues[key]}
+                   labelKey="label"
+                   valueKey="value"
+                   value={getSelectedValue(key, userChoiceState)}
+                   onChange={({value}) => (
+                     dispatch(userChoiceSetAction(key, value[0].value)))}
+           />
+  </FormControl>
+};
+
+
 
 const Controls = ({userChoices}) => (
   <Block className='controls'
@@ -47,6 +71,7 @@ const Controls = ({userChoices}) => (
            border: `1px solid #eee`,
          }}>
     <WeekSubsetControl userChoices={userChoices} />
+    <AreaTypeControl userChoices={userChoices} />
   </Block>
 );
 

@@ -42,10 +42,12 @@ const GET_AREAS = gql`
 
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
-  const areaType = data?.analytics.areaTypes[0];
-  const transportModes = data?.transportModes;
-  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === 'car')[0];
   const userChoices = useReducer(userChoiceReducer, initialUserChoiceState);
+
+  const areaTypes = data?.analytics.areaTypes;
+  const transportModes = data?.transportModes;
+  const areaType = areaTypes?.filter((areaType) => areaType.id == userChoices[0].areaType)[0];
+  const selectedTransportMode = transportModes?.filter((mode) => mode.identifier === userChoices[0].transportMode)[0];
 
   const areaData = useAnalyticsData({
     type: 'lengths',
