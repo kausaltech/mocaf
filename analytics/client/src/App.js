@@ -49,7 +49,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
-    weekend: userChoiceState.weekSubset === 'weekend',
+    weekend: userChoiceState.weekSubset,
   });
 
   let visComponent;
