@@ -1,5 +1,6 @@
 import React, { useReducer, useEffect } from 'react';
 import { gql, useQuery } from "@apollo/client";
+import { format, addDays } from 'date-fns';
 
 import {Client as Styletron} from 'styletron-engine-atomic';
 import {Provider as StyletronProvider} from 'styletron-react';
@@ -50,6 +51,8 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
     weekend: userChoiceState.weekSubset,
+    startDate: format(userChoiceState.dateRange.range[0], 'yyyy-MM-dd'),
+    endDate: format(addDays(userChoiceState.dateRange.range[1], 1), 'yyyy-MM-dd'),
   });
 
   let visComponent;

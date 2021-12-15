@@ -101,7 +101,7 @@ function preprocessTrips(resultSet) {
   return table;
 }
 
-export function useAnalyticsData({ type, areaTypeId, weekend, startDate = '2021-06-01', endDate = '2022-01-01' }) {
+export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate }) {
   let queryOpts;
   let dateField;
 
