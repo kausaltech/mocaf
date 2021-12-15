@@ -1,4 +1,4 @@
-import React, { useReducer } from 'react';
+import React, { useReducer, useEffect } from 'react';
 import { gql, useQuery } from "@apollo/client";
 
 import {Client as Styletron} from 'styletron-engine-atomic';
@@ -46,22 +46,24 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
   const areaType = areaTypes.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
+  const userChoiceVisType = 'map';
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
     weekend: userChoiceState.weekSubset === 'weekend',
   });
+
   let visComponent;
-  if (!areaData) {
-    visComponent = <Spinner />
-  } else if (true) {
-    visComponent = (
-      <TransportModeShareMap
-        areaType={areaType}
-        areaData={areaData}
-        selectedTransportMode={selectedTransportMode}
-        transportModes={transportModes} />
-    );
+  if (userChoiceVisType === 'map') {
+    if (userChoiceState.analyticsQuantity === 'lengths') {
+      visComponent = (
+        <TransportModeShareMap
+          areaType={areaType}
+          areaData={areaData}
+          selectedTransportMode={selectedTransportMode}
+          transportModes={transportModes} />
+      );
+    }
   } else {
     visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
   }

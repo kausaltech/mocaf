@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCubeQuery }  from '@cubejs-client/react';
 import * as topojson from 'topojson-client';
 import Papa from 'papaparse';
@@ -68,6 +68,9 @@ function preprocessLengths(resultSet) {
       'DailyLengths.areaId': 'areaId',
       'TransportModes.identifier': 'mode',
       'DailyLengths.totalLength': 'length',
+    })
+    .derive({
+      length: d => d.length / 1000,  // convert to km
     })
     .groupby('areaId')
     .pivot('mode', 'length');
@@ -177,39 +180,48 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate = '2021-
 }
 
 
+function processTopo(areaType, topo) {
+  const areas = new Map(areaType.areas.map((area) => [area.id, area]));
+  const { bbox } = topo;
+  const geojson = topojson.feature(topo, topo.objects['-']);
+  geojson.features = geojson.features.map((feat) => {
+    const area = areas.get(feat.properties.id.toString());
+    const out = {
+      ...feat,
+      properties: {
+        ...feat.properties,
+        name: area.name,
+        identifier: area.identifier,
+      },
+    };
+    return out;
+  })
+  return { bbox, geojson };
+}
+
+let topoCache = {};
+
 export function useAreaTopo(areaType) {
   const [areaData, setAreaData] = useState(null);
 
-  const processTopo = (topo) => {
-    const areas = new Map(areaType.areas.map((area) => [area.id, area]));
-    const { bbox } = topo;
-    const geojson = topojson.feature(topo, topo.objects['-']);
-    geojson.features = geojson.features.map((feat) => {
-      const area = areas.get(feat.properties.id.toString());
-      const out = {
-        ...feat,
-        properties: {
-          ...feat.properties,
-          name: area.name,
-          identifier: area.identifier,
-        },
-      };
-      return out;
-    })
-    return { bbox, geojson };
-  };
-
   useEffect(() => {
+    if (areaType.id in topoCache) {
+      setAreaData(topoCache[areaType.id]);
+      return;
+    }
+
     fetch(areaType.topojsonUrl)
       .then(res => res.json())
       .then(
         (res) => {
-          setAreaData(processTopo(res));
+          const data = processTopo(areaType, res);
+          topoCache[areaType.id] = data;
+          setAreaData(data);
         },
         (error) => {
           console.error(error);
         }
       )
-  }, [areaType]);
+  }, [areaType.id]);
   return areaData;
-};
+}
