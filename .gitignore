@@ -2,7 +2,7 @@ __pycache__/
 /Attic
 *~
 *.pickle
-/.env
+**/.env
 /.django_secret
 /local_settings.py
 *.mo
@@ -17,3 +17,5 @@ __pycache__/
 /tags
 node_modules/
 yarn-error.log
+analytics/cubeserver/.cubestore/
+docker-compose.override.yml
