@@ -20,7 +20,7 @@ const selectionValues = {
   ],
   visualisation: [
     {value: 'choropleth-map', label: 'Map'},
-    {value: 'origin-destination-matrix', label: 'Matrix'}
+    {value: 'table', label: 'Table'}
   ]
 }
 

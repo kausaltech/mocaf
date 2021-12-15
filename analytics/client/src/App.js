@@ -63,7 +63,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           transportModes={transportModes} />
       );
     }
-  } else if (userChoiceState.visualisation === 'origin-destination-matrix') {
+  } else if (userChoiceState.visualisation === 'table') {
     if (userChoiceState.analyticsQuantity === 'lengths') {
       visComponent = (
         <TransportModesPlot
