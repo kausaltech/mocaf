@@ -4,6 +4,7 @@ import {Select} from 'baseui/select';
 import {Block} from 'baseui/block';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
+import {format, parseISO, differenceInDays, addDays} from 'date-fns';
 
 const selectionValues = {
   weekSubset: [
@@ -72,6 +73,33 @@ function TransportModeControl (
   </FormControl>
 }
 
+function DateRangeSlider ({min, max, label}) {
+  const dateExtent = [parseISO(min), parseISO(max)]
+  const deltaDays = differenceInDays(dateExtent[1], dateExtent[0])
+  const [value, setValue] = useState({start: dateExtent[0], bounds: [0, deltaDays]});
+
+  function valueToLabel (value) {
+    result = addDays(dateExtent[0], value);
+    return format(result, "d.M.yyyy");
+  }
+  function onChange ({value}) {
+    value && setValue({start: min, bounds: value});
+  }
+  function onFinalChange ({value}) {
+  }
+  return (
+    <Slider value={value.bounds}
+            onChange={onChange}
+            onFinalChange={onFinalChange}
+            label={label}
+            min={0}
+            max={deltaDays}
+            valueToLabel={valueToLabel}
+            step={1}
+      />
+  );
+}
+
 const Controls = ({userChoices, dynamicOptions}) => (
   <Block className='controls'
          style={{
@@ -86,6 +114,7 @@ const Controls = ({userChoices, dynamicOptions}) => (
     <StaticSelectControl label='Visualisation' lookup='visualisation' userChoices={userChoices} />
     <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
+    <DateRangeSlider label='Date range' min={'2021-01-01'} max={'2021-12-31'} />
     <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
     <TransportModeControl
       userChoices={userChoices}
