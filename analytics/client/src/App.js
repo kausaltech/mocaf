@@ -46,7 +46,6 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
   const areaType = areaTypes.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
-  const userChoiceVisType = 'table';
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
@@ -54,7 +53,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   });
 
   let visComponent;
-  if (userChoiceVisType === 'map') {
+  if (userChoiceState.visualisation === 'choropleth-map') {
     if (userChoiceState.analyticsQuantity === 'lengths') {
       visComponent = (
         <TransportModeShareMap
@@ -64,7 +63,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           transportModes={transportModes} />
       );
     }
-  } else if (userChoiceVisType === 'table') {
+  } else if (userChoiceState.visualisation === 'origin-destination-matrix') {
     if (userChoiceState.analyticsQuantity === 'lengths') {
       visComponent = (
         <TransportModesPlot

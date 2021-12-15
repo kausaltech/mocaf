@@ -1,4 +1,5 @@
 export const initialUserChoiceState = {
+  visualisation: 'choropleth-map',
   weekSubset: 'workday',
   transportMode: 'car',
   areaType: 5,

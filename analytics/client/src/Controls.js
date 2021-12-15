@@ -17,6 +17,10 @@ const selectionValues = {
   analyticsQuantity: [
     {value: 'lengths', label: 'Length of trips'},
     {value: 'count', label: 'Number of trips'}
+  ],
+  visualisation: [
+    {value: 'choropleth-map', label: 'Map'},
+    {value: 'origin-destination-matrix', label: 'Matrix'}
   ]
 }
 
@@ -78,6 +82,7 @@ const Controls = ({userChoices, dynamicOptions}) => (
            backgroundColor: 'white',
            border: `1px solid #eee`,
          }}>
+    <StaticSelectControl label='Visualisation' lookup='visualisation' userChoices={userChoices} />
     <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
     <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
