@@ -11,7 +11,7 @@ import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
-import { OriginDestinationMatrix } from './Plots';
+import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
 
 
 const engine = new Styletron();
@@ -46,7 +46,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
   const areaType = areaTypes.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
-  const userChoiceVisType = 'map';
+  const userChoiceVisType = 'table';
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
@@ -64,8 +64,19 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           transportModes={transportModes} />
       );
     }
-  } else {
-    visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
+  } else if (userChoiceVisType === 'table') {
+    if (userChoiceState.analyticsQuantity === 'lengths') {
+      visComponent = (
+        <TransportModesPlot
+          areaType={areaType}
+          areaData={areaData}
+          transportModes={transportModes}
+        />
+      );
+    } else {
+      //visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
+      visComponent = <div />;
+    }
   }
 
   return (
