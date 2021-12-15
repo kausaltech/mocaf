@@ -73,22 +73,29 @@ function TransportModeControl (
   </FormControl>
 }
 
-function DateRangeSlider ({min, max, label}) {
-  const dateExtent = [parseISO(min), parseISO(max)]
-  const deltaDays = differenceInDays(dateExtent[1], dateExtent[0])
-  const [value, setValue] = useState({start: dateExtent[0], bounds: [0, deltaDays]});
+function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
+  const dateBounds = dateRange.bounds;
+  const deltaDays = differenceInDays(dateBounds[1], dateBounds[0])
+  const currentRange = [
+    differenceInDays(dateRange.range[0], dateRange.bounds[0]),
+    differenceInDays(dateRange.range[1], dateRange.bounds[0])];
+  const [value, setValue] = useState(currentRange);
 
   function valueToLabel (value) {
-    result = addDays(dateExtent[0], value);
+    result = addDays(dateBounds[0], value);
     return format(result, "d.M.yyyy");
   }
   function onChange ({value}) {
-    value && setValue({start: min, bounds: value});
+    value && setValue(value);
   }
   function onFinalChange ({value}) {
+    value && dispatch(userChoiceSetAction('dateRange', {
+      bounds: dateRange.bounds,
+      range: [addDays(dateBounds[0], value[0]), addDays(dateBounds[0], value[1])]
+    }));
   }
   return (
-    <Slider value={value.bounds}
+    <Slider value={value}
             onChange={onChange}
             onFinalChange={onFinalChange}
             label={label}
@@ -114,7 +121,7 @@ const Controls = ({userChoices, dynamicOptions}) => (
     <StaticSelectControl label='Visualisation' lookup='visualisation' userChoices={userChoices} />
     <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
-    <DateRangeSlider label='Date range' min={'2021-01-01'} max={'2021-12-31'} />
+    <DateRangeSlider label='Date range' userChoices={userChoices} />
     <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
     <TransportModeControl
       userChoices={userChoices}
