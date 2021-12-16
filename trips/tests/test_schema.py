@@ -387,7 +387,7 @@ def test_register_device_already_registered(graphql_client_query, contains_error
         mutation($uuid: String!, $token: String!, $accountKey: String!)
         @device(uuid: $uuid, token: $token)
         {
-          registerDevice(accountKey: $accountKey) {
+          registerDevice(accountKey: $accountKey, confirmDeviceMigration: true) {
             ok
           }
         }
@@ -395,6 +395,24 @@ def test_register_device_already_registered(graphql_client_query, contains_error
         variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'accountKey': str(device2.account_key)}
     )
     assert contains_error(response, message="Device already registered")
+
+
+def test_register_device_migration_not_confirmed(graphql_client_query, contains_error):
+    device1 = DeviceFactory(register_after_creation=False)
+    device2 = DeviceFactory(register_after_creation=True)
+    response = graphql_client_query(
+        '''
+        mutation($uuid: String!, $token: String!, $accountKey: String!)
+        @device(uuid: $uuid, token: $token)
+        {
+          registerDevice(accountKey: $accountKey) {
+            ok
+          }
+        }
+        ''',
+        variables={'uuid': str(device1.uuid), 'token': str(device1.token), 'accountKey': str(device2.account_key)}
+    )
+    assert contains_error(response, code='NEED_CONFIRMATION')
 
 
 # TODO: unregister

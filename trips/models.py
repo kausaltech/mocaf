@@ -37,6 +37,11 @@ class AlreadyRegistered(Exception):
         super().__init__("Device already registered")
 
 
+class MigrationRequired(Exception):
+    def __init__(self):
+        super().__init__("Device with given account key exists -- need permission to migrate")
+
+
 class DeviceQuerySet(models.QuerySet):
     def by_name(self, name):
         return self.filter(friendly_name__iexact=name)
@@ -251,7 +256,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
                 or Location.objects.filter(time__date=date, uuid=self.uuid).exists())
 
     @transaction.atomic
-    def register(self, account_key):
+    def register(self, account_key, migrate_existing=True):
         if self.account_key:
             raise AlreadyRegistered()
         try:
@@ -259,6 +264,8 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
         except Device.DoesNotExist:
             pass
         else:
+            if not migrate_existing:
+                raise MigrationRequired()
             old_device.account_key = None
             old_device.trips.update(device=self)
             if not self.background_info_questions.exists():

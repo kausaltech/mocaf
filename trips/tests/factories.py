@@ -43,9 +43,9 @@ class DeviceFactory(DjangoModelFactory):
         account_key = obj.account_key
         assert account_key
         obj.account_key = None
-        if extracted is True:
-            obj.register(account_key)
         obj.save()
+        if extracted is True:
+            obj.register(account_key, migrate_existing=False)
 
 
 class TransportModeFactory(DjangoModelFactory):

@@ -14,13 +14,13 @@ from graphql.error import GraphQLError
 from budget.enums import EmissionUnit, TimeResolution
 from budget.models import EmissionBudgetLevel
 from mocaf.graphql_gis import LineStringScalar, PointScalar
-from mocaf.graphql_helpers import paginate_queryset
+from mocaf.graphql_helpers import GraphQLNeedConfirmation, paginate_queryset
 from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
 from trips_ingest.models import Location
 
 from .models import (
     AlreadyRegistered, BackgroundInfoQuestion, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation,
-    TransportMode, TransportModeVariant, Trip
+    MigrationRequired, TransportMode, TransportModeVariant, Trip
 )
 
 
@@ -201,13 +201,16 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
 class RegisterDeviceMutation(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
         account_key = graphene.String()
-        # TODO: add argument confirm_device_migration
+        confirm_device_migration = graphene.Boolean(required=False, default_value=False)
 
     ok = graphene.Boolean()
 
-    def mutate(root, info, account_key):
+    def mutate(root, info, account_key, confirm_device_migration):
         device = info.context.device
-        device.register(account_key)
+        try:
+            device.register(account_key, migrate_existing=confirm_device_migration)
+        except MigrationRequired as e:
+            raise GraphQLNeedConfirmation(str(e))
         return dict(ok=True)
 
 

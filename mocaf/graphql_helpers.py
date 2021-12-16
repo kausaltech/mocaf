@@ -53,3 +53,12 @@ class GraphQLAuthRequiredError(GraphQLError):
             self.extensions = {
                 'code': 'AUTH_REQUIRED',
             }
+
+
+class GraphQLNeedConfirmation(GraphQLError):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.extensions:
+            self.extensions = {
+                'code': 'NEED_CONFIRMATION',
+            }

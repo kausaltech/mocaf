@@ -8,7 +8,7 @@ from trips.tests.factories import (
     BackgroundInfoQuestionFactory, DeviceDefaultModeVariantFactory, DeviceFactory, LegFactory, TripFactory
 )
 from trips.generate import make_point
-from trips.models import Device
+from trips.models import AlreadyRegistered, Device, MigrationRequired
 from trips_ingest.models import DeviceHeartbeat, Location
 
 pytestmark = pytest.mark.django_db
@@ -125,8 +125,14 @@ def test_device_register_removes_account_key_from_old_device(registered_device):
 
 
 def test_device_register_already_registered(registered_device):
-    with pytest.raises(Exception):
+    with pytest.raises(AlreadyRegistered):
         registered_device.register(registered_device.account_key)
+
+
+def test_device_register_not_migrate_existing(registered_device):
+    device = DeviceFactory()
+    with pytest.raises(MigrationRequired):
+        device.register(registered_device.account_key, migrate_existing=False)
 
 
 def test_device_register_moves_trip(registered_device):
