@@ -156,6 +156,10 @@ Create a superuser:
 python manage.py createsuperuser
 ```
 
+To import area data for GIS manipulations, use the Django manage.py
+command `import_areas`.  Please note the area importing has NPM
+dependencies: before running these commands, run `yarn`.
+
 ### TODO
 
 - Fix viterbi
