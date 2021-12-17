@@ -1,6 +1,7 @@
 version: '3.8'
 x-django-environment: &django-environment
   - POSTGRES_PASSWORD
+  - POSTGRES_DB=mocaf
   - DATABASE_URL=postgis://mocaf:${POSTGRES_PASSWORD}@db/mocaf
   - CELERY_BROKER_URL=redis://redis:6379
   - CELERY_RESULT_BACKEND=redis://redis:6379
