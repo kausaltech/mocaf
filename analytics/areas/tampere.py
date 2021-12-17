@@ -24,6 +24,10 @@ class TampereImporter(WFSImporter):
             name='Tampereen tilastoalueet',
             layer='hallinnolliset_yksikot:KH_TILASTO'
         ),
+        'tre:suunnittelualue': dict(
+            name='Tampereen suunnittelualueet',
+            layer='hallinnolliset_yksikot:KH_SUUNNITTELUALUE'
+        ),
     }
 
     def get_area_types(self):
