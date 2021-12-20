@@ -14,6 +14,7 @@ import Controls from './Controls';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
 import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
+import preprocessTransportModes from './transportModes';
 
 
 const engine = new Styletron();
@@ -88,7 +89,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
     <div style={{display: 'flex', height: '100vh'}}>
       <Layer>
         <Controls userChoices={[userChoiceState, dispatch]}
-                  dynamicOptions={{transportModes: transportModes.filter((m) => m.identifier !== 'still')}}
+                  dynamicOptions={{transportModes}}
         />
       </Layer>
     <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
@@ -107,7 +108,9 @@ export function App() {
   } else if (loading) {
     mainComponent = <Spinner />;
   } else {
-    mainComponent = <MocafAnalytics transportModes={data.transportModes} areaTypes={data.analytics.areaTypes} />
+    mainComponent = <MocafAnalytics
+                      transportModes={preprocessTransportModes(data.transportModes)}
+                      areaTypes={data.analytics.areaTypes} />
   }
   return (
     <StyletronProvider value={engine}>
