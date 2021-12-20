@@ -89,7 +89,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
     <div style={{display: 'flex', height: '100vh'}}>
       <Layer>
         <Controls userChoices={[userChoiceState, dispatch]}
-                  dynamicOptions={{transportModes}}
+                  dynamicOptions={{transportModes: transportModes.filter((m) => m.identifier !== 'still')}}
         />
       </Layer>
     <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
