@@ -91,38 +91,45 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     }));
   }
   return (
-    <Slider value={value}
-            onChange={onChange}
-            onFinalChange={onFinalChange}
-            label={label}
-            min={0}
-            max={delta}
-            valueToLabel={valueToLabel}
-            step={1}
+    <div style={{gridColumn: '1/4'}} >
+      <Slider value={value}
+              onChange={onChange}
+
+              onFinalChange={onFinalChange}
+              label={label}
+              min={0}
+              max={delta}
+              valueToLabel={valueToLabel}
+              step={1}
       />
+    </div>
   );
 }
 
 const Controls = ({userChoices, dynamicOptions}) => (
-  <Block className='controls'
-         style={{
-           position: 'fixed',
-           top: 20,
-           left: 20,
-           padding: 20,
-           width: '200px',
-           backgroundColor: 'white',
-           border: `1px solid #eee`,
-         }}>
+  <div className='controls'
+       style={{
+         position: 'fixed',
+         top: 20,
+         left: '50%',
+         transform: 'translateX(-50%)',
+         padding: 10,
+         display: 'grid',
+         gridTemplateColumns: '1fr 1fr 1fr 1fr',
+         gap: '4px',
+         minWidth: '30%',
+         backgroundColor: '#ffffffdd',
+         border: `1px solid #eee`,
+       }}>
     <StaticSelectControl label='Visualisation' lookup='visualisation' userChoices={userChoices} />
     <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
-    <DateRangeSlider label='Date range' userChoices={userChoices} />
     <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
+    <DateRangeSlider label='Date range' userChoices={userChoices} />
     <TransportModeControl
       userChoices={userChoices}
       transportModes={dynamicOptions.transportModes} />
-  </Block>
+  </div>
 );
 
 export default Controls;
