@@ -79,7 +79,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
 
   function valueToLabel (value) {
     result = addMonths(dateBounds[0], value);
-    return format(result, "M.yyyy");
+    return format(result, "M/yyyy");
   }
   function onChange ({value}) {
     value && setValue(value);
