@@ -8,8 +8,8 @@ import {format, parseISO, differenceInCalendarMonths, addMonths} from 'date-fns'
 
 const selectionValues = {
   weekSubset: [
-    {value: true, label: 'weekends only'},
-    {value: false, label: 'workdays only'},
+    {value: true, label: 'weekends'},
+    {value: false, label: 'workdays'},
     {value: null, label: 'all days'}
   ],
   areaType: [
@@ -17,8 +17,8 @@ const selectionValues = {
     {value: 6, label: 'Statistics area'}
   ],
   analyticsQuantity: [
-    {value: 'lengths', label: 'Length of trips'},
-    {value: 'count', label: 'Number of trips'}
+    {value: 'lengths', label: 'Length'},
+    {value: 'count', label: 'Count'}
   ],
   visualisation: [
     {value: 'choropleth-map', label: 'Map'},
