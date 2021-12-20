@@ -95,8 +95,8 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     const minLength = absoluteVals[0];
     const maxLength = absoluteVals[absoluteVals.length - 1];
     const relativeVals = areaData.array(`${modeId}_rel`);
-    const limits = chroma.limits(relativeVals, 'q', 8);
-    const scales = chroma.scale('RdBu').classes(limits);
+    const limits = chroma.limits(relativeVals, 'q', 7);
+    const scales = chroma.scale([selectedTransportMode.colors.zero, selectedTransportMode.colors.primary]).classes(limits);
 
     getElevation = (d) => {
       const id = d.properties.id;
@@ -110,7 +110,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
       if (abs < 100) return [0, 0, 0, 0];
-      return [...scales(val).rgb(), 200];
+      return [...scales(val).rgb(), 220];
     },
     getTooltip = ({object}) => {
       if (!object) return;

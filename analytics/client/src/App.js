@@ -76,6 +76,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
         <TransportModesPlot
           areaType={areaType}
           areaData={areaData}
+          selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
         />
         </div>

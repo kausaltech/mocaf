@@ -81,17 +81,21 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
   );
 } 
 
-export function TransportModesPlot({ transportModes, areaType, areaData }) {
+export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode }) {
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
 
   if (!areaData)
     return <Spinner />;
 
-  const availableModes = areaData.columnNames((col) => modeById.has(col));
+  const modeOrder = ['car', 'walk', 'bicycle', 'bus', 'tram', 'train', 'other'].filter(mode => mode !== selectedTransportMode.identifier);
+  modeOrder.splice(0, 0, selectedTransportMode.identifier);
+  const availableModes = modeOrder.filter(mode => areaData.columnNames().includes(mode) && modeById.has(mode));
+  const table = areaData
+    .orderby(selectedTransportMode.identifier + '_rel');
   const traces = availableModes.map((mode) => {
     const x = [], y = [];
-    areaData.objects().forEach(row => {
+    table.objects().forEach(row => {
       const { areaId } = row;
       const area = areasById.get(areaId);
       if (!area) {
@@ -107,23 +111,37 @@ export function TransportModesPlot({ transportModes, areaType, areaData }) {
       type: 'bar',
       x,
       y,
+      marker: {
+        color: modeById.get(mode).colors.primary,
+      },
     };
     return trace;
   })
   const layout = {
+    margin: {
+      l: 110,
+      r: 20,
+      t: 20,
+      b: 110,
+    },
+    xaxis: {
+      fixedrange: true,
+    },
     barmode: 'stack',
   };
   const config = {
     responsive: true,
     editable: false,
-    autosizable: true,
+    //autosizable: true,
   };
   return (
-    <Plot
-      data={traces}
-      layout={layout}
-      config={config}
-      useResizeHandler
-      style={{height: '100%', width: '100%'}} />
+    <div style={{width: '100%'}}>
+      <Plot
+        data={traces}
+        layout={layout}
+        config={config}
+        useResizeHandler
+        style={{height: '2000px', width: '100%'}} />
+    </div>
   );
 }
