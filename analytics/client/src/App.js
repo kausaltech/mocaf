@@ -71,15 +71,12 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   } else if (userChoiceState.visualisation === 'table') {
     if (userChoiceState.analyticsQuantity === 'lengths') {
       visComponent = (
-        <div style={{ paddingTop: '180px' }}>
-
         <TransportModesPlot
           areaType={areaType}
           areaData={areaData}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
         />
-        </div>
       );
     } else {
       visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
@@ -93,8 +90,8 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
                   dynamicOptions={{transportModes}}
         />
       </Layer>
-    <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
-      {visComponent}
+      <div style={{width: '100vw', height: '100vh', paddingTop: '180px'}}>
+          {visComponent}
     </div>
   </div>
 )
