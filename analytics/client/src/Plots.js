@@ -77,9 +77,9 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
       layout={layout}
       config={config}
       useResizeHandler
-      style={{height: '100%', width: '2000px'}} />
+      style={{height: '80%', width: '2000px'}} />
   );
-} 
+}
 
 export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode }) {
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
