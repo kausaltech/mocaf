@@ -5,8 +5,8 @@ export const initialUserChoiceState = {
   areaType: 5,
   analyticsQuantity: 'lengths',
   dateRange: {
-    bounds: [new Date(2020, 11, 15), new Date(2022, 0, 15)],
-    range: [new Date(2021, 4, 1), new Date(2021, 9, 31)]
+    bounds: [new Date(2021, 0, 1), new Date(2021, 11, 1)],
+    range: [new Date(2021, 0, 1), new Date(2021, 11, 1)]
   }
 }
 

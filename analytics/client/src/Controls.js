@@ -4,7 +4,7 @@ import {Select} from 'baseui/select';
 import {Block} from 'baseui/block';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
-import {format, parseISO, differenceInDays, addDays} from 'date-fns';
+import {format, parseISO, differenceInCalendarMonths, addMonths} from 'date-fns';
 
 const selectionValues = {
   weekSubset: [
@@ -75,15 +75,15 @@ function TransportModeControl (
 
 function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
   const dateBounds = dateRange.bounds;
-  const deltaDays = differenceInDays(dateBounds[1], dateBounds[0])
+  const delta = differenceInCalendarMonths(dateBounds[1], dateBounds[0])
   const currentRange = [
-    differenceInDays(dateRange.range[0], dateRange.bounds[0]),
-    differenceInDays(dateRange.range[1], dateRange.bounds[0])];
+    differenceInCalendarMonths(dateRange.range[0], dateRange.bounds[0]),
+    differenceInCalendarMonths(dateRange.range[1], dateRange.bounds[0])];
   const [value, setValue] = useState(currentRange);
 
   function valueToLabel (value) {
-    result = addDays(dateBounds[0], value);
-    return format(result, "d.M.yyyy");
+    result = addMonths(dateBounds[0], value);
+    return format(result, "M.yyyy");
   }
   function onChange ({value}) {
     value && setValue(value);
@@ -91,7 +91,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
   function onFinalChange ({value}) {
     value && dispatch(userChoiceSetAction('dateRange', {
       bounds: dateRange.bounds,
-      range: [addDays(dateBounds[0], value[0]), addDays(dateBounds[0], value[1])]
+      range: [addMonths(dateBounds[0], value[0]), addMonths(dateBounds[0], value[1])]
     }));
   }
   return (
@@ -100,7 +100,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
             onFinalChange={onFinalChange}
             label={label}
             min={0}
-            max={deltaDays}
+            max={delta}
             valueToLabel={valueToLabel}
             step={1}
       />
