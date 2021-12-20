@@ -10,7 +10,7 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
 from trips_ingest.api import ingest_view, upload_log_view
-from analytics.views import area_type_topojson, area_type_stats, cubejs_api_request
+from analytics.views import area_type_topojson, area_type_geojson, area_type_stats, cubejs_api_request
 from .graphql_views import MocafGraphQLView
 from .views import health_view, prometheus_exporter_view
 
@@ -23,10 +23,10 @@ urlpatterns = [
     path('v1/health/', csrf_exempt(health_view)),
     path('v1/graphql/', csrf_exempt(MocafGraphQLView.as_view(graphiql=True)), name='graphql'),
     path('v1/area-type-<int:id>.topojson', area_type_topojson, name='area-type-topojson'),
-    path('v1/area-type-<int:id>-stats-<str:type>.csv', area_type_stats, name='area-type-stats'),
+    path('v1/area-type-<int:id>.geojson', area_type_geojson, name='area-type-geojson'),
+    # path('v1/area-type-<int:id>-stats-<str:type>.csv', area_type_stats, name='area-type-stats'),
     path('v1/ingest/', csrf_exempt(ingest_view)),
     path('v1/upload-log/<slug:uuid>/', csrf_exempt(upload_log_view), name='upload-debug-log'),
-    path('v1/area-type-<int:id>-stats-<str:type>.csv', area_type_stats, name='area-type-stats'),
     re_path('^cubejs-api/v1', cubejs_api_request, name='cubejs-api'),
     path('analytics/', TemplateView.as_view(template_name='analytics/home.html')),
     path('metrics', prometheus_exporter_view, name="prometheus-django-metrics")

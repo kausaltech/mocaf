@@ -1,12 +1,14 @@
 from django.core.management.base import BaseCommand
 from analytics.areas.tampere import TampereImporter, TamperePaavoImporter
 from analytics.areas.paavo import PaavoImporter
+from analytics.areas.tampere_poi import TamperePOIImporter
 
 
 area_importers = [
     TampereImporter(),
     TamperePaavoImporter(),
-    PaavoImporter()
+    PaavoImporter(),
+    TamperePOIImporter(),
 ]
 
 

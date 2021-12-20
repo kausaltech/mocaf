@@ -26,8 +26,6 @@ const GET_AREAS = gql`
       areaTypes {
         id
         topojsonUrl
-        dailyTripsUrl
-        dailyLengthsUrl
         areas {
           id
           identifier

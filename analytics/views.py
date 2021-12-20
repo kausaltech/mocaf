@@ -11,11 +11,20 @@ from .models import AreaType, DailyModeSummary, DailyTripSummary
 
 def area_type_topojson(request, id: int):
     try:
-        area_type = AreaType.objects.values('topojson').get(id=id)
+        area_type = AreaType.objects.filter(is_poi=False).values('topojson').get(id=id)
     except AreaType.DoesNotExist:
-        raise Http404()
+        raise Http404('Area type does not exist')
 
     return HttpResponse(area_type['topojson'], content_type='application/json')
+
+
+def area_type_geojson(request, id: int):
+    try:
+        area_type = AreaType.objects.filter(is_poi=True).values('geojson').get(id=id)
+    except AreaType.DoesNotExist:
+        raise Http404('Area type does not exist')
+
+    return HttpResponse(area_type['geojson'], content_type='application/json')
 
 
 def area_type_stats(request, id: int, type: str):

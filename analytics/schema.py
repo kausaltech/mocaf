@@ -22,17 +22,28 @@ class PropertyMeta(graphene.ObjectType):
 
 class AreaTypeNode(DjangoNode):
     areas = graphene.List(AreaNode)
-    topojson_url = graphene.String()
+    topojson_url = graphene.String(required=False)
+    geojson_url = graphene.String()
     properties_meta = graphene.List(PropertyMeta)
-    daily_trips_url = graphene.String()
-    daily_lengths_url = graphene.String()
+    # daily_trips_url = graphene.String()
+    # daily_lengths_url = graphene.String()
+    is_poi = graphene.Boolean()
 
     def resolve_areas(root, info):
         return root.areas.all().values('id', 'identifier', 'name')
 
     def resolve_topojson_url(root: AreaType, info):
         request = info.context
+        if root.is_poi:
+            return None
         url = reverse('area-type-topojson', kwargs=dict(id=root.id))
+        return request.build_absolute_uri(url)
+
+    def resolve_geojson_url(root: AreaType, info):
+        request = info.context
+        if not root.is_poi:
+            return None
+        url = reverse('area-type-geojson', kwargs=dict(id=root.id))
         return request.build_absolute_uri(url)
 
     def resolve_daily_trips_url(root: AreaType, info):

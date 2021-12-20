@@ -22,9 +22,13 @@ class AreaType(models.Model):
 
     wfs_url = models.URLField(null=True)
     wfs_type_name = models.CharField(max_length=200, null=True)
+    is_poi = models.BooleanField(default=False)
 
     # Topologies of all of the areas in TopoJSON (EPSG:4326)
     topojson = models.TextField(null=True)
+
+    # Topologies of all of the areas in GeoJSON (EPSG:4326)
+    geojson = models.TextField(null=True)
 
     # Metadata for optional properties
     properties_meta = models.JSONField(null=True)
@@ -42,6 +46,7 @@ class Area(models.Model):
     )
     name = models.CharField(max_length=50, verbose_name=_('Name'))
     geometry = models.MultiPolygonField(null=False, srid=settings.LOCAL_SRS, db_index=True)
+    centroid = models.PointField(null=True, srid=settings.LOCAL_SRS, db_index=True)
 
     properties = models.JSONField(null=True)
 
@@ -60,7 +65,7 @@ class TripSummary(models.Model):
         MULTIMODAL_PUBLIC = 2, _('Multi-modal with public transport')
 
     trip = models.OneToOneField('trips.Trip', related_name='summary', on_delete=models.CASCADE)
-    start_time = models.DateTimeField()
+    start_time = models.DateTimeField(db_index=True)
     end_time = models.DateTimeField()
 
     primary_mode = models.ForeignKey('trips.TransportMode', null=True, on_delete=models.CASCADE)
@@ -70,6 +75,8 @@ class TripSummary(models.Model):
 
     start_loc = models.PointField(srid=settings.LOCAL_SRS)
     end_loc = models.PointField(srid=settings.LOCAL_SRS)
+
+    created_at = models.DateTimeField(auto_now=True)
 
     @classmethod
     def from_trip(kls, trip: Trip, modes: list[TransportMode]):
@@ -114,6 +121,7 @@ class DailyModeSummary(models.Model):
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
     mode = models.ForeignKey('trips.TransportMode', on_delete=models.CASCADE)
     length = models.FloatField()
+    trips = models.IntegerField(null=True)
 
     class Meta:
         unique_together = (('date', 'area', 'mode'),)
@@ -125,7 +133,9 @@ class DailyTripSummary(models.Model):
     dest = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+', null=True)
     mode = models.ForeignKey('trips.TransportMode', on_delete=models.CASCADE, null=True)
     mode_specifier = models.CharField(max_length=20, null=True)
+
     trips = models.IntegerField()
+    length = models.FloatField(null=True)
 
     class Meta:
         unique_together = (('date', 'origin', 'dest', 'mode', 'mode_specifier'),)

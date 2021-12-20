@@ -12,6 +12,7 @@ from analytics.models import AreaType, Area
 class AreaImporter:
     id: str
     name: str
+    is_poi: bool = False
 
     def get_area_types(self) -> dict:
         raise NotImplementedError()
@@ -19,23 +20,10 @@ class AreaImporter:
     def read_area_type(self, identifier: str) -> dict:
         raise NotImplementedError()
 
-    def generate_geojson(self, area_type: AreaType):
-        print('Generating GeoJSON')
-        props_meta = area_type.properties_meta
-        areas = list(area_type.areas.all().values('id', 'properties', 'name', 'identifier').annotate(geom=Transform('geometry', 4326)))
-        for x in areas:
-            del x['properties']['bbox']
-        feats = [dict(
-            type='Feature',
-            properties=(
-                dict(id=x['id'], name=x['name'], identifier=x['identifier'])
-                | {props_meta[z[0]]: z[1] for z in x['properties'].items()}
-            ),
-            geometry=json.loads(x['geom'].geojson)
-        ) for x in areas]
-        fc = dict(type='FeatureCollection', features=feats)
+    def generate_geojson(self, fc: dict) -> str:
+        return json.dumps(fc)
 
-    def generate_topojson(self, fc: list) -> str:
+    def generate_topojson(self, fc: dict) -> str:
         print('Computing topology')
         g2t = Popen(
             [os.path.join(settings.BASE_DIR, 'node_modules/.bin/geo2topo')],
@@ -82,10 +70,15 @@ class AreaImporter:
         ) for x in areas]
         fc = dict(type='FeatureCollection', features=feats)
 
-        topo = self.generate_topojson(fc)
-        open('%s.topojson' % area_type.identifier, 'w').write(topo)
-        area_type.topojson = topo
-        area_type.save(update_fields=['topojson'])
+        if not area_type.is_poi:
+            topo = self.generate_topojson(fc)
+            # open('%s.topojson' % area_type.identifier, 'w').write(topo)
+            area_type.topojson = topo
+            area_type.geojson = None
+        else:
+            area_type.topojson = None
+            area_type.geojson = self.generate_geojson(fc)
+        area_type.save(update_fields=['topojson', 'geojson'])
 
     def import_area_type(self, identifier: str):
         conf = self.read_area_type(identifier)
@@ -94,6 +87,7 @@ class AreaImporter:
         if area_type is None:
             area_type = AreaType(identifier=identifier)
         area_type.name = conf['name']
+        area_type.is_poi = conf.get('is_poi', self.is_poi)
         area_type.properties_meta = conf.get('properties_meta')
         area_type.save()
 
@@ -110,6 +104,10 @@ class AreaImporter:
                 assert isinstance(props, dict)
             obj.properties = props
             obj.geometry = area['geometry']
+            if 'centroid' in area:
+                obj.centroid = area['centroid']
+            else:
+                obj.centroid = area['geometry'].centroid
             obj.save()
 
         for area in existing.values():
