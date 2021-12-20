@@ -18,7 +18,7 @@ const selectionValues = {
   ],
   analyticsQuantity: [
     {value: 'lengths', label: 'Length'},
-    {value: 'count', label: 'Count'}
+    {value: 'trips', label: 'Trips'}
   ],
   visualisation: [
     {value: 'choropleth-map', label: 'Map'},

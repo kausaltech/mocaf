@@ -6,7 +6,11 @@ import lodash from 'lodash';
 
 
 export function OriginDestinationMatrix({ transportModes, areaType, areaData, mode }) {
-  const areasById = new Map(areaType.areas.map((area) => [parseInt(area.id), area]));
+  const modeById = new Map(transportModes.map(m => [m.identifier, m]));
+  const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
+
+  if (!areaData)
+    return <Spinner />;
 
   let table = areaData
     .params({ mode: mode.identifier })
@@ -37,7 +41,8 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
     .groupby('originId')
     .pivot('destId', { trips: d => aq.op.sum(d.trips) })
     .orderby(aq.desc('originId'))
-  const cols = table.array('originId');
+  const colnames = table.columnNames();
+  const cols = table.array('originId').filter(col => colnames.includes(col));
   table = table.select(['originId', ...cols]);
   const data = [{
     x: cols,
@@ -113,7 +118,6 @@ export function TransportModesPlot({ transportModes, areaType, areaData }) {
     editable: false,
     autosizable: true,
   };
-  console.log(traces);
   return (
     <Plot
       data={traces}

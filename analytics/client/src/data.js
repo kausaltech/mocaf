@@ -138,11 +138,12 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
         member: 'AreaTypes.id',
         operator: 'equals',
         values: [areaTypeId],
-      }, {
+      },
+      /*{
         member: 'DailyTrips.totalTrips',
         operator: 'gte',
         values: [5],
-      }],
+      }*/],
     }
     if (weekend === true) {
       queryOpts.segments.push('DailyTrips.weekends');
@@ -151,7 +152,7 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
     }
     dateField = 'DailyTrips.date';
   } else {
-    throw new Error('unknown datatype');
+    throw new Error(`unknown datatype: ${type}`);
   }
 
   if (startDate) {
@@ -168,10 +169,12 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
       values: [endDate],
     })
   }
-
-  const cubeResp = useCubeQuery(queryOpts);
-  const { resultSet } = cubeResp;
-  if (!resultSet) return;
+  const cubeResp = useCubeQuery(queryOpts, {
+    skip: false,
+    resetResultSetOnChange: true,
+  });
+  const { previousQuery, resultSet, isLoading } = cubeResp;
+  if (isLoading || !resultSet || previousQuery.measures[0] !== queryOpts.measures[0]) return;
   if (type === 'lengths') {
     return preprocessLengths(resultSet);
   } else {

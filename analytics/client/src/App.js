@@ -80,8 +80,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
         </div>
       );
     } else {
-      //visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
-      visComponent = <div />;
+      visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
     }
   }
 
