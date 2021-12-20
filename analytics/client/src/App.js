@@ -5,6 +5,7 @@ import { format, addMonths } from 'date-fns';
 import {Client as Styletron} from 'styletron-engine-atomic';
 import {Provider as StyletronProvider} from 'styletron-react';
 import {LightTheme, BaseProvider} from 'baseui';
+import {Layer} from 'baseui/layer';
 import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
 
 import i18n from './common/i18n';
@@ -83,11 +84,11 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
 
   return (
     <div style={{display: 'flex', height: '100vh'}}>
-      <div style={{width: '280px', height: '100vh'}}>
+      <Layer>
         <Controls userChoices={[userChoiceState, dispatch]}
                   dynamicOptions={{transportModes}}
         />
-      </div>
+      </Layer>
     <div style={{width: 'calc(100vw - 280px)', height: '100vh'}}>
       {visComponent}
     </div>

@@ -47,10 +47,6 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       controller={true}
       layers={layers}
       getTooltip={getTooltip}
-      style={{
-        left: '280px',
-        width: 'calc(100vw - 280px)'
-      }}
     >
       <StaticMap reuseMaps mapStyle={MAP_STYLE} preventStyleDiffing={true} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
     </DeckGL></div>
