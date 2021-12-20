@@ -40,8 +40,7 @@ function getSelectedValue(key, userChoiceState) {
 }
 
 function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dispatch]}) {
-  return <FormControl label={label}>
-    <Select clearable={false}
+  return <Select clearable={false}
             options={selectionValues[lookup]}
             labelKey="label"
             valueKey="value"
@@ -49,7 +48,6 @@ function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dis
             onChange={({value}) => (
               dispatch(userChoiceSetAction(lookup, value[0].value)))}
     />
-  </FormControl>
 }
 
 
@@ -60,17 +58,15 @@ function TransportModeControl (
   if (transportModes) {
     value = [transportModes?.find((d) => d.identifier === userChoiceState[key])];
   }
-  return <FormControl label="Mode of transportation">
-           <Select clearable={false}
-                   options={transportModes || []}
-                   disabled={transportModes===undefined}
-                   labelKey="name"
-                   valueKey="identifier"
-                   value={value}
-                   onChange={({value}) => (
-                     dispatch(userChoiceSetAction(key, value[0].identifier)))}
-           />
-  </FormControl>
+  return <Select clearable={false}
+                 options={transportModes || []}
+                 disabled={transportModes===undefined}
+                 labelKey="name"
+                 valueKey="identifier"
+                 value={value}
+                 onChange={({value}) => (
+                   dispatch(userChoiceSetAction(key, value[0].identifier)))}
+         />
 }
 
 function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
