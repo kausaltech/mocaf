@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
+import { Layer } from 'baseui/layer';
 import chroma from 'chroma-js';
 import numbro from 'numbro';
 import * as aq from 'arquero';
@@ -10,12 +11,14 @@ import * as aq from 'arquero';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { useAreaTopo } from './data';
+import Popup from './Popup.js'
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 
 function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey }) {
   const { bbox, geojson } = geoData;
+  const [hoverInfo, setHoverInfo] = useState({});
   const initialView = {
     longitude: (bbox[0] + bbox[2]) / 2,
     latitude: (bbox[1] + bbox[3]) / 2,
@@ -35,19 +38,44 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       getLineColor: [0, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
+      onHover: info => setHoverInfo(info),
       //getElevation,
       updateTriggers: {
         getFillColor: colorStateKey
       }
     })
   ];
+
+  let name, identifier, rel, selectedTransportMode, abs = null;
+  if (hoverInfo.object) {
+    const values = getTooltip(hoverInfo);
+    if (values) {
+      name = values.name;
+      identifier = values.identifier;
+      rel = values.rel;
+      selectedTransportMode = values.selectedTransportMode;
+      abs = values.abs;
+    }
+  }
   return (
     <div><DeckGL
       initialViewState={initialView}
       controller={true}
       layers={layers}
-      getTooltip={getTooltip}
-    >
+         >
+      { hoverInfo.object && (
+        <Layer>
+          <Popup x={hoverInfo.x}
+                 y={hoverInfo.y}
+                 name={name}>
+                 <div>
+                   ({identifier})<br />
+                   {rel} % ({selectedTransportMode?.name}), {abs} km
+                 </div>
+          </Popup>
+        </Layer>
+      )
+      }
       <StaticMap reuseMaps mapStyle={MAP_STYLE} preventStyleDiffing={true} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
     </DeckGL></div>
   );
@@ -63,17 +91,17 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
 
   let getFillColor = d => [0, 0, 0, 0];
-  let getTooltip = ({ object }) => {
-    if (!object) return;
-    const { id, name, identifier } = object.properties;
-    return {
-      html: `
-        <div>
-          <b>${name}</b> (${identifier})<br />
-        </div>
-      `
-    }
-  };
+  // let getTooltip = ({ object }) => {
+  //   if (!object) return;
+  //   const { id, name, identifier } = object.properties;
+  //   return {
+  //     html: `
+  //       <div>
+  //         <b>${name}</b> (${identifier})<br />
+  //       </div>
+  //     `
+  //   }
+  // };
   let getElevation;
   let colorStateKey = `${modeId}-nodata`;
 
@@ -112,29 +140,22 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       if (abs < 100) return [0, 0, 0, 0];
       return [...scales(val).rgb(), 220];
     },
-    getTooltip = ({object}) => {
-      if (!object) return;
-      const { id, name, identifier } = object.properties;
-      const area = areasById.get(id);
-      const rel = numbro(area.data[modeId + '_rel'] * 100).format({mantissa: 1});
-      const abs = numbro(area.data[modeId]).format({mantissa: 0});
-      return {
-        html: `
-          <div>
-            <b>${name}</b> (${identifier})<br />
-            ${rel} % (${selectedTransportMode.name}), ${abs} km
-          </div>
-        `,
-      }
-    };
     colorStateKey = modeId;
   }
+  const getTooltip = ({object}) => {
+    if (!object) return;
+    const { id, name, identifier } = object.properties;
+    const area = areasById.get(id);
+    const rel = numbro(area.data[modeId + '_rel'] * 100).format({mantissa: 1});
+    const abs = numbro(area.data[modeId]).format({mantissa: 0});
+    return { name, identifier, rel, selectedTransportMode, abs };
+  };
   return (
     <AreaMap
       geoData={geoData}
       getFillColor={getFillColor}
-      getTooltip={getTooltip}
       colorStateKey={colorStateKey}
+      getTooltip={getTooltip}
     />
   );
 }

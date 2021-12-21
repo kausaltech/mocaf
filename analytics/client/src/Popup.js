@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 
-export default function Popup ({state}) {
-
+export default function Popup ({y, x, children, name}) {
+  console.log(y, x, children);
   return <div style={{
-                position: 'fixed',
-                top: state.y,
-                left: state.x,
+                position: 'absolute',
+                top: y,
+                left: x,
+                pointerEvents: 'none',
                 backgroundColor: 'white'
               }}>
-           {state.text}
+           <b>{name}</b>
+           {children}
          </div>
 }

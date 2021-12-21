@@ -164,7 +164,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
   }, []);
   let popup = null;
   if (popupState !== null) {
-    popup = <Popup state={popupState} />;
+    popup = <Popup y={popupState.y} x={popupState.x}>{popupState.text}</Popup>;
   }
   return <div style={{width: '100%'}}>
            <Layer>
