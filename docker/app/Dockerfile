@@ -1,4 +1,4 @@
-FROM ubuntu:20.10
+FROM ubuntu:21.10
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
@@ -36,11 +36,20 @@ RUN pip install -r /code/requirements-prod.txt -r /code/requirements.txt
 # Install ipython for convenience
 RUN pip install ipython
 
+RUN mkdir -p /code/analytics/client
 COPY package.json yarn.lock /code/
+COPY analytics/client/package.json analytics/client/yarn.lock /code/analytics/client/
+
 WORKDIR /code
+RUN yarnpkg install
+WORKDIR /code/analytics/client
 RUN yarnpkg install
 
 COPY . /code/
+# Build the analytics frontend bundle
+RUN yarnpkg build
+
+WORKDIR /code
 RUN ./manage.py collectstatic --no-input
 RUN ./manage.py compilemessages
 COPY ./docker/app/docker-entrypoint.sh /
