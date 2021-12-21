@@ -67,10 +67,12 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
         <Layer>
           <Popup x={hoverInfo.x}
                  y={hoverInfo.y}
-                 name={name}>
+                 name={name}
+                 rel={rel}
+          >
                  <div>
                    ({identifier})<br />
-                   {rel} % ({selectedTransportMode?.name}), {abs} km
+                   ({selectedTransportMode?.name}), {abs} km
                  </div>
           </Popup>
         </Layer>
