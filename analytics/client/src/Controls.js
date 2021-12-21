@@ -12,11 +12,6 @@ const selectionValues = {
     {value: false, label: 'workdays'},
     {value: null, label: 'all days'}
   ],
-  areaType: [
-    {value: 'tre:paavo', label: 'Postal code area'},
-    {value: 'tre:tilastoalue', label: 'Statistics area'},
-    {value: 'tre:suunnittelualue', label: 'Planning area'}
-  ],
   analyticsQuantity: [
     {value: 'lengths', label: 'Length'},
     {value: 'trips', label: 'Trips'}
@@ -51,22 +46,20 @@ function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dis
     />
 }
 
-
-function TransportModeControl (
-  {userChoices: [userChoiceState, dispatch], transportModes}) {
-  const key = 'transportMode'
+function SelectControl (
+  {userChoices: [userChoiceState, dispatch], values, lookup}) {
   let value = null;
-  if (transportModes) {
-    value = [transportModes?.find((d) => d.identifier === userChoiceState[key])];
+  if (values) {
+    value = [values?.find((d) => d.identifier === userChoiceState[lookup])];
   }
   return <Select clearable={false}
-                 options={transportModes || []}
-                 disabled={transportModes===undefined}
+                 options={values || []}
+                 disabled={values===undefined}
                  labelKey="name"
                  valueKey="identifier"
                  value={value}
                  onChange={({value}) => (
-                   dispatch(userChoiceSetAction(key, value[0].identifier)))}
+                   dispatch(userChoiceSetAction(lookup, value[0].identifier)))}
          />
 }
 
@@ -125,11 +118,14 @@ const Controls = ({userChoices, dynamicOptions}) => (
     <StaticSelectControl label='Visualisation' lookup='visualisation' userChoices={userChoices} />
     <StaticSelectControl label='What to visualize' lookup='analyticsQuantity' userChoices={userChoices} />
     <StaticSelectControl label='Days of week' lookup='weekSubset' userChoices={userChoices} />
-    <StaticSelectControl label='Area type' lookup='areaType' userChoices={userChoices} />
+    <SelectControl lookup='areaType'
+                   userChoices={userChoices}
+                   values={dynamicOptions.areaTypes} />
     <DateRangeSlider label='Date range' userChoices={userChoices} />
-    <TransportModeControl
+    <SelectControl
       userChoices={userChoices}
-      transportModes={dynamicOptions.transportModes} />
+      lookup='transportMode'
+      values={dynamicOptions.transportModes} />
   </div>
 );
 

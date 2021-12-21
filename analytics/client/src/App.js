@@ -27,6 +27,7 @@ const GET_AREAS = gql`
         id
         topojsonUrl
         identifier
+        name
         areas {
           id
           identifier
@@ -86,7 +87,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
     <div style={{display: 'flex', height: '100vh'}}>
       <Layer>
         <Controls userChoices={[userChoiceState, dispatch]}
-                  dynamicOptions={{transportModes}}
+                  dynamicOptions={{transportModes, areaTypes}}
         />
       </Layer>
       <div style={{width: '100vw', height: '100vh', paddingTop: '180px'}}>
