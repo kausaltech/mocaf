@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Layer } from 'baseui/layer';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import Plot from 'react-plotly.js';
 import * as aq from 'arquero';
 import lodash from 'lodash';
 
+import Popup from './Popup';
 
 export function OriginDestinationMatrix({ transportModes, areaType, areaData, mode }) {
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
@@ -134,14 +136,57 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
     editable: false,
     //autosizable: true,
   };
-  return (
-    <div style={{width: '100%'}}>
-      <Plot
-        data={traces}
-        layout={layout}
-        config={config}
-        useResizeHandler
-        style={{height: '2000px', width: '100%'}} />
-    </div>
-  );
+  return (<TransportModePlotWrapper
+           traces={traces}
+           layout={layout}
+           config={config}
+          />);
+
 }
+
+const MemoizedPopupEnabledPlot = React.memo(Plot);
+
+function TransportModePlotWrapper({traces, layout, config}) {
+  const [popupState, setPopupState] = useState(null);
+  const hoverHandler = ({event, points}) => {
+    setPopupState({text: 'foooo-bar' + Math.random(),
+                   x: event.x,
+                   y: event.y});
+  };
+  const onHoverCallback = useMemo(
+    () => lodash.throttle(hoverHandler, 300),
+    [setPopupState]
+  );
+  useEffect(() => {
+    return () => {
+      onHoverCallback.cancel();
+    }
+  }, []);
+  let popup = null;
+  if (popupState !== null) {
+    popup = <Popup state={popupState} />;
+  }
+  return <div style={{width: '100%'}}>
+           <Layer>
+             { popup || '' }
+           </Layer>
+           <MemoizedPopupEnabledPlot
+             data={traces}
+             layout={layout}
+             config={config}
+             style={{height: '2000px', width: '100%'}}
+             useResizeHandler
+             onHover={onHoverCallback}
+           />
+         </div>
+}
+
+// function areEqual(prevProps, nextProps) {
+//   console.log(prevProps.onHover === nextProps.onHover);
+//   for (attribute in ['data', 'layout', 'config', 'style', 'useResizeHandler']) {
+//     if (prevProps[attribute] != nextProps[attribute]) {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
