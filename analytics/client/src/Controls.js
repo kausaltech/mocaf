@@ -13,8 +13,9 @@ const selectionValues = {
     {value: null, label: 'all days'}
   ],
   areaType: [
-    {value: 5, label: 'Postal code area'},
-    {value: 6, label: 'Statistics area'}
+    {value: 'tre:paavo', label: 'Postal code area'},
+    {value: 'tre:tilastoalue', label: 'Statistics area'},
+    {value: 'tre:suunnittelualue', label: 'Planning area'}
   ],
   analyticsQuantity: [
     {value: 'lengths', label: 'Length'},

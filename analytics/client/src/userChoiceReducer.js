@@ -2,7 +2,7 @@ export const initialUserChoiceState = {
   visualisation: 'choropleth-map',
   weekSubset: null,
   transportMode: 'car',
-  areaType: 5,
+  areaType: 'tre:paavo',
   analyticsQuantity: 'lengths',
   dateRange: {
     bounds: [new Date(2021, 5, 1), new Date(2021, 11, 1)],

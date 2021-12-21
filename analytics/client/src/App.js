@@ -26,6 +26,7 @@ const GET_AREAS = gql`
       areaTypes {
         id
         topojsonUrl
+        identifier
         areas {
           id
           identifier
@@ -45,7 +46,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   // FIXME: Generate initialUserChoiceState based on component props.
   // Alternatively, use lazy init: https://reactjs.org/docs/hooks-reference.html#lazy-initialization
   const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
-  const areaType = areaTypes.filter((areaType) => areaType.id == userChoiceState.areaType)[0];
+  const areaType = areaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
