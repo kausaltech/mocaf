@@ -157,7 +157,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
                    y: event.y});
   };
   const onHoverCallback = useMemo(
-    () => lodash.throttle(hoverHandler, 300),
+    () => lodash.throttle(hoverHandler, 100),
     [setPopupState]
   );
   useEffect(() => {
