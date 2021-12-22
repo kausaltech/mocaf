@@ -13,19 +13,26 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
                 boxShadow: '5px 5px 5px #00000033'
               }}>
            <Block style={{ padding: '0.5em' }}>
-             <strong>
-             {area.name} {area.identifier && `(${area.identifier})`}<br/>
-             Kulkumuoto-osuus: {transportMode.toLowerCase()}</strong><br/>
-             {rel && !isNaN(rel) &&
-              `Osuus suoritteesta ${formatFloat(rel)} %`
-             }
-             {abs && !isNaN(abs) &&
-               ` (${formatDecimal(abs)} km)`
-             }
-             {isNaN(rel) &&
-              "Ei tietoja"
-             }
-             {children}
+             <div style={{ marginBottom: '0.5em' }}>
+               <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
+             </div>
+             <div>
+               <strong>{transportMode}</strong> -  kulkumuoto-osuus<br/>
+               <FigureElement {...{rel, abs}} />
+               {children}
+             </div>
            </Block>
          </div>
+}
+
+function FigureElement ({rel, abs}) {
+  if (isNaN(rel)) {
+    return "Ei tietoja";
+  }
+  else if (rel) {
+    return <React.Fragment>
+             Osuus suoritteesta <strong>{formatFloat(rel)} %</strong>
+             {abs && !isNaN(abs) && ` (${formatDecimal(abs)} km)`}
+           </React.Fragment>
+  }
 }
