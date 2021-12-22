@@ -183,13 +183,3 @@ function TransportModePlotWrapper({traces, layout, config}) {
            />
          </div>
 }
-
-// function areEqual(prevProps, nextProps) {
-//   console.log(prevProps.onHover === nextProps.onHover);
-//   for (attribute in ['data', 'layout', 'config', 'style', 'useResizeHandler']) {
-//     if (prevProps[attribute] != nextProps[attribute]) {
-//       return false;
-//     }
-//   }
-//   return true;
-// }

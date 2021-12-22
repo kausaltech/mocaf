@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
 import {Select} from 'baseui/select';
-import {Block} from 'baseui/block';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 import {format, parseISO, differenceInCalendarMonths, addMonths} from 'date-fns';
