@@ -17,7 +17,7 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
                <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
              </div>
              <div>
-               <strong>{transportMode}</strong> -  kulkumuoto-osuus<br/>
+               <strong>{transportMode}</strong> - kulkumuoto-osuus<br/>
                <FigureElement {...{rel, abs}} />
                {children}
              </div>
