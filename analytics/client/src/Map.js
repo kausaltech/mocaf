@@ -38,7 +38,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       getLineColor: [0, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
-      onHover: info => setHoverInfo(info),
+      onHover: info => setHoverInfo(info), // FIXME: memoize other components than popup
       //getElevation,
       updateTriggers: {
         getFillColor: colorStateKey
@@ -65,16 +65,14 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
          >
       { hoverInfo.object && (
         <Layer>
-          <Popup x={hoverInfo.x}
-                 y={hoverInfo.y}
-                 name={name}
-                 rel={rel}
-          >
-                 <div>
-                   ({identifier})<br />
-                   ({selectedTransportMode?.name}), {abs} km
-                 </div>
-          </Popup>
+          <Popup
+            x={hoverInfo.x}
+            y={hoverInfo.y}
+            area={{name, identifier}}
+            rel={rel}
+            abs={abs}
+            transportMode={selectedTransportMode?.name}
+          />
         </Layer>
       )
       }
@@ -148,6 +146,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     if (!object) return;
     const { id, name, identifier } = object.properties;
     const area = areasById.get(id);
+    if (!area.data) return;
     const rel = numbro(area.data[modeId + '_rel'] * 100).format({mantissa: 1});
     const abs = numbro(area.data[modeId]).format({mantissa: 0});
     return { name, identifier, rel, selectedTransportMode, abs };

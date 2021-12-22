@@ -149,12 +149,14 @@ const MemoizedPopupEnabledPlot = React.memo(Plot);
 function TransportModePlotWrapper({traces, layout, config}) {
   const [popupState, setPopupState] = useState(null);
   const hoverHandler = ({event, points: [point]}) => {
-    console.log(point);
-    setPopupState({text: '',
-                   name: point.label,
-                   rel: point.value,
-                   x: event.x,
-                   y: event.y});
+    setPopupState(
+      {area: {
+        name: point.label,
+      },
+       transportMode: point.data.name,
+       rel: point.value,
+       x: event.x,
+       y: event.y});
   };
   const onHoverCallback = useMemo(
     () => lodash.throttle(hoverHandler, 100),
@@ -167,7 +169,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
   }, []);
   let popup = null;
   if (popupState !== null) {
-    popup = <Popup {...popupState}>{popupState.text}</Popup>;
+    popup = <Popup {...popupState} />;
   }
   return <div style={{width: '100%'}}>
            <Layer>
