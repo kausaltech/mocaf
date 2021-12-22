@@ -22,12 +22,19 @@ class TampereImporter(WFSImporter):
     area_types = {
         'tre:tilastoalue': dict(
             name='Tampereen tilastoalueet',
-            layer='hallinnolliset_yksikot:KH_TILASTO'
+            layer='hallinnolliset_yksikot:KH_TILASTO',
+            identifier_column='TUNNUS'
         ),
         'tre:suunnittelualue': dict(
             name='Tampereen suunnittelualueet',
-            layer='hallinnolliset_yksikot:KH_SUUNNITTELUALUE'
+            layer='hallinnolliset_yksikot:KH_SUUNNITTELUALUE',
+            identifier_column='TUNNUS'
         ),
+        'tre:palvelualue': dict(
+            name='Tampereen palvelualueet',
+            layer='hallinnolliset_yksikot:KH_PALVELUALUE',
+            identifier_column='NUMERO'
+        )
     }
 
     def get_area_types(self):
@@ -43,6 +50,7 @@ class TampereImporter(WFSImporter):
             parts = name.split(' ')
             parts[0] = parts[0].capitalize()
             name = ' '.join(parts)
-            areas.append(dict(identifier=props['TUNNUS'], name=name, geometry=feat['geometry']))
+            _identifier = props[conf['identifier_column']]
+            areas.append(dict(identifier=_identifier, name=name, geometry=feat['geometry']))
 
         return dict(identifier=identifier, name=conf['name'], areas=areas)
