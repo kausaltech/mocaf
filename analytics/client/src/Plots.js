@@ -56,6 +56,7 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
   const config = {
     responsive: true,
     editable: false,
+    displayModeBar: false,
     //autosizable: true,
   };
   const layout = {
@@ -71,7 +72,8 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
     },
     yaxis: {
       showgrid: false,
-    }
+    },
+    dragmode: 'pan',
   };
   return (
     <Plot
@@ -130,10 +132,13 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       fixedrange: true,
     },
     barmode: 'stack',
+    dragmode: 'pan',
   };
   const config = {
     responsive: true,
     editable: false,
+    displayModeBar: false,
+    dragmode: 'pan',
     //autosizable: true,
   };
   return (<TransportModePlotWrapper
