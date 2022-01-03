@@ -107,7 +107,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
         return;
       }
       y.push(area.name);
-      x.push(row[mode + '_rel'] * 100);
+      x.push(row[mode + '_rel']);
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -117,17 +117,25 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       y,
       marker: {
         color: modeById.get(mode).colors.primary,
+        line: {
+          color: '#ffffff',
+          width: 1,
+        }
       },
     };
     return trace;
   })
   const layout = {
     margin: {
-      l: 110,
+      l: 160,
       r: 20,
       t: 20,
       b: 110,
+      pad: 5
     },
+    height: Math.max(15 * areasById.size, 400),
+    bargap: 0,
+    barnorm: 'percent',
     xaxis: {
       fixedrange: true,
     },
@@ -184,7 +192,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
              data={traces}
              layout={layout}
              config={config}
-             style={{height: '2000px', width: '100%'}}
+             style={{width: '100%'}}
              useResizeHandler
              onHover={onHoverCallback}
            />
