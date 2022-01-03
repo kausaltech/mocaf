@@ -1,8 +1,8 @@
 export const initialUserChoiceState = {
   visualisation: 'choropleth-map',
   weekSubset: null,
-  transportMode: 'car',
-  areaType: 'tre:paavo',
+  transportMode: 'walk',
+  areaType: 'tre:tilastoalue',
   analyticsQuantity: 'lengths',
   dateRange: {
     bounds: [new Date(2021, 5, 1), new Date(2021, 11, 1)],
