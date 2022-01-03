@@ -11,7 +11,7 @@ import * as aq from 'arquero';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { useAreaTopo } from './data';
-import Popup from './Popup.js'
+import Popup from './Popup.js';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
@@ -58,11 +58,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
     }
   }
   return (
-    <div><DeckGL
-      initialViewState={initialView}
-      controller={true}
-      layers={layers}
-         >
+    <div>
       { hoverInfo.object && (
         <Layer>
           <Popup
@@ -74,10 +70,15 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
             transportMode={selectedTransportMode?.name}
           />
         </Layer>
-      )
-      }
-      <StaticMap reuseMaps mapStyle={MAP_STYLE} preventStyleDiffing={true} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
-    </DeckGL></div>
+      )}
+      <DeckGL
+        initialViewState={initialView}
+        controller={true}
+        layers={layers}
+        >
+          <StaticMap reuseMaps mapStyle={MAP_STYLE} preventStyleDiffing={true} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
+      </DeckGL>
+    </div>
   );
 }
 
@@ -131,7 +132,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       const area = areasById.get(id);
       const val = area.data[modeId];
       return (val - minLength) / (maxLength - minLength) * 5000;
-    }
+    };
     getFillColor = (d) => {
       const id = d.properties.id;
       const area = areasById.get(id);
