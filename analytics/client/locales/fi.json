@@ -1,1 +1,12 @@
-{}
+{
+  "error-graphql": "Virhe GraphQL-kyselyssä",
+  "visualization": "Tarkastelutapa",
+  "what-to-visualize": "Mitä tarkastellaan",
+  "weekends": "Viikonloput",
+  "transportation-kms": "Matkustuskilometrit",
+  "trips": "Matkat",
+  "map": "Kartta",
+  "table": "Taulukko",
+  "workdays": "Arkipäivät",
+  "all-days": "Kaikki päivät"
+}

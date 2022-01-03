@@ -7,6 +7,7 @@ import {Provider as StyletronProvider} from 'styletron-react';
 import {LightTheme, BaseProvider} from 'baseui';
 import {Layer} from 'baseui/layer';
 import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
+import { useTranslation } from 'react-i18next';
 
 import i18n from './common/i18n';
 import { TransportModeShareMap } from './Map';
@@ -16,6 +17,11 @@ import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
 import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
 import preprocessTransportModes from './transportModes';
 
+
+// Use the symbol to prevent esbuild from tree-shaking it out
+if (!i18n.hasLoadedNamespace()) {
+  throw new Error('i18n has not loaded')
+}
 
 const engine = new Styletron();
 
@@ -99,10 +105,11 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
 
 export function App() {
   const { loading, error, data } = useQuery(GET_AREAS);
+  const { t } = useTranslation();
 
   let mainComponent;
   if (error) {
-    mainComponent = <div>GraphQL error: {error}</div>;
+    mainComponent = <div>{t('error-graphql')}: {error}</div>;
   } else if (loading) {
     mainComponent = <Spinner />;
   } else {

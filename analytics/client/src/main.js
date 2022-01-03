@@ -22,7 +22,6 @@ function initializeApp(container, { graphqlUrl, cubeUrl }) {
       apiUrl: cubeUrl || 'https://api.mocaf.kausal.tech/cubejs-api/v1',
     });
   }
-  numbro.setLanguage('fi');  // FIXME
   ReactDOM.render((
     <ApolloProvider client={apolloClient}>
       <CubeProvider cubejsApi={cubejsApi}>
