@@ -6,5 +6,8 @@
   "map": "Kartta",
   "table": "Taulukko",
   "workdays": "Arkipäivät",
-  "all-days": "Kaikki päivät"
+  "all-days": "Kaikki päivät",
+  "transport-mode-share": "kulkumuoto-osuus",
+  "no-data": "Ei tietoja",
+  "traveled-kilometers-share": "Osuus suoritteesta"
 }

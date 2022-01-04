@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
 export default function Popup ({y, x, children, rel, area, abs, transportMode}) {
+  const { t } = useTranslation();
   return <div style={{
                 position: 'absolute',
                 top: y,
@@ -17,7 +19,7 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
                <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
              </div>
              <div>
-               <strong>{transportMode}</strong> - kulkumuoto-osuus<br/>
+               <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
                <FigureElement {...{rel, abs}} />
                {children}
              </div>
@@ -26,13 +28,14 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
 }
 
 function FigureElement ({rel, abs}) {
-  if (isNaN(rel)) {
-    return "Ei tietoja";
+  const { t } = useTranslation();
+  if (rel === "NaN") {
+    return t('no-data');
   }
   else if (rel) {
     return <React.Fragment>
-             Osuus suoritteesta <strong>{formatFloat(rel)} %</strong>
-             {abs && !isNaN(abs) && ` (${formatDecimal(abs)} km)`}
+             {t('traveled-kilometers-share')} <strong>{rel} %</strong>
+             {abs && abs !== 'NaN' && ` (${abs} km)`}
            </React.Fragment>
   }
 }
