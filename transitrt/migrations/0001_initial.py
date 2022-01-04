@@ -32,7 +32,22 @@ class Migration(migrations.Migration):
             );
         """, reverse_sql="""
             DROP TABLE "transitrt_vehiclelocation" CASCADE;
-        """),
+        """, state_operations=[migrations.CreateModel(
+            name='VehicleLocation',
+            fields=[
+                ('direction_ref', models.CharField(max_length=5, null=True)),
+                ('vehicle_ref', models.CharField(max_length=30)),
+                ('journey_ref', models.CharField(max_length=30)),
+                ('vehicle_journey_ref', models.CharField(max_length=50)),
+                ('time', models.DateTimeField(primary_key=True, serialize=False)),
+                ('loc', django.contrib.gis.db.models.fields.PointField(srid=3067)),
+                ('bearing', models.FloatField(null=True)),
+            ],
+            options={
+                'ordering': ('time',),
+                'managed': False,
+            },
+        )]),
         migrations.RunSQL("""
             SELECT create_hypertable(
                 'transitrt_vehiclelocation', 'time',
