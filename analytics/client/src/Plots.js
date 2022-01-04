@@ -98,7 +98,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
   const table = areaData
     .orderby(selectedTransportMode.identifier + '_rel');
   const traces = availableModes.map((mode) => {
-    const x = [], y = [];
+    const x = [], y = [], customdata = [];
     table.objects().forEach(row => {
       const { areaId } = row;
       const area = areasById.get(areaId);
@@ -108,6 +108,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       }
       y.push(area.name);
       x.push(row[mode + '_rel']);
+      customdata.push({abs: row[mode]});
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -115,6 +116,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       type: 'bar',
       x,
       y,
+      customdata,
       marker: {
         color: modeById.get(mode).colors.primary,
         line: {
@@ -168,6 +170,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
       },
        transportMode: point.data.name,
        rel: point.value,
+       abs: point.customdata.abs,
        x: event.x,
        y: event.y});
   };

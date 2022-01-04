@@ -1,15 +1,9 @@
-const floatFormatter = new Intl.NumberFormat('fi-FI', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
-
-const intFormatter = new Intl.NumberFormat('fi-FI');
-
+import numbro from 'numbro';
 
 export function formatFloat(num) {
-  return floatFormatter.format(num);
+  return numbro(num).format({mantissa: 1});
 }
 
 export function formatDecimal(num) {
-  return intFormatter.format(num);
+  return numbro(num).format({mantissa: 0, thousandSeparated: true});
 }

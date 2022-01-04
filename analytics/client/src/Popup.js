@@ -34,8 +34,8 @@ function FigureElement ({rel, abs}) {
   }
   else if (rel) {
     return <React.Fragment>
-             {t('traveled-kilometers-share')} <strong>{rel} %</strong>
-             {abs && abs !== 'NaN' && ` (${abs} km)`}
+             {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
+             {abs && abs !== 'NaN' && ` (${formatDecimal(abs)} km)`}
            </React.Fragment>
   }
 }
