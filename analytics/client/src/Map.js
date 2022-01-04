@@ -149,7 +149,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     const area = areasById.get(id);
     if (!area.data) return;
     const rel = numbro(area.data[modeId + '_rel'] * 100).format({mantissa: 1});
-    const abs = numbro(area.data[modeId]).format({mantissa: 0});
+    const abs = numbro(area.data[modeId]).format({mantissa: 0, thousandSeparated: true});
     return { name, identifier, rel, selectedTransportMode, abs };
   };
   return (
