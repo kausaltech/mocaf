@@ -27,7 +27,7 @@ const engine = new Styletron();
 
 
 const GET_AREAS = gql`
-  query getAreas {
+  query getAreas($language: String!) @locale(lang:$language) {
     analytics {
       areaTypes {
         id
@@ -104,8 +104,8 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
 }
 
 export function App() {
-  const { loading, error, data } = useQuery(GET_AREAS);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { loading, error, data } = useQuery(GET_AREAS, {variables: {language: i18n.language}});
 
   let mainComponent;
   if (error) {
