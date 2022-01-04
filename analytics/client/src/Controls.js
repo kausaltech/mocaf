@@ -44,7 +44,6 @@ function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dis
     value: e.value,
     label: t(e.label),
   }));
-  console.log(opts);
   return <Select clearable={false}
             options={opts}
             labelKey="label"

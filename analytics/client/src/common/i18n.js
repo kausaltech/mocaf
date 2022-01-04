@@ -54,8 +54,6 @@ export function setLanguage(lng) {
   numbro.setLanguage(lng);
 }
 
-console.log(i18n);
-
 setLanguage(DEFAULT_LANGUAGE);
 
 export default i18n;
