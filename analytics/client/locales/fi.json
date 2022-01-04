@@ -1,7 +1,5 @@
 {
   "error-graphql": "Virhe GraphQL-kyselyssä",
-  "visualization": "Tarkastelutapa",
-  "what-to-visualize": "Mitä tarkastellaan",
   "weekends": "Viikonloput",
   "transportation-kms": "Matkustuskilometrit",
   "trips": "Matkat",

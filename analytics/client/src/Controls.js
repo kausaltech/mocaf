@@ -126,13 +126,13 @@ const Controls = ({userChoices, dynamicOptions}) => {
          backgroundColor: '#ffffffdd',
          border: `1px solid #eee`,
        }}>
-    <StaticSelectControl label={t('visualization')} lookup='visualisation' userChoices={userChoices} />
-    <StaticSelectControl label={t('what-to-visualize')} lookup='analyticsQuantity' userChoices={userChoices} />
-    <StaticSelectControl label={t('days-of-week')} lookup='weekSubset' userChoices={userChoices} />
+    <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
+    <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
+    <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />
     <SelectControl lookup='areaType'
                    userChoices={userChoices}
                    values={dynamicOptions.areaTypes} />
-    <DateRangeSlider label={t('date)-range')} userChoices={userChoices} />
+    <DateRangeSlider userChoices={userChoices} />
     <SelectControl
       userChoices={userChoices}
       lookup='transportMode'
