@@ -133,7 +133,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       b: 110,
       pad: 5
     },
-    height: Math.max(15 * areasById.size, 400),
+    height: Math.max(20 * areasById.size, 400),
     bargap: 0,
     barnorm: 'percent',
     xaxis: {
