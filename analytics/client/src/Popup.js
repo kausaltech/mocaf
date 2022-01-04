@@ -29,13 +29,11 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
 
 function FigureElement ({rel, abs}) {
   const { t } = useTranslation();
-  if (rel === "NaN") {
+  if (isNaN(rel)) {
     return t('no-data');
   }
-  else if (rel) {
-    return <React.Fragment>
-             {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
-             {abs && abs !== 'NaN' && ` (${formatDecimal(abs)} km)`}
-           </React.Fragment>
-  }
+  return <React.Fragment>
+           {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
+           {abs != 0 && !isNaN(abs) && ` (${formatDecimal(abs)} km)`}
+         </React.Fragment>
 }

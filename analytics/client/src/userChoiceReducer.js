@@ -1,3 +1,7 @@
+import { syntheticModes } from './transportModes';
+
+const syntheticModeNames = syntheticModes.map(m => m.identifier);
+
 export const initialUserChoiceState = {
   visualisation: 'choropleth-map',
   weekSubset: null,
@@ -14,5 +18,10 @@ export function userChoiceReducer(state, action) {
   if (action.type !== 'set' || action.payload === undefined || !action.key) {
     return state;
   }
-  return Object.assign({}, state, {[action.key]: action.payload});
+  let dependentState = {};
+  if (action.key === 'visualisation' && action.payload === 'table' &&
+      syntheticModeNames.includes(state.transportMode)) {
+    dependentState.transportMode = initialUserChoiceState.transportMode;
+  }
+  return Object.assign({}, state, dependentState, {[action.key]: action.payload});
 }

@@ -61,6 +61,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
     weekend: userChoiceState.weekSubset,
     startDate: format(userChoiceState.dateRange.range[0], 'yyyy-MM-dd'),
     endDate: format(addMonths(userChoiceState.dateRange.range[1], 1), 'yyyy-MM-dd'),
+    transportModes,
   });
 
   let visComponent;
@@ -114,7 +115,7 @@ export function App() {
     mainComponent = <Spinner />;
   } else {
     mainComponent = <MocafAnalytics
-                      transportModes={preprocessTransportModes(data.transportModes)}
+                      transportModes={preprocessTransportModes(data.transportModes, i18n.language)}
                       areaTypes={data.analytics.areaTypes} />
   }
   return (

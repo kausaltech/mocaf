@@ -86,7 +86,7 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
 }
 
 export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode }) {
-  const modeById = new Map(transportModes.map(m => [m.identifier, m]));
+  const modeById = new Map(transportModes.filter(m => !m.synthetic).map(m => [m.identifier, m]));
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
 
   if (!areaData)

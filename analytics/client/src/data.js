@@ -62,7 +62,10 @@ function preprocessLengthsOld(resultSet) {
   return byArea;
 }
 
-function preprocessLengths(resultSet) {
+function preprocessLengths(resultSet, transportModes) {
+  const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+
+  let availableModes = primaryModes.map(m => m.identifier)
   let table = aq.from(resultSet.rawData())
     .select({
       'DailyLengths.areaId': 'areaId',
@@ -73,15 +76,18 @@ function preprocessLengths(resultSet) {
       length: d => d.length / 1000,  // convert to km
     })
     .groupby('areaId')
-    .pivot('mode', 'length');
-
-  const availableModes = table.columnNames((col) => col != 'areaId');
-  table = table
+    .pivot('mode', 'length')
     .derive({
       total: aq.escape(d => lodash.sum(Object.values(lodash.pick(d, availableModes))))
-    })
-    .derive(Object.fromEntries(availableModes.map(mode =>
-      [`${mode}_rel`, aq.escape(d => d[mode] / d.total)]
+    });
+
+  for (mode of syntheticModes) {
+    table = table.derive({[mode.identifier]: aq.escape(
+      d => lodash.sum(Object.values(lodash.pick(d, mode.components))))});
+  }
+  table = table
+    .derive(Object.fromEntries(transportModes.map(mode =>
+      [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
     )));
   return table;
 }
@@ -101,7 +107,7 @@ function preprocessTrips(resultSet) {
   return table;
 }
 
-export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate }) {
+export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate, transportModes }) {
   let queryOpts;
   let dateField;
 
@@ -176,7 +182,7 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
   const { previousQuery, resultSet, isLoading } = cubeResp;
   if (isLoading || !resultSet || previousQuery.measures[0] !== queryOpts.measures[0]) return;
   if (type === 'lengths') {
-    return preprocessLengths(resultSet);
+    return preprocessLengths(resultSet, transportModes);
   } else {
     return preprocessTrips(resultSet);
   }

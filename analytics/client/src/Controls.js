@@ -110,6 +110,11 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
 
 const Controls = ({userChoices, dynamicOptions}) => {
   const { t } = useTranslation();
+  const [ userChoiceState ] = userChoices;
+  let { transportModes } = dynamicOptions;
+  if (userChoiceState.visualisation === 'table') {
+    transportModes = transportModes.filter(m => !m.synthetic);
+  }
   return (
     <div className='controls'
        style={{
@@ -135,7 +140,7 @@ const Controls = ({userChoices, dynamicOptions}) => {
     <SelectControl
       userChoices={userChoices}
       lookup='transportMode'
-      values={dynamicOptions.transportModes} />
+      values={transportModes} />
     </div>
   );
 }
