@@ -92,17 +92,6 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
 
   let getFillColor = d => [0, 0, 0, 0];
-  // let getTooltip = ({ object }) => {
-  //   if (!object) return;
-  //   const { id, name, identifier } = object.properties;
-  //   return {
-  //     html: `
-  //       <div>
-  //         <b>${name}</b> (${identifier})<br />
-  //       </div>
-  //     `
-  //   }
-  // };
   let getElevation;
   let colorStateKey = `${modeId}-nodata`;
 
