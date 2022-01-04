@@ -6,7 +6,8 @@ class TamperePaavoImporter(PaavoImporter):
     id = 'tampere_paavo'
     name = 'Pirkanmaa Postal Areas'
     area_types = {
-        'tre:paavo': dict(name='Pirkanmaan postinumeroalueet'),
+        'tre:paavo': dict(name='Pirkanmaan postinumeroalueet',
+                          name_en='Pirkanmaa postal code areas'),
     }
 
     def filter_feature(self, identifier: str, feat: dict) -> bool:
@@ -22,16 +23,19 @@ class TampereImporter(WFSImporter):
     area_types = {
         'tre:tilastoalue': dict(
             name='Tampereen tilastoalueet',
+            name_en='Tampere statistical areas',
             layer='hallinnolliset_yksikot:KH_TILASTO',
             identifier_column='TUNNUS'
         ),
         'tre:suunnittelualue': dict(
             name='Tampereen suunnittelualueet',
+            name_en='Tampere planning areas',
             layer='hallinnolliset_yksikot:KH_SUUNNITTELUALUE',
             identifier_column='TUNNUS'
         ),
         'tre:palvelualue': dict(
             name='Tampereen palvelualueet',
+            name_en='Tampere service areas',
             layer='hallinnolliset_yksikot:KH_PALVELUALUE',
             identifier_column='NUMERO'
         )
@@ -53,4 +57,4 @@ class TampereImporter(WFSImporter):
             _identifier = props[conf['identifier_column']]
             areas.append(dict(identifier=_identifier, name=name, geometry=feat['geometry']))
 
-        return dict(identifier=identifier, name=conf['name'], areas=areas)
+        return dict(identifier=identifier, name=conf['name'], name_en=conf.get('name_en'), areas=areas)

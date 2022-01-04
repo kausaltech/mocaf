@@ -87,6 +87,8 @@ class AreaImporter:
         if area_type is None:
             area_type = AreaType(identifier=identifier)
         area_type.name = conf['name']
+        if 'name_en' in conf:
+            area_type.name_en = conf['name_en']
         area_type.is_poi = conf.get('is_poi', self.is_poi)
         area_type.properties_meta = conf.get('properties_meta')
         area_type.save()

@@ -22,16 +22,7 @@ from .models import (
     AlreadyRegistered, BackgroundInfoQuestion, Device, DeviceDefaultModeVariant, InvalidStateError, Leg, LegLocation,
     MigrationRequired, TransportMode, TransportModeVariant, Trip
 )
-
-
-def resolve_i18n_field(obj: Any, field_name: str, info):
-    lang = getattr(info.context, 'language', None)
-    if lang is not None:
-        lang_key = '%s_%s' % (field_name, lang)
-        lang_val = obj.i18n.get(lang_key, None)
-        if lang_val:
-            return lang_val
-    return getattr(obj, field_name)
+from utils.i18n import resolve_i18n_field
 
 
 class TransportModeVariantNode(DjangoNode):

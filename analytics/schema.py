@@ -6,6 +6,7 @@ import graphene
 
 from mocaf.graphql_types import DjangoNode
 
+from utils.i18n import resolve_i18n_field
 from .models import AreaType, Area, DailyModeSummary, DailyTripSummary
 
 
@@ -60,6 +61,10 @@ class AreaTypeNode(DjangoNode):
         if not root.properties_meta:
             return None
         return [dict(identifier=x[0], description=x[1]) for x in root.properties_meta.items()]
+
+    def resolve_name(root: AreaType, info):
+        print(root)
+        return resolve_i18n_field(root, 'name', info)
 
     class Meta:
         model = AreaType
