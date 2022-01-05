@@ -1,6 +1,7 @@
 import json
 import os
 from django.conf import settings
+from django.contrib.gis.db.models.aggregates import Extent
 
 from django.db import connection
 from django.contrib.gis.db.models.functions import Transform
@@ -63,6 +64,9 @@ class AreaImporter:
 
         print('Generating GeoJSON')
         areas = list(area_type.areas.all().values('id').annotate(geom=Transform('geometry', 4326)))
+        bbox = area_type.areas.all().annotate(
+            geom=Transform('geometry', 4326)).aggregate(Extent('geom')
+        )['geom__extent']
         feats = [dict(
             type='Feature',
             properties=dict(id=x['id']),
@@ -74,10 +78,8 @@ class AreaImporter:
             topo = self.generate_topojson(fc)
             # open('%s.topojson' % area_type.identifier, 'w').write(topo)
             area_type.topojson = topo
-            area_type.geojson = None
-        else:
-            area_type.topojson = None
-            area_type.geojson = self.generate_geojson(fc)
+        fc['bbox'] = list(bbox)
+        area_type.geojson = self.generate_geojson(fc)
         area_type.save(update_fields=['topojson', 'geojson'])
 
     def import_area_type(self, identifier: str):
