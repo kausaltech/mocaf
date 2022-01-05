@@ -21,7 +21,12 @@ LOC_TABLE = 'trips_leglocation'
 LOCAL_SRS = settings.LOCAL_SRS
 
 
-def get_daily_area_lengths(area_type, start_date: Optional[date] = None, end_date: Optional[date] = None):
+def get_daily_area_lengths(
+    area_type: AreaType, start_date: Optional[date] = None, end_date: Optional[date] = None
+):
+    if area_type.is_poi:
+        print("Not calculating area lengths for POI area types")
+        return
     cursor = connection.cursor()
     sql = f"""
         WITH day_legs AS (
@@ -232,10 +237,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['area_type']:
-            area_type = AreaType.objects.get(identifier=options['area_type'])
+            area_types = [AreaType.objects.filter(identifier=options['area_type']).first()]
         else:
-            area_type = AreaType.objects.first()
-        print(area_type)
+            area_types = AreaType.objects.all()
         if options['start_date']:
             start_date = dateutil.parser.isoparse(options['start_date']).date()
         else:
@@ -245,8 +249,16 @@ class Command(BaseCommand):
         else:
             end_date = None
         if options['lengths']:
-            get_daily_area_lengths(area_type, start_date=start_date, end_date=end_date)
+            for area_type in area_types:
+                if area_type.is_poi:
+                    continue
+                print('Daily lengths for %s' % str(area_type))
+                get_daily_area_lengths(area_type, start_date=start_date, end_date=end_date)
+                area_type.update_summaries()
         if options['od']:
-            get_daily_od(area_type, start_date=start_date, end_date=end_date)
+            for area_type in area_types:
+                print('OD for %s' % str(area_type))
+                get_daily_od(area_type, start_date=start_date, end_date=end_date)
+                area_type.update_summaries()
         if options['daily_device_trips']:
             get_daily_device_trips()

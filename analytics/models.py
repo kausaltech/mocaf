@@ -3,6 +3,7 @@ from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.gdal import SpatialReference, CoordTransform
+from django.contrib.postgres.fields import ArrayField
 
 from trips.models import LOCAL_TZ, Trip, TransportMode
 from modeltrans.fields import TranslationField
@@ -30,10 +31,31 @@ class AreaType(models.Model):
     # Topologies of all of the areas in GeoJSON (EPSG:4326)
     geojson = models.TextField(null=True)
 
+    # Cache data summaries here for quicker access
+    daily_trips_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
+    daily_lengths_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
+
     # Metadata for optional properties
     properties_meta = models.JSONField(null=True)
 
     i18n = TranslationField(fields=('name',))
+
+    def update_summaries(self):
+        ret = DailyModeSummary.objects.filter(area__type=self).aggregate(
+            min_date=models.Min('date'),
+            max_date=models.Max('date')
+        )
+        self.daily_trips_date_range = [ret['min_date'], ret['max_date']]
+
+        ret = DailyTripSummary.objects.filter(
+            models.Q(origin__type=self) | models.Q(dest__type=self)
+        ).aggregate(
+            min_date=models.Min('date'),
+            max_date=models.Max('date')
+        )
+        self.daily_lengths_date_range = [ret['min_date'], ret['max_date']]
+
+        self.save(update_fields=['daily_lengths_date_range', 'daily_trips_date_range'])
 
     def __str__(self):
         return self.name

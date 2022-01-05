@@ -1,13 +1,11 @@
-from django.db.models.fields import IntegerField
-from django.db.models.query_utils import Q
-from django.urls import reverse
-from graphql.error import GraphQLError
 import graphene
+from django.db.models.fields import IntegerField
+from django.urls import reverse
 
 from mocaf.graphql_types import DjangoNode
 
 from utils.i18n import resolve_i18n_field
-from .models import AreaType, Area, DailyModeSummary, DailyTripSummary
+from .models import AreaType, Area, DailyTripSummary
 
 
 class AreaNode(graphene.ObjectType):
@@ -28,6 +26,8 @@ class AreaTypeNode(DjangoNode):
     properties_meta = graphene.List(PropertyMeta)
     # daily_trips_url = graphene.String()
     # daily_lengths_url = graphene.String()
+    daily_trips_date_range = graphene.List(graphene.Date)
+    daily_lengths_date_range = graphene.List(graphene.Date)
     is_poi = graphene.Boolean()
 
     def resolve_areas(root, info):
