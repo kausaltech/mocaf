@@ -53,7 +53,10 @@ class TampereImporter(WFSImporter):
             name = props['NIMI']
             parts = name.split(' ')
             parts[0] = parts[0].capitalize()
+            if len(parts) > 1 and parts[1] == 'PALVELUALUE':
+                parts[1] = 'palvelualue'
             name = ' '.join(parts)
+            print(name)
             _identifier = props[conf['identifier_column']]
             areas.append(dict(identifier=_identifier, name=name, geometry=feat['geometry']))
 
