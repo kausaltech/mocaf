@@ -34,6 +34,8 @@ const GET_AREAS = gql`
         topojsonUrl
         identifier
         name
+        dailyTripsDateRange
+        dailyLengthsDateRange
         areas {
           id
           identifier
