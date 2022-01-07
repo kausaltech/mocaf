@@ -56,18 +56,15 @@ export const syntheticModes = [
   }
 ]
 
+const extender = (ext) => ((o) => (Object.assign({}, o, ext(o))));
+
 export default function preprocessTransportModes(transportModes, language) {
+  const translatedSyntheticModes = syntheticModes.map(
+    extender(m => ({ synthetic: true,
+                     name: m.name[language] ?? m.name['fi'] })));
   return transportModes
-    .filter(
-      m => m.identifier !== 'still')
-    .concat(
-      syntheticModes.map(
-        m => Object.assign({}, m, {
-          name: (m.name[language] ?? m.name['fi']),
-          synthetic: true
-        })))
-    .map(m =>
-      Object.assign({}, m, {
-        synthetic: (m.synthetic === true),
-        colors: colors[m.identifier]}));
+    .filter(m => m.identifier !== 'still')
+    .map(extender(m => ({ synthetic: false })))
+    .concat(translatedSyntheticModes)
+    .map(extender(m => ({ colors: colors[m.identifier] })));
 }

@@ -23,5 +23,8 @@ export function userChoiceReducer(state, action) {
       syntheticModeNames.includes(state.transportMode)) {
     dependentState.transportMode = initialUserChoiceState.transportMode;
   }
-  return Object.assign({}, state, dependentState, {[action.key]: action.payload});
+  return {
+    ...state,
+    ...dependentState,
+    ...{[action.key]: action.payload}};
 }
