@@ -13,7 +13,7 @@ import i18n from './common/i18n';
 import { TransportModeShareMap } from './Map';
 import Controls from './Controls';
 import { useAnalyticsData } from './data';
-import {userChoiceReducer, initialUserChoiceState} from './userChoiceReducer';
+import {userChoiceReducer, initializeUserChoiceState} from './userChoiceReducer';
 import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
 import preprocessTransportModes from './transportModes';
 
@@ -52,9 +52,8 @@ const GET_AREAS = gql`
 `;
 
 export function MocafAnalytics({ transportModes, areaTypes }) {
-  // FIXME: Generate initialUserChoiceState based on component props.
-  // Alternatively, use lazy init: https://reactjs.org/docs/hooks-reference.html#lazy-initialization
-  const [userChoiceState, dispatch] = useReducer(userChoiceReducer, initialUserChoiceState);
+  const [userChoiceState, dispatch] = useReducer(
+    userChoiceReducer, ['tre:tilastoalue', areaTypes], initializeUserChoiceState);
   const areaType = areaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const areaData = useAnalyticsData({

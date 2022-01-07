@@ -71,36 +71,48 @@ function SelectControl (
          />
 }
 
+function monthFormat(date) {
+  return format(date, 'M/yyyy');
+}
+
 function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
-  const dateBounds = dateRange.bounds;
-  const delta = differenceInCalendarMonths(dateBounds[1], dateBounds[0])
+  const { range, bounds } = dateRange;
   const currentRange = [
-    differenceInCalendarMonths(dateRange.range[0], dateRange.bounds[0]),
-    differenceInCalendarMonths(dateRange.range[1], dateRange.bounds[0])];
-  const [value, setValue] = useState(currentRange);
+    differenceInCalendarMonths(range[0], bounds[0]),
+    differenceInCalendarMonths(range[1], bounds[0])];
+  const boundsDigest = `${monthFormat(bounds[0])}-${monthFormat(bounds[1])}`;
+
+  const [value, setValue] = useState({
+    sliderValue: currentRange,
+    boundsDigest});
+
+  if (value.boundsDigest !== boundsDigest) {
+    setValue({
+      sliderValue: currentRange,
+      boundsDigest
+    });
+  }
 
   function valueToLabel (value) {
-    result = addMonths(dateBounds[0], value);
-    return format(result, "M/yyyy");
+    return monthFormat(addMonths(bounds[0], value));
   }
   function onChange ({value}) {
-    value && setValue(value);
+    value && setValue({sliderValue: value, boundsDigest});
   }
   function onFinalChange ({value}) {
     value && dispatch(userChoiceSetAction('dateRange', {
-      bounds: dateRange.bounds,
-      range: [addMonths(dateBounds[0], value[0]), addMonths(dateBounds[0], value[1])]
+      bounds, range: [addMonths(bounds[0], value[0]),
+                      addMonths(bounds[0], value[1])]
     }));
   }
   return (
     <div style={{gridColumn: '1/4'}} >
-      <Slider value={value}
+      <Slider value={value.sliderValue}
               onChange={onChange}
-
               onFinalChange={onFinalChange}
               label={label}
               min={0}
-              max={delta}
+              max={differenceInCalendarMonths(bounds[1], bounds[0])}
               valueToLabel={valueToLabel}
               step={1}
       />
