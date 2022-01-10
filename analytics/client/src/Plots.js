@@ -108,7 +108,11 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       }
       y.push(area.name);
       x.push(row[mode + '_rel']);
-      customdata.push({abs: row[mode]});
+
+      const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
+        Object.assign({}, m, {rel: row[m.identifier + '_rel'] * 100}));;
+      customdata.push({
+        abs: row[mode], syntheticModes});
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -171,6 +175,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
        transportMode: point.data.name,
        rel: point.value,
        abs: point.customdata.abs,
+       syntheticModes: point.customdata.syntheticModes,
        x: event.x,
        y: event.y});
   };
