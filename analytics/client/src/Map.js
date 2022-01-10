@@ -70,7 +70,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
 }
 
 
-export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode }) {
+export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode , rangeLength}) {
   const geoData = useAreaTopo(areaType);
   if (!geoData) return <Spinner />;
 
@@ -127,6 +127,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     if (!area.data) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
+    const average = area.data['total'] / rangeLength;
     const syntheticModes = [
       {
         name: modeById.get('walk_and_bicycle').name,
@@ -137,7 +138,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
         rel: area.data['public_transportation_rel'] * 100,
       }
     ];
-    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes };
+    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, average };
   };
   return (
     <AreaMap

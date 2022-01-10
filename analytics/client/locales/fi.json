@@ -9,5 +9,7 @@
   "all-days": "Kaikki päivät",
   "transport-mode-share": "kulkumuoto-osuus",
   "no-data": "Ei tietoja",
-  "traveled-kilometers-share": "Osuus suoritteesta"
+  "traveled-kilometers-share": "Osuus suoritteesta",
+  "average": "Keskiarvo",
+  "kilometers-per-day": "km päivässä"
 }

@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect } from 'react';
 import { gql, useQuery } from "@apollo/client";
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, differenceInDays } from 'date-fns';
 
 import {Client as Styletron} from 'styletron-engine-atomic';
 import {Provider as StyletronProvider} from 'styletron-react';
@@ -61,13 +61,16 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const poiType = poiAreaTypes[0];
   const areaType = administrativeAreaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
+  const start = userChoiceState.dateRange.range[0];
+  const end = addMonths(userChoiceState.dateRange.range[1], 1)
+  const rangeLength = differenceInDays(end, start);
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
     poiTypeId: poiType.id,
     weekend: userChoiceState.weekSubset,
-    startDate: format(userChoiceState.dateRange.range[0], 'yyyy-MM-dd'),
-    endDate: format(addMonths(userChoiceState.dateRange.range[1], 1), 'yyyy-MM-dd'),
+    startDate: format(start, 'yyyy-MM-dd'),
+    endDate: format(end, 'yyyy-MM-dd'),
     transportModes,
   });
 
@@ -79,7 +82,9 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           areaType={areaType}
           areaData={areaData}
           selectedTransportMode={selectedTransportMode}
-          transportModes={transportModes} />
+          transportModes={transportModes}
+          rangeLength={rangeLength}
+        />
       );
     } else {
       visComponent = (
@@ -99,6 +104,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           areaData={areaData}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
+          rangeLength={rangeLength}
         />
       );
     } else {

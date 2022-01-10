@@ -85,7 +85,7 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
   );
 }
 
-export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode }) {
+export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode, rangeLength }) {
   if (!areaData)
     return <Spinner />;
 
@@ -130,7 +130,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
         Object.assign({}, m, {rel: row[m.identifier + '_rel'] * 100}));;
       customdata.push({
-        abs: row[mode], syntheticModes});
+        abs: row[mode], syntheticModes, average: (row['total'] / rangeLength)});
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -177,9 +177,9 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
     //autosizable: true,
   };
   return (<TransportModePlotWrapper
-           traces={traces}
-           layout={layout}
-           config={config}
+            traces={traces}
+            layout={layout}
+            config={config}
           />);
 
 }
@@ -196,6 +196,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
        transportMode: point.data.name,
        rel: point.value,
        abs: point.customdata.abs,
+       average: point.customdata.average,
        syntheticModes: point.customdata.syntheticModes,
        x: event.x,
        y: event.y});

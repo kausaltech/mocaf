@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
-export default function Popup ({y, x, children, rel, area, abs, transportMode, syntheticModes}) {
+export default function Popup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average}) {
   const { t } = useTranslation();
   return <div style={{
                 position: 'absolute',
@@ -16,7 +16,8 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode, s
               }}>
            <Block style={{ padding: '0.5em' }}>
              <div style={{ marginBottom: '0.5em' }}>
-               <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
+               <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}<br/>
+               {`${t('average')}: ${formatFloat(average)} ${t('kilometers-per-day')}`}
              </div>
              <div>
                <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
