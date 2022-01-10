@@ -48,7 +48,7 @@ export const syntheticModes = [
   },
   {
     identifier: 'walk_and_bicycle',
-    components: ['walk', 'cycle'],
+    components: ['walk', 'bicycle'],
     name: {
       fi: 'Kävely ja pyöräily',
       en: 'Walking and cycling'
