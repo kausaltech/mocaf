@@ -86,17 +86,35 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
 }
 
 export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode }) {
-  const modeById = new Map(transportModes.filter(m => !m.synthetic).map(m => [m.identifier, m]));
-  const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
-
   if (!areaData)
     return <Spinner />;
 
-  const modeOrder = ['car', 'walk', 'bicycle', 'bus', 'tram', 'train', 'other'].filter(mode => mode !== selectedTransportMode.identifier);
-  modeOrder.splice(0, 0, selectedTransportMode.identifier);
+  const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+
+  let modeGroups = syntheticModes.map(m => m.components);
+
+  const selected = selectedTransportMode.identifier;
+  const groupedPrimaryModes = lodash.flatten(modeGroups);
+  const singleModeGroups = primaryModes
+    .filter(m => !groupedPrimaryModes.includes(m.identifier))
+    .map(m => [m.identifier]);
+
+  modeGroups = modeGroups
+    .concat(singleModeGroups)
+    .sort((a, b) => (
+      a.includes(selected) ? -1 :
+      b.includes(selected) ? 1 :
+      a.includes('car') ? -1 :
+      b.includes('car') ? 1 :
+      0));
+  const modeOrder = lodash.flatten(modeGroups).sort((a, b) => a === selected ? -1 : 0);
+
+  const modeById = new Map(primaryModes.map(m => [m.identifier, m]));
   const availableModes = modeOrder.filter(mode => areaData.columnNames().includes(mode) && modeById.has(mode));
   const table = areaData
     .orderby(selectedTransportMode.identifier + '_rel');
+  const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
+
   const traces = availableModes.map((mode) => {
     const x = [], y = [], customdata = [];
     table.objects().forEach(row => {
