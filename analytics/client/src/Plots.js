@@ -147,6 +147,9 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
     },
     barmode: 'stack',
     dragmode: 'pan',
+    legend: {
+      traceorder: 'normal'
+    },
   };
   const config = {
     responsive: true,
