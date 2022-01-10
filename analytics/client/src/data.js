@@ -107,7 +107,23 @@ function preprocessTrips(resultSet) {
   return table;
 }
 
-export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate, transportModes }) {
+function preprocessPoiTrips(resultSet) {
+  let table = aq.from(resultSet.rawData())
+    .derive({
+      trips: d => aq.op.parse_int(d['DailyPoiTrips.totalTrips'])
+    })
+    .select({
+      'DailyPoiTrips.poiId': 'poiId',
+      'DailyPoiTrips.areaId': 'areaId',
+      'DailyPoiTrips.isInbound': 'isInbound',
+      'TransportModes.identifier': 'mode',
+      'DailyPoiTrips.totalLength': 'length',
+      'trips': 'trips',
+    });
+  return table;
+}
+
+export function useAnalyticsData({ type, areaTypeId, poiTypeId, weekend, startDate, endDate, transportModes }) {
   let queryOpts;
   let dateField;
 
@@ -144,12 +160,11 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
         member: 'AreaTypes.id',
         operator: 'equals',
         values: [areaTypeId],
-      },
-      /*{
+      }, {
         member: 'DailyTrips.totalTrips',
         operator: 'gte',
-        values: [5],
-      }*/],
+        values: ["5"],
+      }],
     }
     if (weekend === true) {
       queryOpts.segments.push('DailyTrips.weekends');
@@ -157,6 +172,36 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
       queryOpts.segments.push('DailyTrips.weekdays');
     }
     dateField = 'DailyTrips.date';
+  } else if (type === 'poi_trips') {
+    queryOpts = {
+      measures: ['DailyPoiTrips.totalTrips', 'DailyPoiTrips.totalLength'],
+      dimensions: [
+        'DailyPoiTrips.poiId',
+        'DailyPoiTrips.areaId',
+        'DailyPoiTrips.isInbound',
+        'TransportModes.identifier',
+      ],
+      segments: [],
+      filters: [{
+        member: 'PoiTypes.id',
+        operator: 'equals',
+        values: [poiTypeId],
+      }, {
+        member: 'AreaTypes.id',
+        operator: 'equals',
+        values: [areaTypeId],
+      }, {
+        member: 'DailyPoiTrips.totalTrips',
+        operator: 'gte',
+        values: ["5"],
+      }],
+    }
+    if (weekend === true) {
+      queryOpts.segments.push('DailyTrips.weekends');
+    } else if (weekend === false) {
+      queryOpts.segments.push('DailyTrips.weekdays');
+    }
+    dateField = 'DailyPoiTrips.date';
   } else {
     throw new Error(`unknown datatype: ${type}`);
   }
@@ -183,8 +228,10 @@ export function useAnalyticsData({ type, areaTypeId, weekend, startDate, endDate
   if (isLoading || !resultSet || previousQuery.measures[0] !== queryOpts.measures[0]) return;
   if (type === 'lengths') {
     return preprocessLengths(resultSet, transportModes);
-  } else {
+  } else if (type === 'trips') {
     return preprocessTrips(resultSet);
+  } else if (type === 'poi_trips') {
+    return preprocessPoiTrips(resultSet);
   }
 }
 
@@ -233,4 +280,31 @@ export function useAreaTopo(areaType) {
       )
   }, [areaType.id]);
   return areaData;
+}
+
+let poiCache = {};
+
+export function usePoiGeojson(poiType) {
+  const [poiAreaData, setPoiAreaData] = useState(null);
+
+  useEffect(() => {
+    if (poiType.id in poiCache) {
+      setPoiAreaData(poiCache[poiType.id]);
+      return;
+    }
+
+    console.log('fetching poi geojson', poiType.geojsonUrl);
+    fetch(poiType.geojsonUrl)
+      .then(res => res.json())
+      .then(
+        (res) => {
+          topoCache[poiType.id] = res;
+          setPoiAreaData(res);
+        },
+        (error) => {
+          console.error(error);
+        }
+      )
+  }, [poiType.id]);
+  return poiAreaData;
 }

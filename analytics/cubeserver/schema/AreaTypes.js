@@ -34,3 +34,7 @@ cube(`AreaTypes`, {
   },
   dataSource: `default`
 });
+
+cube(`PoiTypes`, {
+  extends: AreaTypes,
+});

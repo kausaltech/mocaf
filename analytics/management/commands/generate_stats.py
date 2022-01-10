@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Prefetch, Sum
 from django.db import connection
 from django.db.models.query_utils import Q
-from analytics.models import Area, DailyModeSummary, DailyTripSummary
+from analytics.models import Area, DailyModeSummary, DailyPoiTripSummary, DailyTripSummary
 from django.conf import settings
 
 from trips.models import Trip, Leg, TransportMode, LOCAL_TZ
@@ -101,7 +101,7 @@ def get_daily_area_lengths(
         start_date += timedelta(days=1)
 
 
-def _generate_summaries(area_type: AreaType, start_date: date, modes: list[TransportMode]):
+def _generate_trip_summaries(area_type: AreaType, start_date: date, modes: list[TransportMode]):
     start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
     trips = Trip.objects.started_during(start_time, start_time + timedelta(days=1))\
         .filter(summary__isnull=True)\
@@ -119,21 +119,7 @@ def _generate_summaries(area_type: AreaType, start_date: date, modes: list[Trans
 def get_daily_od(area_type: AreaType, start_date: Optional[date] = None, end_date: Optional[date] = None):
     tz = str(LOCAL_TZ)
 
-    if not area_type.is_poi:
-        origin_cond = "AND origin.type_id = %(area_type)s"
-        dest_cond = "AND dest.type_id = %(area_type)s"
-        where_cond = ""
-    else:
-        origin_cond = ""
-        dest_cond = ""
-        where_cond = """
-            AND (
-                (origin.type_id = %(area_type)s AND (dest.type_id != %(area_type)s OR dest.id IS NULL))
-                OR (dest.type_id = %(area_type)s AND (origin.type_id != %(area_type)s OR origin.id IS NULL))
-            )
-        """
-
-    query = f"""
+    query = """
         INSERT INTO analytics_dailytripsummary (date, origin_id, dest_id, mode_id, trips)
         SELECT
             %(date)s AS date,
@@ -144,13 +130,12 @@ def get_daily_od(area_type: AreaType, start_date: Optional[date] = None, end_dat
         FROM
             analytics_tripsummary t
         LEFT OUTER JOIN analytics_area origin
-            ON ST_Contains(origin.geometry, t.start_loc) {origin_cond}
+            ON ST_Contains(origin.geometry, t.start_loc) AND origin.type_id = %(area_type)s
         LEFT OUTER JOIN analytics_area dest
-            ON ST_Contains(dest.geometry, t.end_loc) {dest_cond}
+            ON ST_Contains(dest.geometry, t.end_loc) AND dest.type_id = %(area_type)s
         WHERE
             t.start_time >= (%(date)s :: date + '00:00' :: time) AT TIME ZONE %(tz)s
             AND t.start_time < (%(date)s :: date + '00:00' :: time + interval '1 day') AT TIME ZONE %(tz)s
-            {where_cond}
             AND (origin.id IS NOT NULL OR dest.id IS NOT NULL)
         GROUP BY
             origin_id, dest_id, mode_id
@@ -167,16 +152,67 @@ def get_daily_od(area_type: AreaType, start_date: Optional[date] = None, end_dat
     modes = list(TransportMode.objects.all())
     while start_date < end_date:
         print(start_date)
-        _generate_summaries(area_type, start_date, modes)
-        if area_type.is_poi:
-            qs = Q(origin__type=area_type) | Q(dest__type=area_type)
-        else:
-            qs = Q(origin__type=area_type) & (Q(dest__type=area_type) | Q(dest=None))
-            qs |= Q(dest__type=area_type) & (Q(origin__type=area_type) | Q(origin=None))
+        _generate_trip_summaries(area_type, start_date, modes)
+
+        qs = Q(origin__type=area_type) & (Q(dest__type=area_type) | Q(dest=None))
+        qs |= Q(dest__type=area_type) & (Q(origin__type=area_type) | Q(origin=None))
         DailyTripSummary.objects.filter(date=start_date).filter(qs).delete()
         cursor.execute(query, params=dict(
             date=start_date,
             area_type=area_type.id,
+            tz=tz,
+        ))
+        start_date += timedelta(days=1)
+
+
+def generate_daily_poi_trip_summaries(
+    poi_type: AreaType, is_inbound: bool, start_date: Optional[date] = None, end_date: Optional[date] = None,
+):
+    tz = str(LOCAL_TZ)
+
+    query = f"""
+        INSERT INTO analytics_dailypoitripsummary (date, poi_id, area_id, is_inbound, mode_id, trips, length)
+        SELECT
+            %(date)s AS date,
+            poi.id AS poi_id,
+            area.id AS area_id,
+            {'TRUE' if is_inbound else 'FALSE'} AS is_inbound,
+            t.primary_mode_id AS mode_id,
+            COUNT(t.id) AS trips,
+            SUM(t.length) AS length
+        FROM
+            analytics_tripsummary t
+        LEFT OUTER JOIN analytics_area poi
+            ON ST_Contains(poi.geometry, t.{'end_loc' if is_inbound else 'start_loc'})
+        LEFT OUTER JOIN analytics_area area
+            ON ST_Contains(area.geometry, t.{'start_loc' if is_inbound else 'end_loc'})
+        WHERE
+            t.start_time >= (%(date)s :: date + '00:00' :: time) AT TIME ZONE %(tz)s
+            AND t.start_time < (%(date)s :: date + '00:00' :: time + interval '1 day') AT TIME ZONE %(tz)s
+            AND poi.type_id = %(poi_type)s
+        GROUP BY
+            poi_id, area_id, mode_id
+        ORDER BY
+            poi_id, area_id, mode_id
+    """
+
+    if start_date is None:
+        start_date = date(2021, 6, 1)
+    if end_date is None:
+        end_date = date.today() - timedelta(days=1)
+    cursor = connection.cursor()
+
+    modes = list(TransportMode.objects.all())
+    while start_date < end_date:
+        print(start_date)
+        _generate_trip_summaries(poi_type, start_date, modes)
+        DailyPoiTripSummary.objects\
+            .filter(date=start_date, is_inbound=is_inbound)\
+            .filter(poi__type=poi_type)\
+            .delete()
+        cursor.execute(query, params=dict(
+            date=start_date,
+            poi_type=poi_type.id,
             tz=tz,
         ))
         start_date += timedelta(days=1)
@@ -233,9 +269,12 @@ class Command(BaseCommand):
         parser.add_argument('--end-date', type=str)
         parser.add_argument('--lengths', action='store_true')
         parser.add_argument('--od', action='store_true')
+        parser.add_argument('--poi', action='store_true')
         parser.add_argument('--daily-device-trips', action='store_true')
 
     def handle(self, *args, **options):
+        area_types: list[AreaType]
+
         if options['area_type']:
             area_types = [AreaType.objects.filter(identifier=options['area_type']).first()]
         else:
@@ -260,5 +299,15 @@ class Command(BaseCommand):
                 print('OD for %s' % str(area_type))
                 get_daily_od(area_type, start_date=start_date, end_date=end_date)
                 area_type.update_summaries()
+        if options['poi']:
+            for area_type in area_types:
+                if not area_type.is_poi:
+                    continue
+                print('Inbound trips for %s' % str(area_type))
+                generate_daily_poi_trip_summaries(area_type, True, start_date=start_date, end_date=end_date)
+                print('Outbound trips for %s' % str(area_type))
+                generate_daily_poi_trip_summaries(area_type, False, start_date=start_date, end_date=end_date)
+                area_type.update_summaries()
+
         if options['daily_device_trips']:
             get_daily_device_trips()

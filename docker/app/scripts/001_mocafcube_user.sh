@@ -11,6 +11,7 @@ GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO ${CUBE_USER};
 GRANT SELECT ON TABLE
     analytics_dailymodesummary,
     analytics_dailytripsummary,
+    analytics_dailypoitripsummary,
     analytics_areatype,
     analytics_area,
     trips_transportmode

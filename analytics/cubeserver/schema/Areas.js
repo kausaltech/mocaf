@@ -41,3 +41,13 @@ cube(`OriginAreas`, {
 cube(`DestAreas`, {
   extends: Areas,
 });
+
+cube(`Pois`, {
+  extends: Areas,
+  joins: {
+    PoiTypes: {
+      relationship: `belongsTo`,
+      sql: `${CUBE}.type_id = ${PoiTypes}.id`,
+    },
+  },
+});

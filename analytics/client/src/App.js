@@ -10,7 +10,7 @@ import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
 import { useTranslation } from 'react-i18next';
 
 import i18n from './common/i18n';
-import { TransportModeShareMap } from './Map';
+import { TransportModeShareMap, POIMap } from './Map';
 import Controls from './Controls';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initializeUserChoiceState} from './userChoiceReducer';
@@ -32,10 +32,12 @@ const GET_AREAS = gql`
       areaTypes {
         id
         topojsonUrl
+        geojsonUrl
         identifier
         name
         dailyTripsDateRange
         dailyLengthsDateRange
+        isPoi
         areas {
           id
           identifier
@@ -52,13 +54,17 @@ const GET_AREAS = gql`
 `;
 
 export function MocafAnalytics({ transportModes, areaTypes }) {
+  const administrativeAreaTypes = areaTypes.filter(areaType => !areaType.isPoi);
   const [userChoiceState, dispatch] = useReducer(
-    userChoiceReducer, ['tre:tilastoalue', areaTypes], initializeUserChoiceState);
-  const areaType = areaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
+    userChoiceReducer, ['tre:tilastoalue', administrativeAreaTypes], initializeUserChoiceState);
+  const poiAreaTypes = areaTypes.filter(areaType => areaType.isPoi);
+  const poiType = poiAreaTypes[0];
+  const areaType = administrativeAreaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
+    poiTypeId: poiType.id,
     weekend: userChoiceState.weekSubset,
     startDate: format(userChoiceState.dateRange.range[0], 'yyyy-MM-dd'),
     endDate: format(addMonths(userChoiceState.dateRange.range[1], 1), 'yyyy-MM-dd'),
@@ -75,6 +81,15 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes} />
       );
+    } else {
+      visComponent = (
+        <POIMap
+          poiType={poiType}
+          areaType={areaType}
+          areaData={areaData}
+          selectedTransportMode={selectedTransportMode}
+          transportModes={transportModes} />
+      )
     }
   } else if (userChoiceState.visualisation === 'table') {
     if (userChoiceState.analyticsQuantity === 'lengths') {

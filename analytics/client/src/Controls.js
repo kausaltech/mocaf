@@ -17,7 +17,8 @@ const selectionValues = {
   ],
   analyticsQuantity: [
     {value: 'lengths', label: t('transportation-kms')},
-    {value: 'trips', label: t('trips')}
+    {value: 'trips', label: t('trips')},
+    {value: 'poi_trips', label: t('poi-trips')},
   ],
   visualisation: [
     {value: 'choropleth-map', label: t('map')},

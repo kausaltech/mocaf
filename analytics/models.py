@@ -34,6 +34,7 @@ class AreaType(models.Model):
     # Cache data summaries here for quicker access
     daily_trips_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
     daily_lengths_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
+    daily_poi_trips_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
 
     # Metadata for optional properties
     properties_meta = models.JSONField(null=True)
@@ -55,7 +56,15 @@ class AreaType(models.Model):
         )
         self.daily_lengths_date_range = [ret['min_date'], ret['max_date']]
 
-        self.save(update_fields=['daily_lengths_date_range', 'daily_trips_date_range'])
+        ret = DailyPoiTripSummary.objects.filter(models.Q(poi__type=self)).aggregate(
+            min_date=models.Min('date'),
+            max_date=models.Max('date')
+        )
+        self.daily_poi_trips_date_range = [ret['min_date'], ret['max_date']]
+
+        self.save(update_fields=[
+            'daily_lengths_date_range', 'daily_trips_date_range', 'daily_poi_trips_date_range'
+        ])
 
     def __str__(self):
         return self.name
@@ -161,3 +170,18 @@ class DailyTripSummary(models.Model):
 
     class Meta:
         unique_together = (('date', 'origin', 'dest', 'mode', 'mode_specifier'),)
+
+
+class DailyPoiTripSummary(models.Model):
+    date = models.DateField(db_index=True)
+    poi = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='trip_summaries')
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='+', null=True)
+    is_inbound = models.BooleanField()
+    mode = models.ForeignKey('trips.TransportMode', on_delete=models.CASCADE, null=True)
+    mode_specifier = models.CharField(max_length=20, null=True)
+
+    trips = models.IntegerField()
+    length = models.FloatField(null=True)
+
+    class Meta:
+        unique_together = (('date', 'poi', 'area', 'is_inbound', 'mode', 'mode_specifier'),)

@@ -10,7 +10,7 @@ import * as aq from 'arquero';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { useAreaTopo } from './data';
+import { useAreaTopo, usePoiGeojson } from './data';
 import Popup from './Popup.js';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -112,6 +112,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     getFillColor = (d) => {
       const id = d.properties.id;
       const area = areasById.get(id);
+      if (!area.data) return [0, 0, 0, 0];
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
       if (abs < 100) return [0, 0, 0, 0];
@@ -146,4 +147,15 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       getTooltip={getTooltip}
     />
   );
+}
+
+
+export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode }) {
+  const poiGeoData = usePoiGeojson(poiType);
+  const geoData = useAreaTopo(areaType);
+  if (!poiGeoData || !geoData || !areaData) return <Spinner />;
+
+  areaData.print();
+
+  return <div />;
 }
