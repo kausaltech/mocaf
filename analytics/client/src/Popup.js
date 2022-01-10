@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
-export default function Popup ({y, x, children, rel, area, abs, transportMode}) {
+export default function Popup ({y, x, children, rel, area, abs, transportMode, syntheticModes}) {
   const { t } = useTranslation();
   return <div style={{
                 position: 'absolute',
@@ -20,20 +20,26 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode}) 
              </div>
              <div>
                <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
-               <FigureElement {...{rel, abs}} />
+               <FigureElement {...{rel, abs, syntheticModes}} />
                {children}
              </div>
            </Block>
          </div>
 }
 
-function FigureElement ({rel, abs}) {
+function FigureElement ({rel, abs, syntheticModes}) {
   const { t } = useTranslation();
   if (isNaN(rel)) {
     return t('no-data');
   }
-  return <React.Fragment>
+
+  const syntheticFigures = (syntheticModes ?? []).map(m =>
+    <div key={m.name} style={{fontSize: '80%'}}>{
+      `${m.name}: ` + (isNaN(m.rel) ? t('no-data') : `${formatFloat(m.rel)} %`)
+    }</div>);
+  return <>
            {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
            {abs != 0 && !isNaN(abs) && ` (${formatDecimal(abs)} km)`}
-         </React.Fragment>
+           {syntheticFigures}
+         </>
 }
