@@ -19,11 +19,20 @@ export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
     defaults.analyticsQuantity,
     defaults.areaType,
     areaTypes,
-    null);
+    {range: null, bounds: null});
   return defaults;
 }
 
-function areaTypeDateRange(analyticsQuantity, areaTypeIdentifier, areaTypes, currentRange) {
+function restrictDateRange({range, bounds}) {
+  if (range === null) {
+    range = [...bounds]
+  }
+  range[0] = max([range[0], bounds[0]]);
+  range[1] = min([range[1], bounds[1]]);
+  return { bounds, range };
+}
+
+function areaTypeDateRange(analyticsQuantity, areaTypeIdentifier, areaTypes, dateRange) {
   const { dailyLengthsDateRange, dailyTripsDateRange } = areaTypes.find(a => a.identifier === areaTypeIdentifier);
   const rangeStrings = (analyticsQuantity === 'lengths' ? dailyLengthsDateRange : dailyTripsDateRange);
   let bounds;
@@ -33,15 +42,8 @@ function areaTypeDateRange(analyticsQuantity, areaTypeIdentifier, areaTypes, cur
   else {
     bounds = rangeStrings.map(parseISO);
   }
-  bounds.forEach((d) => d.setDate(1));
-  if (currentRange === null) {
-    currentRange = [...bounds]
-  }
-  currentRange[0] = max([currentRange[0], bounds[0]]);
-  currentRange[1] = min([currentRange[1], bounds[1]]);
-  return {
-    bounds,
-    range: currentRange };
+  return restrictDateRange(Object.assign({}, dateRange, {bounds}));
+
 }
 
 export function userChoiceReducer (state, action) {
@@ -53,12 +55,15 @@ export function userChoiceReducer (state, action) {
       syntheticModeNames.includes(state.transportMode)) {
     dependentState.transportMode = initialUserChoiceState.transportMode;
   }
-  if (action.key === 'areaType') {
+  if (action.key === 'areaType' || action.key === 'analyticsQuantity') {
     dependentState.dateRange = areaTypeDateRange(
       state.analyticsQuantity,
       action.payload,
       state.areaTypes,
-      state.dateRange.range);
+      state.dateRange);
+  }
+  if (action.key == 'dateRange') {
+    action.payload = restrictDateRange(action.payload);
   }
   return {
     ...state,

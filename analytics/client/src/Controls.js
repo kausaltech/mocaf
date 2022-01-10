@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {Select} from 'baseui/select';
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
-import {format, parseISO, differenceInCalendarMonths, addMonths} from 'date-fns';
+import {format, parseISO, differenceInCalendarMonths, addMonths, setDate, lastDayOfMonth} from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { el } from 'date-fns/locale';
 
@@ -101,10 +101,12 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     value && setValue({sliderValue: value, boundsDigest});
   }
   function onFinalChange ({value}) {
-    value && dispatch(userChoiceSetAction('dateRange', {
-      bounds, range: [addMonths(bounds[0], value[0]),
-                      addMonths(bounds[0], value[1])]
-    }));
+    if (!value) {
+      return;
+    }
+    const start = setDate(addMonths(bounds[0], value[0]), 1);
+    const end = lastDayOfMonth(addMonths(bounds[0], value[1]));
+    dispatch(userChoiceSetAction('dateRange', { bounds, range: [start, end] }));
   }
   return (
     <div style={{gridColumn: '1/4'}} >

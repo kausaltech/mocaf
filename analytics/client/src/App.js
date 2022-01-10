@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect } from 'react';
 import { gql, useQuery } from "@apollo/client";
-import { format, addMonths, differenceInDays } from 'date-fns';
+import { format, addDays, differenceInDays } from 'date-fns';
 
 import {Client as Styletron} from 'styletron-engine-atomic';
 import {Provider as StyletronProvider} from 'styletron-react';
@@ -62,7 +62,7 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
   const areaType = administrativeAreaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const start = userChoiceState.dateRange.range[0];
-  const end = addMonths(userChoiceState.dateRange.range[1], 1)
+  const end = addDays(userChoiceState.dateRange.range[1], 1)
   const rangeLength = differenceInDays(end, start);
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
