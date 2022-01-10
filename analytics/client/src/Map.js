@@ -46,17 +46,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
     })
   ];
 
-  let name, identifier, rel, selectedTransportMode, abs = null;
-  if (hoverInfo.object) {
-    const values = getTooltip(hoverInfo);
-    if (values) {
-      name = values.name;
-      identifier = values.identifier;
-      rel = values.rel;
-      selectedTransportMode = values.selectedTransportMode;
-      abs = values.abs;
-    }
-  }
+  const popupValues = getTooltip(hoverInfo) ?? {};
   return (
     <div>
       { hoverInfo.object && (
@@ -64,10 +54,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
           <Popup
             x={hoverInfo.x}
             y={hoverInfo.y}
-            area={{name, identifier}}
-            rel={rel}
-            abs={abs}
-            transportMode={selectedTransportMode?.name}
+            {...popupValues}
           />
         </Layer>
       )}
@@ -133,13 +120,23 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     colorStateKey = modeId;
   }
   const getTooltip = ({object}) => {
-    if (!object) return;
+    if (!object) return null;
     const { id, name, identifier } = object.properties;
     const area = areasById.get(id);
-    if (!area.data) return;
+    if (!area.data) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
-    return { name, identifier, rel, selectedTransportMode, abs };
+    const syntheticModes = [
+      {
+        name: modeById.get('walk_and_bicycle').name,
+        rel: area.data['walk_and_bicycle_rel'] * 100,
+      },
+      {
+        name: modeById.get('public_transportation').name,
+        rel: area.data['public_transportation_rel'] * 100,
+      }
+    ];
+    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes };
   };
   return (
     <AreaMap
