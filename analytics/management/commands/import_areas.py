@@ -17,6 +17,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('types', nargs='*', type=str)
+        parser.add_argument('--all', action='store_true')
         parser.add_argument('--list', action='store_true')
         parser.add_argument('--geojson', action='store_true')
 
@@ -28,16 +29,27 @@ class Command(BaseCommand):
                 print('\t%-20s %s' % (id, conf['name']))
 
     def handle(self, *args, **options):
-        if options['list'] or not options['types']:
+        if options['list'] or (not options['types'] and not options['all']):
             self.print_types()
             return
 
-        for t in options['types']:
-            for ai in area_importers:
-                ats = ai.get_area_types()
-                if t in ats:
-                    break
-            else:
-                print('Unknown area type: %s' % t)
-                exit(1)
-            ai.import_area_type(t)
+        if options['all'] and options['types']:
+            print("Enumerate the types or supply '--all', not both")
+            self.print_types()
+            exit(1)
+
+        types = set(options['types'])
+        for ai in area_importers:
+            ats = ai.get_area_types()
+            for t in ats:
+                if not options['all'] and t not in types:
+                    continue
+                print('Importing %s' % t)
+                ai.import_area_type(t)
+                if not options['all']:
+                    types.remove(t)
+
+        if types:
+            print('Unknown area types: %s' % ', '.join(types))
+            self.print_types()
+            exit(1)
