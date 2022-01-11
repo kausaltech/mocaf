@@ -55,10 +55,17 @@ export function userChoiceReducer (state, action) {
       syntheticModeNames.includes(state.transportMode)) {
     dependentState.transportMode = initialUserChoiceState.transportMode;
   }
-  if (action.key === 'areaType' || action.key === 'analyticsQuantity') {
+  if (action.key === 'areaType') {
     dependentState.dateRange = areaTypeDateRange(
       state.analyticsQuantity,
       action.payload,
+      state.areaTypes,
+      state.dateRange);
+  }
+  if (action.key === 'analyticsQuantity' && action.payload !== 'poi_trips') {
+    dependentState.dateRange = areaTypeDateRange(
+      action.payload,
+      state.areaType,
       state.areaTypes,
       state.dateRange);
   }
