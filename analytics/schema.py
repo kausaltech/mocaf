@@ -1,13 +1,16 @@
 from django.contrib.gis.db.models.functions import Transform
 import graphene
+from graphene_django import DjangoObjectType
 from django.db.models.fields import IntegerField
 from django.urls import reverse
-from mocaf.graphql_gis import PointScalar
+from wagtail.core.rich_text import expand_db_html
 
+from mocaf.graphql_gis import PointScalar
 from mocaf.graphql_types import DjangoNode
 
 from utils.i18n import resolve_i18n_field
 from .models import AreaType, Area, DailyTripSummary
+from pages.models import VisualisationGuidePage
 
 
 class AreaNode(graphene.ObjectType):
@@ -89,8 +92,21 @@ class DailyTripSummaryNode(graphene.ObjectType):
     trips = IntegerField()
 
 
+class VisualisationGuidePageNode(DjangoObjectType):
+    class Meta:
+        model = VisualisationGuidePage
+        fields = ['id', 'title', 'body']
+
+    body = graphene.String()
+
+    def resolve_body(root, info):
+        return expand_db_html(root.body)
+
+
 class Analytics(graphene.ObjectType):
     area_types = graphene.List(AreaTypeNode)
+    visualisation_guide = graphene.Field(VisualisationGuidePageNode, id=graphene.ID(required=True))
+    visualisation_guides = graphene.List(VisualisationGuidePageNode)
 
     def resolve_daily_trips(root, info, area_type):
         area_type = AreaType.objects.get(identifier=area_type)
@@ -100,6 +116,21 @@ class Analytics(graphene.ObjectType):
 
     def resolve_area_types(root, info):
         return AreaType.objects.all()
+
+    def resolve_visualisation_guide(root, info, id, **kwargs):
+        return (VisualisationGuidePage.objects
+                .live()
+                .public()
+                .specific()
+                .get(id=id))
+
+    def resolve_visualisation_guides(root, info, **kwargs):
+        return (VisualisationGuidePage.objects
+                .live()
+                .public()
+                .filter(locale__language_code=info.context.language)
+                .specific()
+                .order_by('-first_published_at'))
 
 
 class Query(graphene.ObjectType):

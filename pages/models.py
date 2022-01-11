@@ -28,6 +28,22 @@ class InfoPage(Page):
     parent_page_types = ['pages.InfoPageIndex']
 
 
+class VisualisationGuidePage(Page):
+    body = RichTextField()
+
+    content_panels = Page.content_panels + [
+        FieldPanel('body'),
+    ]
+
+    subpage_types = []
+    parent_page_types = ['pages.VisualisationGuidePageIndex']
+
+
+class VisualisationGuidePageIndex(Page):
+    max_count = 1
+    subpage_types = [VisualisationGuidePage]
+
+
 class BlogPostIndex(Page):
     max_count = 1
     subpage_types = [BlogPost]

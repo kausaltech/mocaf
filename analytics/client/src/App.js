@@ -44,6 +44,11 @@ const GET_AREAS = gql`
           name
         }
       }
+      visualisationGuides {
+        id
+        title
+        body
+      }
     }
     transportModes {
       id
