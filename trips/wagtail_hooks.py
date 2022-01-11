@@ -128,6 +128,8 @@ def add_statistics_panel(request, panels):
     monthly_footprints = pd.DataFrame(data=monthly_footprints)
     bins = [i for i in range(0, 275, 25)] + [float('inf')]
     histograms = []
+    if monthly_footprints.empty:
+        return
     months = list(sorted(monthly_footprints.month.unique()))
     for month in months:
         histogram = list(monthly_footprints[monthly_footprints.month == month]
