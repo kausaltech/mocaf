@@ -1,6 +1,8 @@
+from django.contrib.gis.db.models.functions import Transform
 import graphene
 from django.db.models.fields import IntegerField
 from django.urls import reverse
+from mocaf.graphql_gis import PointScalar
 
 from mocaf.graphql_types import DjangoNode
 
@@ -12,6 +14,7 @@ class AreaNode(graphene.ObjectType):
     id = graphene.ID()
     identifier = graphene.ID()
     name = graphene.String()
+    centroid = PointScalar()
 
 
 class PropertyMeta(graphene.ObjectType):
@@ -31,7 +34,9 @@ class AreaTypeNode(DjangoNode):
     is_poi = graphene.Boolean()
 
     def resolve_areas(root, info):
-        return root.areas.all().values('id', 'identifier', 'name')
+        return root.areas.all()\
+            .values('id', 'identifier', 'name')\
+            .annotate(centroid=Transform('centroid', 4326))
 
     def resolve_topojson_url(root: AreaType, info):
         request = info.context
@@ -63,7 +68,6 @@ class AreaTypeNode(DjangoNode):
         return [dict(identifier=x[0], description=x[1]) for x in root.properties_meta.items()]
 
     def resolve_name(root: AreaType, info):
-        print(root)
         return resolve_i18n_field(root, 'name', info)
 
     class Meta:
