@@ -38,7 +38,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       getLineColor: [0, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
-      onHover: info => setHoverInfo(info), // FIXME: memoize other components than popup
+      onHover: info => setHoverInfo(info),
       //getElevation,
       updateTriggers: {
         getFillColor: colorStateKey
