@@ -11,5 +11,7 @@
   "no-data": "Ei tietoja",
   "traveled-kilometers-share": "Osuus suoritteesta",
   "average": "Keskiarvo",
-  "kilometers-per-day": "km päivässä"
+  "kilometers-per-day": "km päivässä",
+  "visualisation-guide": "Tietoa visualisaatiosta",
+  "close": "Sulje"
 }

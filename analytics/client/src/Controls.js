@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import {Select} from 'baseui/select';
+import {Button, KIND, SIZE, SHAPE} from "baseui/button";
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 import {format, parseISO, differenceInCalendarMonths, addMonths, setDate, lastDayOfMonth} from 'date-fns';
@@ -109,7 +110,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     dispatch(userChoiceSetAction('dateRange', { bounds, range: [start, end] }));
   }
   return (
-    <div style={{gridColumn: '1/4'}} >
+    <div style={{gridColumn: '2/4'}} >
       <Slider value={value.sliderValue}
               onChange={onChange}
               onFinalChange={onFinalChange}
@@ -125,7 +126,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
 
 const Controls = ({userChoices, dynamicOptions}) => {
   const { t } = useTranslation();
-  const [ userChoiceState ] = userChoices;
+  const [ userChoiceState, dispatch ] = userChoices;
   let { transportModes } = dynamicOptions;
   if (userChoiceState.visualisation === 'table') {
     transportModes = transportModes.filter(m => !m.synthetic);
@@ -151,7 +152,16 @@ const Controls = ({userChoices, dynamicOptions}) => {
     <SelectControl lookup='areaType'
                    userChoices={userChoices}
                    values={dynamicOptions.areaTypes} />
-    <DateRangeSlider userChoices={userChoices} />
+      <div style={{paddingTop: "5px"}}>
+        <Button
+          kind={KIND.tertiary}
+          size={SIZE.mini}
+          shape={SHAPE.pill}
+          onClick={(e) => dispatch({type: 'set', key: 'modalVisible', payload: true})} >
+          ⓘ {t('visualisation-guide')}
+        </Button>
+      </div>
+      <DateRangeSlider userChoices={userChoices} />
     <SelectControl
       userChoices={userChoices}
       lookup='transportMode'

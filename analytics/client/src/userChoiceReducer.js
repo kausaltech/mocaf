@@ -13,7 +13,8 @@ export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
     transportMode: 'walk',
     areaType: initialAreaType,
     analyticsQuantity: 'lengths',
-    areaTypes
+    areaTypes,
+    modalVisible: false,
   };
   defaults.dateRange = areaTypeDateRange(
     defaults.analyticsQuantity,

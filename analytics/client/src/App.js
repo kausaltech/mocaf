@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from './common/i18n';
 import { TransportModeShareMap, POIMap } from './Map';
 import Controls from './Controls';
+import VisualisationGuideModal from './VisualisationGuideModal';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initializeUserChoiceState} from './userChoiceReducer';
 import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
@@ -58,7 +59,7 @@ const GET_AREAS = gql`
   }
 `;
 
-export function MocafAnalytics({ transportModes, areaTypes }) {
+export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideContents }) {
   const administrativeAreaTypes = areaTypes.filter(areaType => !areaType.isPoi);
   const [userChoiceState, dispatch] = useReducer(
     userChoiceReducer, ['tre:tilastoalue', administrativeAreaTypes], initializeUserChoiceState);
@@ -124,11 +125,15 @@ export function MocafAnalytics({ transportModes, areaTypes }) {
                   dynamicOptions={{transportModes, areaTypes}}
         />
       </Layer>
+      <VisualisationGuideModal
+        contents={visualisationGuideContents}
+        visible={userChoiceState.modalVisible}
+        dispatch={dispatch} />
       <div style={{width: '100vw', height: '100vh', paddingTop: '180px'}}>
-          {visComponent}
+        {visComponent}
+      </div>
     </div>
-  </div>
-)
+  )
 }
 
 export function App() {
@@ -143,7 +148,8 @@ export function App() {
   } else {
     mainComponent = <MocafAnalytics
                       transportModes={preprocessTransportModes(data.transportModes, i18n.language)}
-                      areaTypes={data.analytics.areaTypes} />
+                      areaTypes={data.analytics.areaTypes}
+                      visualisationGuideContents={data.analytics.visualisationGuides}/>
   }
   return (
     <StyletronProvider value={engine}>
