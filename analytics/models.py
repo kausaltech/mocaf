@@ -46,7 +46,7 @@ class AreaType(models.Model):
             min_date=models.Min('date'),
             max_date=models.Max('date')
         )
-        self.daily_trips_date_range = [ret['min_date'], ret['max_date']]
+        self.daily_lengths_date_range = [ret['min_date'], ret['max_date']]
 
         ret = DailyTripSummary.objects.filter(
             models.Q(origin__type=self) | models.Q(dest__type=self)
@@ -54,7 +54,7 @@ class AreaType(models.Model):
             min_date=models.Min('date'),
             max_date=models.Max('date')
         )
-        self.daily_lengths_date_range = [ret['min_date'], ret['max_date']]
+        self.daily_trips_date_range = [ret['min_date'], ret['max_date']]
 
         ret = DailyPoiTripSummary.objects.filter(models.Q(poi__type=self)).aggregate(
             min_date=models.Min('date'),
