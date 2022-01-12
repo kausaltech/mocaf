@@ -182,8 +182,11 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
     topFiveAreas = areaData
       .params({poiId: popupData.poiId})
       .filter((d, $) => d.poiId === $.poiId)
-      .select('areaId', 'isInbound', 'trips', 'poiId')
-      .orderby('isInbound', aq.desc('trips'))
+      .select('areaId', 'isInbound', 'trips', 'poiId', 'mode')
+      .groupby('isInbound', 'areaId')
+      .rollup({'total_trips': aq.op.sum('trips')})
+      .ungroup()
+      .orderby(aq.desc('total_trips'))
       .groupby('isInbound')
       .slice(0, 5)
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
@@ -225,7 +228,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       return;
     }
     const key = inbound ? 'inbound' : 'outbound';
-    return (<table key={key} style={{float: 'left'}}>
+    return (<table key={key} style={{float: 'left', marginRight: '10px'}}>
               <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
                 { inbound ? 'Top 5 lähtöpaikat' : 'Top 5 kohteet'}
               </caption>
@@ -233,7 +236,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
               { group.map(row => (
                 <tr key={`${row.poiId}_${row.name}_${inbound}`}>
                   <td>{row.name}</td>
-                  <td>{row.trips}</td>
+                  <td>{row.total_trips}</td>
                 </tr>
               ))
               }
