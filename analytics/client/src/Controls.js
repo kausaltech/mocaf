@@ -162,10 +162,17 @@ const Controls = ({userChoices, dynamicOptions}) => {
         </Button>
       </div>
       <DateRangeSlider userChoices={userChoices} />
-    <SelectControl
-      userChoices={userChoices}
-      lookup='transportMode'
-      values={transportModes} />
+      {
+        userChoices[0].analyticsQuantity === 'poi_trips' ?
+        <Select
+          clearable={false}
+          disabled={true}
+          placeholder={['Kaikki kulkumuodot']} /> :
+        <SelectControl
+          userChoices={userChoices}
+          lookup='transportMode'
+          values={transportModes} />
+      }
     </div>
   );
 }
