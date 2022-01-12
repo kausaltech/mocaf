@@ -16,16 +16,20 @@ import Popup from './Popup.js';
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey }) {
-  const { bbox, geojson } = geoData;
-  const [hoverInfo, setHoverInfo] = useState({});
-  const initialView = {
+function getInitialView(bbox) {
+  return {
     longitude: (bbox[0] + bbox[2]) / 2,
     latitude: (bbox[1] + bbox[3]) / 2,
     zoom: 9,
     pitch: 0,
     bearing: 0,
   };
+}
+
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey }) {
+  const { bbox, geojson } = geoData;
+  const [hoverInfo, setHoverInfo] = useState({});
+  const initialView = getInitialView(bbox);
   const layers = [
     new GeoJsonLayer({
       id: 'area-layer',
@@ -152,11 +156,109 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
 
 
 export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode }) {
+  const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
   if (!poiGeoData || !geoData || !areaData) return <Spinner />;
 
-  areaData.print();
+  const { bbox, geojson } = geoData;
 
-  return <div />;
+  const initialView = getInitialView(bbox);
+  const areaTable = aq.from(areaType.areas).derive({areaId: a => op.parse_int(a.id)})
+  const popupData = {
+    poiId: hoverInfo.object?.properties.id
+  }
+  let topFiveAreas;
+  if (popupData.poiId) {
+    topFiveAreas = areaData
+      .params({poiId: popupData.poiId})
+      .filter((d, $) => d.poiId === $.poiId)
+      .select('areaId', 'isInbound', 'trips')
+      .orderby('isInbound', aq.desc('trips'))
+      .groupby('isInbound')
+      .slice(0, 5)
+      .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
+  }
+
+  const layers = [
+    new GeoJsonLayer({
+      id: 'area-layer',
+      data: geojson,
+      pickable: true,
+      stroked: true,
+      filled: true,
+      //extruded: !!getElevation,
+      getFillColor: [255, 255, 255, 0],
+      getLineColor: [0, 0, 0, 40],
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 2,
+      //getElevation,
+      // updateTriggers: {
+      //   getFillColor: colorStateKey
+      // }
+    }),
+    new GeoJsonLayer({
+      id: 'poi-layer',
+      data: poiGeoData,
+      pickable: true,
+      stroked: true,
+      filled: true,
+      //extruded: !!getElevation,
+      getFillColor: [255, 255, 255, 200],
+      getLineColor: [127, 0, 0, 200],
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 3,
+      onHover: info => setHoverInfo(info),
+      // updateTriggers: {
+      //   getFillColor: [
+      //     this.state.hoveredObject
+      //       ? this.state.hoveredObject.properties.id
+      //       : null
+      //   ]
+      // },
+      // onHover: info => setHoverInfo(info),
+      //getElevation,
+      // updateTriggers: {
+      //   getFillColor: colorStateKey
+      // }
+    }),
+
+  ];
+  const groups = topFiveAreas?.groupby('isInbound')
+        .objects({grouped: true})
+
+  return (
+    <div>
+      <Layer>
+        <div style={{position: 'fixed', bottom: '100px', left: '10px', width: '600px', height: '300px'}}>
+          { groups ? [false, true].map(inbound => {
+            const group = groups.get(inbound);
+            if (group == null) {
+              return;
+            }
+            return (<table style={{float: 'left'}}>
+                     <caption>
+                       { inbound ? 'Top 5 lähtöpaikat' : 'Top 5 kohteet'}
+                     </caption>
+                     { group.map(row => (
+                         <tr>
+                           <td>{row.name}</td>
+                           <td>{row.trips}</td>
+                         </tr>
+                       ))
+                     }
+                    </table>);
+          }) : null}
+        </div>
+      </Layer>
+    <DeckGL initialViewState={initialView}
+            controller={true}
+            layers={layers}>
+      <StaticMap reuseMaps
+                 mapStyle={MAP_STYLE}
+                 preventStyleDiffing={true}
+                 mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
+    </DeckGL>
+    </div>
+  );
 }
