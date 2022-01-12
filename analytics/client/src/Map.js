@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
+import { useTranslation } from 'react-i18next';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Layer } from 'baseui/layer';
 import chroma from 'chroma-js';
@@ -156,6 +157,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
 
 
 export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode }) {
+  const { t } = useTranslation();
   const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
@@ -192,7 +194,6 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
   }
 
-
   const layers = [
     new GeoJsonLayer({
       id: 'area-layer',
@@ -222,7 +223,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
   const groups = topFiveAreas?.groupby('isInbound')
         .objects({grouped: true})
   const popupTitle = <strong>{popupData?.poiName}</strong>;
-  const popupContents = groups ? [false, true].map(inbound => {
+  const popupContents = groups ? [true, false].map(inbound => {
     const group = groups.get(inbound);
     if (group == null) {
       return;
@@ -230,7 +231,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
     const key = inbound ? 'inbound' : 'outbound';
     return (<table key={key} style={{float: 'left', marginRight: '10px'}}>
               <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
-                { inbound ? 'Top 5 lähtöpaikat' : 'Top 5 kohteet'}
+                { inbound ? t('top-origins') : t('top-destinations')}
               </caption>
               <tbody >
               { group.map(row => (

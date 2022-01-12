@@ -3,6 +3,7 @@
   "weekends": "Viikonloput",
   "transportation-kms": "Matkustuskilometrit",
   "trips": "Matkat",
+  "poi-trips": "Paikkakohtaiset matkat",
   "map": "Kartta",
   "table": "Taulukko",
   "workdays": "Arkipäivät",
@@ -13,5 +14,7 @@
   "average": "Keskiarvo",
   "kilometers-per-day": "km/pv",
   "visualisation-guide": "Tietoa palvelusta",
-  "close": "Sulje"
+  "close": "Sulje",
+  "top-destinations": "Top 5 määränpäät",
+  "top-origins": "Top 5 lähtöpaikat"
 }
