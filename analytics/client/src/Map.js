@@ -127,7 +127,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     if (!area.data) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
-    const average = area.data['total'] / rangeLength;
+    const average = area.data[modeId] / rangeLength;
     const syntheticModes = [
       {
         name: modeById.get('walk_and_bicycle').name,

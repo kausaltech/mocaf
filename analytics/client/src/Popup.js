@@ -17,18 +17,17 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode, s
            <Block style={{ padding: '0.5em' }}>
              <div style={{ marginBottom: '0.5em' }}>
                <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}<br/>
-               {`${t('average')}: ${formatFloat(average)} ${t('kilometers-per-day')}`}
              </div>
              <div>
                <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
-               <FigureElement {...{rel, abs, syntheticModes}} />
+               <FigureElement {...{rel, average, syntheticModes}} />
                {children}
              </div>
            </Block>
          </div>
 }
 
-function FigureElement ({rel, abs, syntheticModes}) {
+function FigureElement ({rel, average, syntheticModes}) {
   const { t } = useTranslation();
   if (isNaN(rel)) {
     return t('no-data');
@@ -40,7 +39,7 @@ function FigureElement ({rel, abs, syntheticModes}) {
     }</div>);
   return <>
            {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
-           {abs != 0 && !isNaN(abs) && ` (${formatDecimal(abs)} km)`}
+           {average != 0 && !isNaN(average) && ` (${formatDecimal(average)} ${t('kilometers-per-day')})`}
            {syntheticFigures}
          </>
 }
