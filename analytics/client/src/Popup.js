@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
-export default function Popup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average}) {
-  const { t } = useTranslation();
+export function Popup ({y, x, children, title}) {
   return <div style={{
                 position: 'absolute',
                 top: y,
@@ -16,15 +15,25 @@ export default function Popup ({y, x, children, rel, area, abs, transportMode, s
               }}>
            <Block style={{ padding: '0.5em' }}>
              <div style={{ marginBottom: '0.5em' }}>
-               <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}<br/>
+               { title }
              </div>
-             <div>
+             { children }
+           </Block>
+         </div>
+}
+
+export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average}) {
+  const { t } = useTranslation();
+  const title = <>
+                  <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
+                </>
+
+  const contents = <div>
                <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
                <FigureElement {...{rel, average, syntheticModes}} />
                {children}
              </div>
-           </Block>
-         </div>
+  return <Popup x={x} y={y} children={contents} title={title}/>
 }
 
 function FigureElement ({rel, average, syntheticModes}) {

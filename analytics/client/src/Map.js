@@ -11,7 +11,7 @@ import * as aq from 'arquero';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { useAreaTopo, usePoiGeojson } from './data';
-import Popup from './Popup.js';
+import { Popup, AreaPopup } from './Popup.js';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
@@ -55,7 +55,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
     <div>
       { hoverInfo.object && (
         <Layer>
-          <Popup
+          <AreaPopup
             x={hoverInfo.x}
             y={hoverInfo.y}
             {...popupValues}
@@ -159,26 +159,36 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
   const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
+  const poiById = new Map(poiType.areas.map(a => [Number(a.id), {name: a.name, identifier: a.identifier}]));
   if (!poiGeoData || !geoData || !areaData) return <Spinner />;
 
   const { bbox, geojson } = geoData;
 
   const initialView = getInitialView(bbox);
   const areaTable = aq.from(areaType.areas).derive({areaId: a => op.parse_int(a.id)})
-  const popupData = {
-    poiId: hoverInfo.object?.properties.id
+  let popupData;
+  if (hoverInfo.object != null && hoverInfo.object.properties != null) {
+    const poiId = hoverInfo.object.properties.id;
+    const poi = poiById.get(poiId);
+    if (poi != null) {
+      popupData = {
+        poiId: poiId,
+        poiName: poi.name
+      }
+    }
   }
   let topFiveAreas;
-  if (popupData.poiId) {
+  if (popupData?.poiId) {
     topFiveAreas = areaData
       .params({poiId: popupData.poiId})
       .filter((d, $) => d.poiId === $.poiId)
-      .select('areaId', 'isInbound', 'trips')
+      .select('areaId', 'isInbound', 'trips', 'poiId')
       .orderby('isInbound', aq.desc('trips'))
       .groupby('isInbound')
       .slice(0, 5)
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
   }
+
 
   const layers = [
     new GeoJsonLayer({
@@ -187,15 +197,10 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       pickable: true,
       stroked: true,
       filled: true,
-      //extruded: !!getElevation,
       getFillColor: [255, 255, 255, 0],
       getLineColor: [0, 0, 0, 40],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
-      //getElevation,
-      // updateTriggers: {
-      //   getFillColor: colorStateKey
-      // }
     }),
     new GeoJsonLayer({
       id: 'poi-layer',
@@ -203,53 +208,43 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       pickable: true,
       stroked: true,
       filled: true,
-      //extruded: !!getElevation,
       getFillColor: [255, 255, 255, 200],
       getLineColor: [127, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 3,
       onHover: info => setHoverInfo(info),
-      // updateTriggers: {
-      //   getFillColor: [
-      //     this.state.hoveredObject
-      //       ? this.state.hoveredObject.properties.id
-      //       : null
-      //   ]
-      // },
-      // onHover: info => setHoverInfo(info),
-      //getElevation,
-      // updateTriggers: {
-      //   getFillColor: colorStateKey
-      // }
     }),
 
   ];
   const groups = topFiveAreas?.groupby('isInbound')
         .objects({grouped: true})
+  const popupTitle = <strong>{popupData?.poiName}</strong>;
+  const popupContents = groups ? [false, true].map(inbound => {
+    const group = groups.get(inbound);
+    if (group == null) {
+      return;
+    }
+    const key = inbound ? 'inbound' : 'outbound';
+    return (<table key={key} style={{float: 'left'}}>
+              <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
+                { inbound ? 'Top 5 lähtöpaikat' : 'Top 5 kohteet'}
+              </caption>
+              <tbody >
+              { group.map(row => (
+                <tr key={`${row.poiId}_${row.name}_${inbound}`}>
+                  <td>{row.name}</td>
+                  <td>{row.trips}</td>
+                </tr>
+              ))
+              }
+              </tbody>
+            </table>);
+  }) : null;
 
   return (
     <div>
       <Layer>
-        <div style={{position: 'fixed', bottom: '100px', left: '10px', width: '600px', height: '300px'}}>
-          { groups ? [false, true].map(inbound => {
-            const group = groups.get(inbound);
-            if (group == null) {
-              return;
-            }
-            return (<table style={{float: 'left'}}>
-                     <caption>
-                       { inbound ? 'Top 5 lähtöpaikat' : 'Top 5 kohteet'}
-                     </caption>
-                     { group.map(row => (
-                         <tr>
-                           <td>{row.name}</td>
-                           <td>{row.trips}</td>
-                         </tr>
-                       ))
-                     }
-                    </table>);
-          }) : null}
-        </div>
+        { popupContents && <Popup x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}

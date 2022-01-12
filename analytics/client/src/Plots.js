@@ -5,7 +5,7 @@ import Plot from 'react-plotly.js';
 import * as aq from 'arquero';
 import lodash from 'lodash';
 
-import Popup from './Popup';
+import {AreaPopup as Popup } from './Popup';
 
 export function OriginDestinationMatrix({ transportModes, areaType, areaData, mode }) {
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
