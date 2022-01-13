@@ -22,7 +22,7 @@ class FeedInfo(models.Model):
         db_table = 'gtfs\".\"feed_info'
 
     def __str__(self):
-        return 'Feed %d: %s' % (self.feed_index, str(self.agency))
+        return 'Feed %d: %s' % (self.feed_index, str(self.agencies))
 
 
 class Agency(models.Model):
