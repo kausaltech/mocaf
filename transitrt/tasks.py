@@ -1,4 +1,5 @@
 import logging
+import requests
 from transitrt.rt_import import make_importer
 from celery import shared_task
 
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 importer_instances = {}
 
 
-@shared_task(ignore_result=True)
+@shared_task(ignore_result=True, throws=(requests.ReadTimeout,))
 def fetch_live_locations(importer_id):
     rt_importer = importer_instances.get(importer_id)
     if rt_importer is None:
