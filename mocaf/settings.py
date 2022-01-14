@@ -18,6 +18,8 @@ from celery.schedules import crontab
 from corsheaders.defaults import default_headers as default_cors_headers  # noqa
 from django.utils.translation import gettext_lazy as _
 
+from .sentry_handler import before_send_sentry_handler
+
 
 root = environ.Path(__file__) - 2  # two folders back
 
@@ -377,6 +379,7 @@ if not locals().get('SECRET_KEY', ''):
         except IOError:
             Exception('Please create a %s file with random characters to generate your secret key!' % secret_file)
 
+
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
@@ -386,6 +389,7 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         send_default_pii=True,
         traces_sample_rate=0.1,
+        before_send=before_send_sentry_handler,
         integrations=[DjangoIntegration()],
         environment='development' if DEBUG else 'production'
     )

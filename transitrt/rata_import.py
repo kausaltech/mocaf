@@ -5,6 +5,8 @@ from django.utils import timezone
 from dateutil.parser import isoparse
 import requests
 from .rt_import import TransitRTImporter
+from .exceptions import CommonTaskFailure
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,11 @@ GRAPHQL_URL = 'https://rata.digitraffic.fi/api/v2/graphql/graphql'
 
 class RataImporter(TransitRTImporter):
     def perform_http_query(self):
-        resp = requests.post(GRAPHQL_URL, json={'query': GRAPHQL_QUERY}, timeout=(10, 10))
+        try:
+            resp = requests.post(GRAPHQL_URL, json={'query': GRAPHQL_QUERY}, timeout=(10, 10))
+        except (requests.ReadTimeout, requests.ConnectTimeout, requests.ConnectionError):
+            raise CommonTaskFailure('There was a network error when retrieving Rata live data.')
+
         resp.raise_for_status()
         return resp.content
 

@@ -1,0 +1,2 @@
+class CommonTaskFailure(Exception):
+    pass
