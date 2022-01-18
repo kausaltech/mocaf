@@ -175,7 +175,7 @@ function POICounterPartModeBar({row, inbound, scale}) {
   }
   return (
     <tr>
-      <td style={{paddingRight: '4px'}}>{row.name}</td>
+      <td style={{paddingRight: '4px', textAlign: 'right'}}>{row.name}</td>
       <td style={{position: 'relative', width: '100px', borderLeft: '1px solid black'}}>
         {specs.map((spec, index) => (
           <div key={index} style={{
