@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
-export function Popup ({y, x, children, title}) {
+export function Popup ({y, x, children, title, maxWidth}) {
+  const popupWidth = maxWidth ?? 150;
+  const adaptedX = Math.min(window.innerWidth - popupWidth, x);
   return <div style={{
                 position: 'absolute',
                 top: y,
-                left: x,
+                left: adaptedX,
                 pointerEvents: 'none',
                 backgroundColor: 'white',
                 borderRadius: '0.5em',
@@ -24,6 +26,9 @@ export function Popup ({y, x, children, title}) {
 
 export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average}) {
   const { t } = useTranslation();
+  if (area == null) {
+    return null;
+  }
   const title = <>
                   <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
                 </>
@@ -33,7 +38,7 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
                <FigureElement {...{rel, average, syntheticModes}} />
                {children}
              </div>
-  return <Popup x={x} y={y} children={contents} title={title}/>
+  return <Popup x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
 function FigureElement ({rel, average, syntheticModes}) {

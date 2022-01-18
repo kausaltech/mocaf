@@ -289,7 +289,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
   return (
     <div>
       <Layer>
-        { popupContents && <Popup x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
+        { popupContents && <Popup maxWidth={560} x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}
