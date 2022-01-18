@@ -109,6 +109,7 @@ function preprocessTrips(resultSet) {
 
 function preprocessPoiTrips(resultSet) {
   let table = aq.from(resultSet.rawData())
+    .impute({ 'TransportModes.identifier': () => 'other' })
     .derive({
       trips: d => aq.op.parse_int(d['DailyPoiTrips.totalTrips'])
     })
