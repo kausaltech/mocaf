@@ -155,9 +155,60 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
   );
 }
 
+function POICounterPartModeBar({row, inbound, scale}) {
+  const colors = [
+    "#ff0000",
+    "#0ff000",
+    "#00ff00",
+    "#000ff0",
+    "#0000ff",
+    "#00000f",
+    "#f00000"
+  ]
+  const specs = Object.keys(row.breakdown).map((k, index) => ({
+    color: colors[index],
+    x: Math.round((100*row.breakdown[k]/scale)) - 1,
+    cumulativeX: 0
+  })).sort((a, b) => (b.x - a.x));
+  for (let i = 0; i < specs.length - 1; i++) {
+    specs[i+1].cumulativeX += 1 + specs[i].x + specs[i].cumulativeX;
+  }
+  return (
+    <tr>
+      <td style={{paddingRight: '4px'}}>{row.name}</td>
+      <td style={{position: 'relative', width: '100px', borderLeft: '1px solid black'}}>
+        {specs.map((spec, index) => (
+          <div key={index} style={{
+                 position: 'absolute',
+                 top: 5, left: `${spec.cumulativeX}px`,
+                 width: `${spec.x}px`,
+                 height: '15px',
+                 backgroundColor: colors[index]}} />))
+        }</td>
+    </tr>
+  )
+}
+
+function POICounterPartsTable({inbound, group}) {
+  const { t } = useTranslation();
+  const scale = group[0].total_trips;
+  return (<table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
+                 style={{float: 'left', marginRight: '10px'}}>
+            <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
+              { inbound ? t('top-origins') : t('top-destinations')}
+            </caption>
+            <tbody>
+              {group.map((row) => (
+                <POICounterPartModeBar row={row}
+                                       inbound={inbound}
+                                       scale={scale}
+                                       key={`${row.poiId}_${row.name}_${inbound}`} />
+              ))}
+            </tbody>
+          </table>)
+}
 
 export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode }) {
-  const { t } = useTranslation();
   const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
@@ -186,7 +237,8 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       .filter((d, $) => d.poiId === $.poiId)
       .select('areaId', 'isInbound', 'trips', 'poiId', 'mode')
       .groupby('isInbound', 'areaId')
-      .rollup({'total_trips': aq.op.sum('trips')})
+      .rollup({total_trips: aq.op.sum('trips'),
+               breakdown: aq.op.object_agg('mode', 'trips')})
       .ungroup()
       .orderby(aq.desc('total_trips'))
       .groupby('isInbound')
@@ -228,21 +280,10 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
     if (group == null) {
       return;
     }
-    const key = inbound ? 'inbound' : 'outbound';
-    return (<table key={key} style={{float: 'left', marginRight: '10px'}}>
-              <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
-                { inbound ? t('top-origins') : t('top-destinations')}
-              </caption>
-              <tbody >
-              { group.map(row => (
-                <tr key={`${row.poiId}_${row.name}_${inbound}`}>
-                  <td>{row.name}</td>
-                  <td>{row.total_trips}</td>
-                </tr>
-              ))
-              }
-              </tbody>
-            </table>);
+    return <POICounterPartsTable
+             inbound={inbound}
+             group={group}
+           />;
   }) : null;
 
   return (
