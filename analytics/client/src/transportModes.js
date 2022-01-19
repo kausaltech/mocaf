@@ -1,3 +1,5 @@
+import lodash from 'lodash';
+
 const colors = {
   walk: {
     primary: '#e0b565',
@@ -57,6 +59,29 @@ export const syntheticModes = [
 ]
 
 const extender = (ext) => ((o) => (Object.assign({}, o, ext(o))));
+
+export function orderedTransportModeIdentifiers (transportModes, selectedTransportMode) {
+  const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+
+  let modeGroups = syntheticModes.map(m => m.components);
+
+  const selected = selectedTransportMode.identifier;
+  const groupedPrimaryModes = lodash.flatten(modeGroups);
+  const singleModeGroups = primaryModes
+    .filter(m => !groupedPrimaryModes.includes(m.identifier))
+    .map(m => [m.identifier]);
+
+  modeGroups = modeGroups
+    .concat(singleModeGroups)
+    .sort((a, b) => (
+      a.includes(selected) ? -1 :
+      b.includes(selected) ? 1 :
+      a.includes('car') ? -1 :
+      b.includes('car') ? 1 :
+      0));
+  return lodash.flatten(modeGroups).sort((a, b) => a === selected ? -1 : 0);
+
+}
 
 export default function preprocessTransportModes(transportModes, language) {
   const translatedSyntheticModes = syntheticModes.map(

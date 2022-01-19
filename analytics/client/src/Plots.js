@@ -6,6 +6,7 @@ import * as aq from 'arquero';
 import lodash from 'lodash';
 
 import {AreaPopup as Popup } from './Popup';
+import {orderedTransportModeIdentifiers} from './transportModes';
 
 export function OriginDestinationMatrix({ transportModes, areaType, areaData, mode }) {
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
@@ -89,26 +90,8 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
   if (!areaData)
     return <Spinner />;
 
-  const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
-
-  let modeGroups = syntheticModes.map(m => m.components);
-
-  const selected = selectedTransportMode.identifier;
-  const groupedPrimaryModes = lodash.flatten(modeGroups);
-  const singleModeGroups = primaryModes
-    .filter(m => !groupedPrimaryModes.includes(m.identifier))
-    .map(m => [m.identifier]);
-
-  modeGroups = modeGroups
-    .concat(singleModeGroups)
-    .sort((a, b) => (
-      a.includes(selected) ? -1 :
-      b.includes(selected) ? 1 :
-      a.includes('car') ? -1 :
-      b.includes('car') ? 1 :
-      0));
-  const modeOrder = lodash.flatten(modeGroups).sort((a, b) => a === selected ? -1 : 0);
-
+  const modeOrder = orderedTransportModeIdentifiers(transportModes, selectedTransportMode);
+  const primaryModes = transportModes.filter(m => !m.synthetic);
   const modeById = new Map(primaryModes.map(m => [m.identifier, m]));
   const availableModes = modeOrder.filter(mode => areaData.columnNames().includes(mode) && modeById.has(mode));
   const table = areaData
