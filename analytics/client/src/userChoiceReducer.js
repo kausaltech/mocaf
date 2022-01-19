@@ -34,8 +34,21 @@ function restrictDateRange({range, bounds}) {
 }
 
 function areaTypeDateRange(analyticsQuantity, areaTypeIdentifier, areaTypes, dateRange) {
-  const { dailyLengthsDateRange, dailyTripsDateRange } = areaTypes.find(a => a.identifier === areaTypeIdentifier);
-  const rangeStrings = (analyticsQuantity === 'lengths' ? dailyLengthsDateRange : dailyTripsDateRange);
+  if (analyticsQuantity === 'poi_trips') {
+    areaTypeIdentifier = 'tre:poi';
+  }
+  const { dailyLengthsDateRange, dailyTripsDateRange, dailyPoiTripsDateRange } = areaTypes.find(
+    a => a.identifier === areaTypeIdentifier);
+  let rangeStrings;
+  if (analyticsQuantity === 'lengths') {
+    rangeStrings = dailyLengthsDateRange;
+  }
+  if (analyticsQuantity === 'trips') {
+    rangeStrings = dailyTripsDateRange;
+  }
+  if (analyticsQuantity === 'poi_trips') {
+    rangeStrings = dailyPoiTripsDateRange;
+  }
   let bounds;
   if (rangeStrings === null) {
     bounds = defaultDateBounds;
@@ -63,7 +76,7 @@ export function userChoiceReducer (state, action) {
       state.areaTypes,
       state.dateRange);
   }
-  if (action.key === 'analyticsQuantity' && action.payload !== 'poi_trips') {
+  if (action.key === 'analyticsQuantity') {
     dependentState.dateRange = areaTypeDateRange(
       action.payload,
       state.areaType,

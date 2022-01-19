@@ -37,6 +37,7 @@ const GET_AREAS = gql`
         identifier
         name
         dailyTripsDateRange
+        dailyPoiTripsDateRange
         dailyLengthsDateRange
         isPoi
         areas {
@@ -62,7 +63,7 @@ const GET_AREAS = gql`
 export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideContents }) {
   const administrativeAreaTypes = areaTypes.filter(areaType => !areaType.isPoi);
   const [userChoiceState, dispatch] = useReducer(
-    userChoiceReducer, ['tre:tilastoalue', administrativeAreaTypes], initializeUserChoiceState);
+    userChoiceReducer, ['tre:tilastoalue', areaTypes], initializeUserChoiceState);
   const poiAreaTypes = areaTypes.filter(areaType => areaType.isPoi);
   const poiType = poiAreaTypes[0];
   const areaType = administrativeAreaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
@@ -126,7 +127,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
     <div style={{display: 'flex', height: '100vh'}}>
       <Layer>
         <Controls userChoices={[userChoiceState, dispatch]}
-                  dynamicOptions={{transportModes, areaTypes}}
+                  dynamicOptions={{transportModes, areaTypes: administrativeAreaTypes}}
         />
       </Layer>
       <VisualisationGuideModal
