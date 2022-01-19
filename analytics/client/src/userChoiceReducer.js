@@ -70,6 +70,9 @@ export function userChoiceReducer (state, action) {
       state.areaTypes,
       state.dateRange);
   }
+  if (action.key === 'analyticsQuantity' && action.payload === 'poi_trips') {
+    dependentState.visualisation = 'choropleth-map';
+  }
   if (action.key == 'dateRange') {
     action.payload = restrictDateRange(action.payload);
   }
