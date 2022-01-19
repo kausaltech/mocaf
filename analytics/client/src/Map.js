@@ -28,6 +28,12 @@ function getInitialView(bbox) {
   };
 }
 
+const getCursor = ({isHovering, isDragging}) => (
+  isHovering ? 'pointer' :
+  isDragging ? 'grabbing' :
+   'grab'
+)
+
 function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
@@ -68,6 +74,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
         initialViewState={initialView}
         controller={true}
         layers={layers}
+        getCursor={getCursor}
         >
           <StaticMap reuseMaps mapStyle={MAP_STYLE} preventStyleDiffing={true} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
       </DeckGL>
@@ -242,16 +249,24 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       .slice(0, 5)
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
   }
+  const getFillColor = (d) => {
+    if (hoverInfo?.object?.properties == null) {
+      return [255,255,255,200];
+    }
+    if (d.properties.id === hoverInfo.object.properties.id) {
+      return [255,220,80,150];
+    }
+    return [255,255,255,200];
+  }
 
   const layers = [
     new GeoJsonLayer({
       id: 'area-layer',
       data: geojson,
-      pickable: true,
+      pickable: false,
       stroked: true,
-      filled: true,
-      getFillColor: [255, 255, 255, 0],
-      getLineColor: [0, 0, 0, 40],
+      filled: false,
+      getLineColor: [0, 0, 0, 80],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
     }),
@@ -261,10 +276,17 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       pickable: true,
       stroked: true,
       filled: true,
-      getFillColor: [255, 255, 255, 200],
+      getFillColor,
       getLineColor: [127, 0, 0, 200],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 3,
+      updateTriggers: {
+        getFillColor: [
+          hoverInfo
+            ? hoverInfo?.object?.properties?.id
+            : null
+        ]
+      },
       onHover: info => setHoverInfo(info),
     }),
 
@@ -292,6 +314,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}
+            getCursor={getCursor}
             layers={layers}>
       <StaticMap reuseMaps
                  mapStyle={MAP_STYLE}
