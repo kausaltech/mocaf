@@ -51,10 +51,10 @@ class TamperePOIImporter(AreaImporter):
         areas = []
         for name in POIS:
             cursor.execute(f"""
-                SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
+                SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way), way_area
                     FROM planet_osm_polygon
                     WHERE
-                        name = %s 
+                        name = %s
                         AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
                     ORDER BY
                         ST_Area(way) DESC
@@ -66,7 +66,7 @@ class TamperePOIImporter(AreaImporter):
                     SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
                         FROM planet_osm_point
                         WHERE
-                            name = %s 
+                            name = %s
                             AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
                 """, params=(name, *bbox))
                 rows = cursor.fetchall()
@@ -75,10 +75,20 @@ class TamperePOIImporter(AreaImporter):
                 print('%s: no match' % name)
             else:
                 print('%s: match' % name)
+                index = 0
                 if len(rows) != 1:
                     print(rows)
-                    print('Too many matches for %s' % name)
-                row = rows[0]
+                    print('Too many matches for %s, selecting smallest area' % name)
+                    min_index = 0
+                    if len(rows[0]) == 5:
+                        for i, val in enumerate(rows):
+                            try:
+                                if float(val[4]) < float(rows[min_index][4]):
+                                    min_index = i
+                            except ValueError:
+                                break
+                        index = min_index
+                row = rows[index]
                 poly = GEOSGeometry(row[2])
                 areas.append(dict(
                     name=name,
