@@ -13,6 +13,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { useAreaTopo, usePoiGeojson } from './data';
 import { Popup, AreaPopup } from './Popup.js';
+import { orderedTransportModeIdentifiers } from './transportModes';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
@@ -155,21 +156,14 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
   );
 }
 
-function POICounterPartModeBar({row, inbound, scale}) {
-  const colors = [
-    "#ff0000",
-    "#0ff000",
-    "#00ff00",
-    "#000ff0",
-    "#0000ff",
-    "#00000f",
-    "#f00000"
-  ]
-  const specs = Object.keys(row.breakdown).map((k, index) => ({
-    color: colors[index],
+function POICounterPartModeBar({row, inbound, scale, transportModes, orderedModeIds}) {
+  const currentModes = Object.keys(row.breakdown);
+  orderedModeIds = orderedModeIds.filter(m => currentModes.includes(m));
+  const specs = orderedModeIds.map((k, index) => ({
+    color: transportModes.get(k),
     x: Math.round((100*row.breakdown[k]/scale)) - 1,
     cumulativeX: 0
-  })).sort((a, b) => (b.x - a.x));
+  }))
   for (let i = 0; i < specs.length - 1; i++) {
     specs[i+1].cumulativeX += 1 + specs[i].x + specs[i].cumulativeX;
   }
@@ -183,13 +177,14 @@ function POICounterPartModeBar({row, inbound, scale}) {
                  top: 5, left: `${spec.cumulativeX}px`,
                  width: `${spec.x}px`,
                  height: '15px',
-                 backgroundColor: colors[index]}} />))
-        }</td>
+                 backgroundColor: spec.color}} />))
+        }
+      </td>
     </tr>
   )
 }
 
-function POICounterPartsTable({inbound, group}) {
+function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) {
   const { t } = useTranslation();
   const scale = group[0].total_trips;
   return (<table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
@@ -202,6 +197,8 @@ function POICounterPartsTable({inbound, group}) {
                 <POICounterPartModeBar row={row}
                                        inbound={inbound}
                                        scale={scale}
+                                       transportModes={transportModes}
+                                       orderedModeIds={orderedModeIds}
                                        key={`${row.poiId}_${row.name}_${inbound}`} />
               ))}
             </tbody>
@@ -283,6 +280,8 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
     return <POICounterPartsTable
              inbound={inbound}
              group={group}
+             transportModes={new Map(transportModes.map(m => [m.identifier, m.colors.primary]))}
+             orderedModeIds={orderedTransportModeIdentifiers(transportModes, 'car')}
            />;
   }) : null;
 
