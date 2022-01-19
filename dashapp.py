@@ -3,7 +3,7 @@ import os
 import dash
 from dash.exceptions import PreventUpdate
 import dash_deck
-import dash_table
+from dash import dash_table, html, dcc
 import psycopg2
 from numpy import result_type
 import pydeck
@@ -11,8 +11,6 @@ import pytz
 import dash_bootstrap_components as dbc
 from dateutil.parser import parse
 from dash.dependencies import Input, Output
-import dash_core_components as dcc
-import dash_html_components as html
 import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
@@ -100,7 +98,7 @@ if DEFAULT_UUID and DEFAULT_UUID not in uuids:
     uuids.insert(0, DEFAULT_UUID)
 
 
-map_view = pydeck.View("MapView", width="100%", height="100%", controller=True)
+map_view = pydeck.View("MapView", width="50%", height="100%", controller=True)
 
 
 def make_transit_layer(df):
@@ -486,19 +484,19 @@ def generate_containers(uid, time_fig=None, map_component=None, trip_component=N
     return [
         html.Div('%s – %s' % (uid, dev_str)),
         dbc.Row([
-            dbc.Col([map_component], md=6, id='map-container'),
+            dbc.Col([map_component], width=6, id='map-container', style={'position': 'relative'}),
             dbc.Col([
                 dbc.Row(
-                    dbc.Col([dcc.Graph(id='time-graph', **graph_kwargs)], md=12),
+                    dbc.Col([dcc.Graph(id='time-graph', **graph_kwargs)], width=12),
                 ),
                 dbc.Row(
-                    dbc.Col(id='label-button-container', md=12)
+                    dbc.Col(id='label-button-container', width=12)
                 ),
-            ], md=6),
+            ], width=6),
         ]),
         dbc.Row([
-            dbc.Col([trip_component], id='trip-container', md=6, style={'height': '450px'}),
-            dbc.Col(id='data-table-container', md=6),
+            dbc.Col([trip_component], id='trip-container', width=6, style={'height': '450px', 'position': 'relative'}),
+            dbc.Col(id='data-table-container', width=6),
         ], className='mt-3'),
     ]
 
@@ -524,7 +522,7 @@ def render_output(new_path, disable_filters, show_probs):
 
     if locations_uuid is None or locations_uuid != new_uid or filters_enabled != new_filtered:
         pc.display('reading trips for %s' % new_uid)
-        df = read_locations(conn, new_uid, include_all=True, start_time='2021-05-30')
+        df = read_locations(conn, new_uid, include_all=True, start_time='2022-01-01')
         pc.display('trips read (%d rows)' % len(df))
         df.time = pd.to_datetime(df.time, utc=True)
 
@@ -670,18 +668,16 @@ app.layout = dbc.Container([
     dcc.Location(id='path', refresh=False),
     dbc.Row([
         dbc.Col([
-            dbc.FormGroup([
-                dbc.Checklist(
-                    options=[{"label": "Disable filters", "value": 0}],
-                    id='filtered-switch',
-                    switch=True,
-                ),
-                dbc.Checklist(
-                    options=[{"label": "Show probabilities", "value": 0}],
-                    id='show-probs-switch',
-                    switch=True,
-                ),
-            ]),
+            dbc.Checklist(
+                options=[{"label": "Disable filters", "value": 0}],
+                id='filtered-switch',
+                switch=True,
+            ),
+            dbc.Checklist(
+                options=[{"label": "Show probabilities", "value": 0}],
+                id='show-probs-switch',
+                switch=True,
+            ),
         ]),
     ]),
     dbc.Row([
@@ -691,7 +687,7 @@ app.layout = dbc.Container([
                 options=[{'label': label_for_uuid(x), 'value': x} for x in uuids],
                 value=None,
             )
-        ], md=4)
+        ], width=4)
     ]),
     html.Div(
         generate_containers(None),
