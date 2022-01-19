@@ -34,6 +34,7 @@ class AreaTypeNode(DjangoNode):
     # daily_lengths_url = graphene.String()
     daily_trips_date_range = graphene.List(graphene.Date)
     daily_lengths_date_range = graphene.List(graphene.Date)
+    daily_poi_trips_date_range = graphene.List(graphene.Date)
     is_poi = graphene.Boolean()
 
     def resolve_areas(root, info):
