@@ -198,9 +198,9 @@ export function useAnalyticsData({ type, areaTypeId, poiTypeId, weekend, startDa
       }],
     }
     if (weekend === true) {
-      queryOpts.segments.push('DailyTrips.weekends');
+      queryOpts.segments.push('DailyPoiTrips.weekends');
     } else if (weekend === false) {
-      queryOpts.segments.push('DailyTrips.weekdays');
+      queryOpts.segments.push('DailyPoiTrips.weekdays');
     }
     dateField = 'DailyPoiTrips.date';
   } else {
