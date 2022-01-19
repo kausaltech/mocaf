@@ -46,7 +46,7 @@ def modify_for_debug_logs(request, data, resp):
             dev.save(update_fields=['debugging_enabled_at'])
             logger.info('Enabling debug logs or custom config for %s' % uid)
 
-        config = {
+        default_config = {
             'autoSyncThreshold': 500,
             'desiredOdometerAccuracy': 10,
             'deferTime': 120000,
@@ -59,7 +59,9 @@ def modify_for_debug_logs(request, data, resp):
         }
 
         if dev.custom_config and isinstance(dev.custom_config, dict):
-            config.update(dev.custom_config)
+            config = dev.custom_config
+        else:
+            config = default_config
 
         if dev.debug_log_level:
             endpoint_path = reverse('upload-debug-log', kwargs={'uuid': uid})
