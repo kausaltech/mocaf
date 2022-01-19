@@ -80,6 +80,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
     transportModes,
   });
 
+  const weekSubset = userChoiceState.weekSubset;
   let visComponent;
   if (userChoiceState.visualisation === 'choropleth-map') {
     if (userChoiceState.analyticsQuantity === 'lengths') {
@@ -90,6 +91,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
           rangeLength={rangeLength}
+          weekSubset={weekSubset}
         />
       );
     } else {
@@ -98,6 +100,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           poiType={poiType}
           areaType={areaType}
           areaData={areaData}
+          weekSubset={weekSubset}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes} />
       )
@@ -108,6 +111,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         <TransportModesPlot
           areaType={areaType}
           areaData={areaData}
+          weekSubset={weekSubset}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
           rangeLength={rangeLength}

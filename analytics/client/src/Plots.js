@@ -86,7 +86,7 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
   );
 }
 
-export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode, rangeLength }) {
+export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode, rangeLength, weekSubset }) {
   if (!areaData)
     return <Spinner />;
 
@@ -162,6 +162,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
   return (<TransportModePlotWrapper
             traces={traces}
             layout={layout}
+            weekSubset={weekSubset}
             config={config}
           />);
 
@@ -169,7 +170,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
 
 const MemoizedPopupEnabledPlot = React.memo(Plot);
 
-function TransportModePlotWrapper({traces, layout, config}) {
+function TransportModePlotWrapper({traces, layout, config, weekSubset}) {
   const [popupState, setPopupState] = useState(null);
   const hoverHandler = ({event, points: [point]}) => {
     setPopupState(
@@ -180,6 +181,7 @@ function TransportModePlotWrapper({traces, layout, config}) {
        rel: point.value,
        abs: point.customdata.abs,
        average: point.customdata.average,
+       weekSubset,
        syntheticModes: point.customdata.syntheticModes,
        x: event.x,
        y: event.y});

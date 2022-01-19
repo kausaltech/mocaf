@@ -3,9 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { Block } from 'baseui/block';
 import { formatFloat, formatDecimal } from './utils';
 
-export function Popup ({y, x, children, title, maxWidth}) {
+export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
+  const { t } = useTranslation();
   const popupWidth = maxWidth ?? 150;
   const adaptedX = Math.min(window.innerWidth - popupWidth, x);
+  const weekSubsetName = (
+    (weekSubset === true) ? t('weekends') :
+    (weekSubset === false) ? t('workdays') :
+    t('all-days')
+  );
+
   return <div style={{
                 position: 'absolute',
                 top: y,
@@ -17,14 +24,14 @@ export function Popup ({y, x, children, title, maxWidth}) {
               }}>
            <Block style={{ padding: '0.5em' }}>
              <div style={{ marginBottom: '0.5em' }}>
-               { title }
+               { title } { weekSubsetName }
              </div>
              { children }
            </Block>
          </div>
 }
 
-export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average}) {
+export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average, weekSubset}) {
   const { t } = useTranslation();
   if (area == null) {
     return null;
@@ -38,7 +45,7 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
                <FigureElement {...{rel, average, syntheticModes}} />
                {children}
              </div>
-  return <Popup x={x} y={y} children={contents} title={title} maxWidth={320}/>
+  return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
 function FigureElement ({rel, average, syntheticModes}) {

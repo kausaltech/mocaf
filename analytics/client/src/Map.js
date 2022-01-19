@@ -34,7 +34,7 @@ const getCursor = ({isHovering, isDragging}) => (
    'grab'
 )
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey }) {
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
@@ -66,6 +66,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
           <AreaPopup
             x={hoverInfo.x}
             y={hoverInfo.y}
+            weekSubset={weekSubset}
             {...popupValues}
           />
         </Layer>
@@ -83,7 +84,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
 }
 
 
-export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode , rangeLength}) {
+export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode, rangeLength, weekSubset}) {
   const geoData = useAreaTopo(areaType);
   if (!geoData) return <Spinner />;
 
@@ -159,6 +160,7 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       getFillColor={getFillColor}
       colorStateKey={colorStateKey}
       getTooltip={getTooltip}
+      weekSubset={weekSubset}
     />
   );
 }
@@ -212,7 +214,7 @@ function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) 
           </table>)
 }
 
-export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode }) {
+export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode, weekSubset }) {
   const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
@@ -310,7 +312,7 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
   return (
     <div>
       <Layer>
-        { popupContents && <Popup maxWidth={560} x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
+        { popupContents && <Popup weekSubset={weekSubset} maxWidth={560} x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}
