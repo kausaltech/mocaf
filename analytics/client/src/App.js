@@ -102,6 +102,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           areaType={areaType}
           areaData={areaData}
           weekSubset={weekSubset}
+          rangeLength={rangeLength}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes} />
       )

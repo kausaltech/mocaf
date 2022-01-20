@@ -214,7 +214,8 @@ function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) 
           </table>)
 }
 
-export function POIMap({ poiType, areaType, areaData, transportModes, selectedTransportMode, weekSubset }) {
+export function POIMap({ poiType, areaType, areaData, transportModes,
+                         selectedTransportMode, weekSubset, rangeLength }) {
   const [hoverInfo, setHoverInfo] = useState({});
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
@@ -236,11 +237,13 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       }
     }
   }
-  let topFiveAreas;
+  let topFiveAreas, totalTrips;
   if (popupData?.poiId) {
-    topFiveAreas = areaData
+    const currentPoiData = areaData
       .params({poiId: popupData.poiId})
       .filter((d, $) => d.poiId === $.poiId)
+
+    topFiveAreas = currentPoiData
       .select('areaId', 'isInbound', 'trips', 'poiId', 'mode')
       .groupby('isInbound', 'areaId')
       .rollup({total_trips: aq.op.sum('trips'),
@@ -250,6 +253,14 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
       .groupby('isInbound')
       .slice(0, 5)
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
+
+    totalTrips = currentPoiData
+      .select('isInbound', 'trips')
+      .groupby('isInbound')
+      .rollup({total_trips: aq.op.sum('trips')})
+      .pivot('isInbound', 'total_trips')
+      .object(0);
+
   }
   const getFillColor = (d) => {
     if (hoverInfo?.object?.properties == null) {
@@ -296,23 +307,41 @@ export function POIMap({ poiType, areaType, areaData, transportModes, selectedTr
   const groups = topFiveAreas?.groupby('isInbound')
         .objects({grouped: true})
   const popupTitle = <strong>{popupData?.poiName}</strong>;
-  const popupContents = groups ? [true, false].map(inbound => {
-    const group = groups.get(inbound);
-    if (group == null) {
-      return;
-    }
-    return <POICounterPartsTable
-             inbound={inbound}
-             group={group}
-             transportModes={new Map(transportModes.map(m => [m.identifier, m.colors.primary]))}
-             orderedModeIds={orderedTransportModeIdentifiers(transportModes, 'car')}
-           />;
-  }) : null;
 
+  let popupContents = [];
+  if (totalTrips) {
+    const inboundTrips = Math.round(totalTrips[true] ?? 0);
+    const outboundTrips = Math.round(totalTrips[false] ?? 0);
+    const allTrips = Math.round(inboundTrips + outboundTrips);
+
+    popupContents = groups ? [
+      <div>{`${inboundTrips} + ${outboundTrips} = ${allTrips}`}</div>
+    ] : null;
+    if (popupContents && groups != null) {
+      popupContents = popupContents.concat([true, false].map(inbound => {
+        const group = groups.get(inbound);
+        if (group == null) {
+          return;
+        }
+        return <POICounterPartsTable
+                 inbound={inbound}
+                 group={group}
+                 transportModes={new Map(transportModes.map(m => [m.identifier, m.colors.primary]))}
+                 orderedModeIds={orderedTransportModeIdentifiers(transportModes, 'car')}
+               />;
+      }));
+    }
+  }
   return (
     <div>
       <Layer>
-        { popupContents && <Popup weekSubset={weekSubset} maxWidth={560} x={hoverInfo.x} y={hoverInfo.y} children={popupContents} title={popupTitle} />}
+        { popupContents &&
+          <Popup weekSubset={weekSubset}
+                 maxWidth={560}
+                 x={hoverInfo.x}
+                 y={hoverInfo.y}
+                 children={popupContents}
+                 title={popupTitle} />}
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}
