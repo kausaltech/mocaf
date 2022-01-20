@@ -54,10 +54,10 @@ class TamperePOIImporter(AreaImporter):
                 SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
                     FROM planet_osm_polygon
                     WHERE
-                        name = %s 
+                        name = %s
                         AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
                     ORDER BY
-                        ST_Area(way) DESC
+                        ST_Area(way) ASC
             """, params=(name, *bbox)
             )
             rows = cursor.fetchall()
@@ -66,7 +66,7 @@ class TamperePOIImporter(AreaImporter):
                     SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
                         FROM planet_osm_point
                         WHERE
-                            name = %s 
+                            name = %s
                             AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
                 """, params=(name, *bbox))
                 rows = cursor.fetchall()
