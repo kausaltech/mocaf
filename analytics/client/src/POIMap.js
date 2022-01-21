@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
+import lodash from 'lodash';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Layer } from 'baseui/layer';
 import { useTranslation } from 'react-i18next';
 import * as aq from 'arquero';
 
+import { formatDecimal } from './utils';
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
 import { Popup } from './Popup.js';
 import { orderedTransportModeIdentifiers } from './transportModes';
@@ -119,29 +121,28 @@ function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) 
           </table>;
 }
 
-function AverageTripLengthTable({rangeLength, tripLenghts}) {
+function AverageTripLengthTable({rangeLength, tripLengths}) {
   const { t } = useTranslation();
-  return <table cellSpacing={0}>
-           <caption style={{textAlign: 'start'}}>
+  const scale = Math.max(...Object.values(tripLengths));
+  return <table cellSpacing={0} style={{marginBottom: 20}}>
+           <caption style={{fontSize: 14, paddingTop: 4, paddingBottom: 4}}>
              { t('average-length') }
            </caption>
            <tbody>
-             <tr>
-               <td>
-                 label1
-               </td>
-               <td>
-                 bar1
-               </td>
-             </tr>
-             <tr>
-               <td>
-                 label2
-               </td>
-               <td>
-                 bar2
-               </td>
-             </tr>
+             {
+               ['inbound', 'outbound'].map ((key) => <tr>
+                   <td style={{paddingRight: 2, fontSize: 14, textAlign: 'right', verticalAlign: 'top'}}>
+                     { t(key) }
+                   </td>
+                   <td style={{position: 'relative', width: 120}}>
+                     <SmallBarChartElement verticalOffset={-5} spec={{
+                                             cumulativeX: 0, x: 100*tripLengths[key]/scale, color: '#335595'}}>
+                      <span style={{whiteSpace: 'nowrap', paddingTop: 4, color: 'white', mixBlendMode: 'difference'}}>{formatDecimal(tripLengths[key])}&nbsp;km</span>
+                       </SmallBarChartElement>
+                   </td>
+                 </tr>
+             )
+             }
            </tbody>
          </table>;
 }
@@ -182,7 +183,7 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
       }
     }
   }
-  let topFiveAreas, totalTrips;
+  let topFiveAreas, totalTrips, totalLengths;
   if (popupData?.poiId) {
     const currentPoiData = areaData
       .params({poiId: popupData.poiId})
@@ -200,11 +201,10 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
       .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
 
     totalTrips = currentPoiData
-      .select('isInbound', 'trips')
+      .select('isInbound', 'trips', 'length')
       .groupby('isInbound')
-      .rollup({total_trips: aq.op.sum('trips')})
-      .pivot('isInbound', 'total_trips')
-      .object(0);
+      .rollup({total_trips: aq.op.sum('trips'), total_length: aq.op.sum('length')})
+      .objects();
   }
   const getFillColor = (d) => {
     if (hoverInfo?.object?.properties == null) {
@@ -254,14 +254,17 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
 
   let popupContents = [];
   if (totalTrips) {
-    const inboundTrips = Math.round(totalTrips[true] ?? 0);
-    const outboundTrips = Math.round(totalTrips[false] ?? 0);
+    const [[inboundTripProperties], [outboundTripProperties]] = lodash.partition(totalTrips, r => r.isInbound);
+    const inboundTrips = Math.round(inboundTripProperties?.total_trips ?? 0);
+    const outboundTrips = Math.round(outboundTripProperties?.total_trips ?? 0);
     const allTrips = Math.round(inboundTrips + outboundTrips);
+    const inboundLength = Math.round(inboundTripProperties?.total_length ?? 0) / rangeLength;
+    const outboundLength = Math.round(outboundTripProperties?.total_length ?? 0) / rangeLength;
     popupContents = groups ? [
       <POITotalTripsBar inbound={inboundTrips} outbound={outboundTrips} />,
       <AverageTripLengthTable rangeLength={rangeLength} tripLengths={{
-                                incoming: 1255,
-                                outgoing: 8232 }}/>
+                                inbound: inboundLength,
+                                outbound: outboundLength }}/>
     ] : null;
     if (popupContents && groups != null) {
       popupContents = popupContents.concat([true, false].map(inbound => {

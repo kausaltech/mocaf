@@ -19,5 +19,6 @@
   "top-origins": "Top 5 lähtöpaikat",
   "inbound": "saapuvat",
   "outbound": "lähtevät",
-  "trips-total": "matkaa yhteensä"
+  "trips-total": "matkaa yhteensä",
+  "average-length": "matkoja päivässä"
 }
