@@ -49,7 +49,7 @@ function SmallBarChart({rowName, specs, leftBorder}) {
   }
   return <>
     <tr>
-      { rowName && <td style={{paddingRight: '4px', textAlign: 'right'}}>{rowName}</td> }
+      { rowName && <td style={{paddingRight: 4, paddingTop: 5, textAlign: 'right', fontSize: 14, height: 15}}>{rowName}</td> }
       <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
         {specs.map((spec, index) => (
           <SmallBarChartElement key={index} spec={spec} verticalOffset={0} padding={spec.value != null ? 2 : null}>
@@ -87,7 +87,6 @@ function POITotalTripsBar({inbound, outbound}) {
   const specs = elements.map(el => (Object.assign({}, el, {
     x: Math.max(Math.round(((200*el.value)/total)) - 1, 0)
   }))).sort((a,b) => b.value - a.value);
-  console.log(specs);
   return <><div>{total} {t('trips-total')}</div>
            <table style={{clear: 'both', height: 40}}>
              <tbody>
@@ -102,7 +101,7 @@ function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) 
   const scale = group[0].total_trips;
   return (<table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
                  style={{float: 'left', marginRight: '10px'}}>
-            <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
+            <caption style={{textAlign: 'start', fontWeight: 'bold', fontSize: 18}}>
               { inbound ? t('top-origins') : t('top-destinations')}
             </caption>
             <tbody>
