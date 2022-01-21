@@ -16,5 +16,8 @@
   "visualisation-guide": "Tietoa palvelusta",
   "close": "Sulje",
   "top-destinations": "Top 5 määränpäät",
-  "top-origins": "Top 5 lähtöpaikat"
+  "top-origins": "Top 5 lähtöpaikat",
+  "inbound": "saapuvat",
+  "outbound": "lähtevät",
+  "trips-total": "matkaa yhteensä"
 }

@@ -12,21 +12,25 @@ import { Popup } from './Popup.js';
 import { orderedTransportModeIdentifiers } from './transportModes';
 import { useAreaTopo, usePoiGeojson } from './data';
 
-function SmallBarChartElement({spec, children}) {
+function SmallBarChartElement({spec, children, verticalOffset, fontSize, padding}) {
+  fontSize = fontSize ?? 12;
   return <div style={{
                 position: 'absolute',
-                top: 5, left: `${spec.cumulativeX}px`,
-                width: `${spec.x}px`,
-                height: '15px',
-                backgroundColor: spec.color}}>
+                top: 5 + verticalOffset,
+                left: spec.cumulativeX,
+                width: spec.x,
+                height: 15,
+                backgroundColor: spec.color,
+                fontSize,
+                paddingTop: padding}}>
            {children}
            </div>
 }
 
 function SmallBarChartLegend({spec}) {
   spec.color = null;
-  return <SmallBarChartElement spec={spec}>
-           { spec.legend }
+  return <SmallBarChartElement spec={spec} verticalOffset={0} fontSize={10}>
+           <span style={{paddingLeft: 2, backgroundColor: 'white'}}>{ spec.legend }</span>
          </SmallBarChartElement>
 }
 
@@ -38,7 +42,7 @@ function SmallBarChart({rowName, specs, leftBorder}) {
   let legendRow;
   if (specs[0].legend != null) {
     legendRow = <tr> { rowName && <td/> }
-                  <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>>
+                  <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
       {specs.map((spec, index) => <SmallBarChartLegend key={index} spec={spec} />)}
     </td>
     </tr>
@@ -47,7 +51,11 @@ function SmallBarChart({rowName, specs, leftBorder}) {
     <tr>
       { rowName && <td style={{paddingRight: '4px', textAlign: 'right'}}>{rowName}</td> }
       <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
-        {specs.map((spec, index) => <SmallBarChartElement key={index} spec={spec} />)}
+        {specs.map((spec, index) => (
+          <SmallBarChartElement key={index} spec={spec} verticalOffset={0} padding={spec.value != null ? 2 : null}>
+            { spec.value != null && <span style={{color: spec.value === 0 ? 'black' : 'white', paddingLeft: 4}}>{spec.value}</span> }
+          </SmallBarChartElement>
+        ))}
       </td>
     </tr>
     { legendRow }
@@ -66,21 +74,22 @@ function POICounterPartModeBar({row, inbound, scale, transportModes, orderedMode
 }
 
 function POITotalTripsBar({inbound, outbound}) {
+  const { t } = useTranslation();
   const total = inbound + outbound;
-  const colors = [
-    '#335595', '#8ca1c5'
+  const elements = [
+    { color: '#335595', value: inbound,  legend: t('inbound')},
+    { color: '#8ca1c5', value: outbound, legend: t('outbound')}
   ];
-  const specs = [inbound, outbound].map((num, index) => {
-    let result = Math.round(((200*num)/total)) - 1;
-    return {
-      color: colors[index],
-      x: result
-    }})
-  return <table style={{clear: 'both', height: 50}}>
-           <tbody>
-             <SmallBarChart rowName={null} specs={specs} leftBorder={false} />
-           </tbody>
-           </table>;
+  const specs = elements.map(el => (Object.assign({}, el, {
+    x: Math.max(Math.round(((200*el.value)/total)) - 1, 0)
+  }))).sort((a,b) => b.value - a.value);
+  console.log(specs);
+  return <><div>{total} {t('trips-total')}</div>
+           <table style={{clear: 'both', height: 40}}>
+             <tbody>
+               <SmallBarChart rowName={null} specs={specs} leftBorder={false} />
+             </tbody>
+           </table></>;
 }
 
 
