@@ -35,9 +35,6 @@ export function OriginDestinationMatrix({ transportModes, areaType, areaData, mo
       .array('originId')
   );
 
-  window._table = table;
-  window.aq = aq;
-  window.lodash = lodash;
   table = table
     .select('originId', 'destId', 'trips')
     .filter(aq.escape(d => selectedAreas.has(d.originId) && selectedAreas.has(d.destId)))

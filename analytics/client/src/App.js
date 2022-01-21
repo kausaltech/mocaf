@@ -10,7 +10,8 @@ import {StyledSpinnerNext as Spinner} from 'baseui/spinner';
 import { useTranslation } from 'react-i18next';
 
 import i18n from './common/i18n';
-import { TransportModeShareMap, POIMap } from './Map';
+import { TransportModeShareMap } from './Map';
+import POIMap from './POIMap';
 import Controls from './Controls';
 import VisualisationGuideModal from './VisualisationGuideModal';
 import { useAnalyticsData } from './data';

@@ -2,37 +2,17 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { StaticMap } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
-import { useTranslation } from 'react-i18next';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Layer } from 'baseui/layer';
 import chroma from 'chroma-js';
 import numbro from 'numbro';
-import * as aq from 'arquero';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { useAreaTopo, usePoiGeojson } from './data';
-import { Popup, AreaPopup } from './Popup.js';
-import { orderedTransportModeIdentifiers } from './transportModes';
+import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
+import { useAreaTopo } from './data';
+import { AreaPopup } from './Popup';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-
-
-function getInitialView(bbox) {
-  return {
-    longitude: (bbox[0] + bbox[2]) / 2,
-    latitude: (bbox[1] + bbox[3]) / 2,
-    zoom: 9,
-    pitch: 0,
-    bearing: 0,
-  };
-}
-
-const getCursor = ({isHovering, isDragging}) => (
-  isHovering ? 'pointer' :
-  isDragging ? 'grabbing' :
-   'grab'
-)
 
 function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset }) {
   const { bbox, geojson } = geoData;
@@ -162,196 +142,5 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       getTooltip={getTooltip}
       weekSubset={weekSubset}
     />
-  );
-}
-
-function POICounterPartModeBar({row, inbound, scale, transportModes, orderedModeIds}) {
-  const currentModes = Object.keys(row.breakdown);
-  orderedModeIds = orderedModeIds.filter(m => currentModes.includes(m));
-  const specs = orderedModeIds.map((k, index) => ({
-    color: transportModes.get(k),
-    x: Math.round((100*row.breakdown[k]/scale)) - 1,
-    cumulativeX: 0
-  }))
-  for (let i = 0; i < specs.length - 1; i++) {
-    specs[i+1].cumulativeX += 1 + specs[i].x + specs[i].cumulativeX;
-  }
-  return (
-    <tr>
-      <td style={{paddingRight: '4px', textAlign: 'right'}}>{row.name}</td>
-      <td style={{position: 'relative', width: '100px', borderLeft: '1px solid black'}}>
-        {specs.map((spec, index) => (
-          <div key={index} style={{
-                 position: 'absolute',
-                 top: 5, left: `${spec.cumulativeX}px`,
-                 width: `${spec.x}px`,
-                 height: '15px',
-                 backgroundColor: spec.color}} />))
-        }
-      </td>
-    </tr>
-  )
-}
-
-function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) {
-  const { t } = useTranslation();
-  const scale = group[0].total_trips;
-  return (<table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
-                 style={{float: 'left', marginRight: '10px'}}>
-            <caption style={{textAlign: 'start', fontWeight: 'bold'}}>
-              { inbound ? t('top-origins') : t('top-destinations')}
-            </caption>
-            <tbody>
-              {group.map((row) => (
-                <POICounterPartModeBar row={row}
-                                       inbound={inbound}
-                                       scale={scale}
-                                       transportModes={transportModes}
-                                       orderedModeIds={orderedModeIds}
-                                       key={`${row.poiId}_${row.name}_${inbound}`} />
-              ))}
-            </tbody>
-          </table>)
-}
-
-export function POIMap({ poiType, areaType, areaData, transportModes,
-                         selectedTransportMode, weekSubset, rangeLength }) {
-  const [hoverInfo, setHoverInfo] = useState({});
-  const poiGeoData = usePoiGeojson(poiType);
-  const geoData = useAreaTopo(areaType);
-  const poiById = new Map(poiType.areas.map(a => [Number(a.id), {name: a.name, identifier: a.identifier}]));
-  if (!poiGeoData || !geoData || !areaData) return <Spinner />;
-
-  const { bbox, geojson } = geoData;
-
-  const initialView = getInitialView(bbox);
-  const areaTable = aq.from(areaType.areas).derive({areaId: a => op.parse_int(a.id)})
-  let popupData;
-  if (hoverInfo.object != null && hoverInfo.object.properties != null) {
-    const poiId = hoverInfo.object.properties.id;
-    const poi = poiById.get(poiId);
-    if (poi != null) {
-      popupData = {
-        poiId: poiId,
-        poiName: poi.name
-      }
-    }
-  }
-  let topFiveAreas, totalTrips;
-  if (popupData?.poiId) {
-    const currentPoiData = areaData
-      .params({poiId: popupData.poiId})
-      .filter((d, $) => d.poiId === $.poiId)
-
-    topFiveAreas = currentPoiData
-      .select('areaId', 'isInbound', 'trips', 'poiId', 'mode')
-      .groupby('isInbound', 'areaId')
-      .rollup({total_trips: aq.op.sum('trips'),
-               breakdown: aq.op.object_agg('mode', 'trips')})
-      .ungroup()
-      .orderby(aq.desc('total_trips'))
-      .groupby('isInbound')
-      .slice(0, 5)
-      .lookup(areaTable, ['areaId', 'areaId'], 'name', 'identifier');
-
-    totalTrips = currentPoiData
-      .select('isInbound', 'trips')
-      .groupby('isInbound')
-      .rollup({total_trips: aq.op.sum('trips')})
-      .pivot('isInbound', 'total_trips')
-      .object(0);
-
-  }
-  const getFillColor = (d) => {
-    if (hoverInfo?.object?.properties == null) {
-      return [255,255,255,200];
-    }
-    if (d.properties.id === hoverInfo.object.properties.id) {
-      return [255,220,80,150];
-    }
-    return [255,255,255,200];
-  }
-
-  const layers = [
-    new GeoJsonLayer({
-      id: 'area-layer',
-      data: geojson,
-      pickable: false,
-      stroked: true,
-      filled: false,
-      getLineColor: [0, 0, 0, 80],
-      lineWidthMinPixels: 1,
-      lineWidthMaxPixels: 2,
-    }),
-    new GeoJsonLayer({
-      id: 'poi-layer',
-      data: poiGeoData,
-      pickable: true,
-      stroked: true,
-      filled: true,
-      getFillColor,
-      getLineColor: [127, 0, 0, 200],
-      lineWidthMinPixels: 1,
-      lineWidthMaxPixels: 3,
-      updateTriggers: {
-        getFillColor: [
-          hoverInfo
-            ? hoverInfo?.object?.properties?.id
-            : null
-        ]
-      },
-      onHover: info => setHoverInfo(info),
-    }),
-
-  ];
-  const groups = topFiveAreas?.groupby('isInbound')
-        .objects({grouped: true})
-  const popupTitle = <strong>{popupData?.poiName}</strong>;
-
-  let popupContents = [];
-  if (totalTrips) {
-    const inboundTrips = Math.round(totalTrips[true] ?? 0);
-    const outboundTrips = Math.round(totalTrips[false] ?? 0);
-    const allTrips = Math.round(inboundTrips + outboundTrips);
-
-    popupContents = groups ? [
-      <div>{`${inboundTrips} + ${outboundTrips} = ${allTrips}`}</div>
-    ] : null;
-    if (popupContents && groups != null) {
-      popupContents = popupContents.concat([true, false].map(inbound => {
-        const group = groups.get(inbound);
-        if (group == null) {
-          return;
-        }
-        return <POICounterPartsTable
-                 inbound={inbound}
-                 group={group}
-                 transportModes={new Map(transportModes.map(m => [m.identifier, m.colors.primary]))}
-                 orderedModeIds={orderedTransportModeIdentifiers(transportModes, 'car')}
-               />;
-      }));
-    }
-  }
-  return (
-    <div>
-      <Layer>
-        { popupContents &&
-          <Popup weekSubset={weekSubset}
-                 maxWidth={560}
-                 x={hoverInfo.x}
-                 y={hoverInfo.y}
-                 children={popupContents}
-                 title={popupTitle} />}
-      </Layer>
-    <DeckGL initialViewState={initialView}
-            controller={true}
-            getCursor={getCursor}
-            layers={layers}>
-      <StaticMap reuseMaps
-                 mapStyle={MAP_STYLE}
-                 preventStyleDiffing={true}
-                 mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} />
-    </DeckGL>
-    </div>
   );
 }
