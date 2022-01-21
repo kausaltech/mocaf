@@ -76,6 +76,10 @@ function POICounterPartModeBar({row, inbound, scale, transportModes, orderedMode
 function POITotalTripsBar({inbound, outbound}) {
   const { t } = useTranslation();
   const total = inbound + outbound;
+  if (total === 0) {
+    return <div>{t('no-data')}</div>
+    return null;
+  }
   const elements = [
     { color: '#335595', value: inbound,  legend: t('inbound')},
     { color: '#8ca1c5', value: outbound, legend: t('outbound')}
