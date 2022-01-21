@@ -24,7 +24,7 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
               }}>
            <Block style={{ padding: '0.5em' }}>
              <div style={{ marginBottom: '0.5em' }}>
-               { title } { weekSubsetName }
+               { title } <span style={{fontSize: '80%'}}>{ weekSubsetName }</span>
              </div>
              { children }
            </Block>
