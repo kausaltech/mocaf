@@ -49,7 +49,7 @@ function SmallBarChart({rowName, specs, leftBorder}) {
   }
   return <>
     <tr>
-      { rowName && <td style={{paddingRight: 4, paddingTop: 5, textAlign: 'right', fontSize: 14, height: 15}}>{rowName}</td> }
+      { rowName && <td style={{verticalAlign: 'top', paddingRight: 4, paddingTop: 5, textAlign: 'right', fontSize: 14, height: 15}}>{rowName}</td> }
       <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
         {specs.map((spec, index) => (
           <SmallBarChartElement key={index} spec={spec} verticalOffset={0} padding={spec.value != null ? 2 : null}>
@@ -87,20 +87,22 @@ function POITotalTripsBar({inbound, outbound}) {
   const specs = elements.map(el => (Object.assign({}, el, {
     x: Math.max(Math.round(((200*el.value)/total)) - 1, 0)
   }))).sort((a,b) => b.value - a.value);
-  return <><div>{total} {t('trips-total')}</div>
-           <table style={{clear: 'both', height: 40}}>
-             <tbody>
-               <SmallBarChart rowName={null} specs={specs} leftBorder={false} />
-             </tbody>
-           </table></>;
+  return <table style={{height: 40}}>
+           <caption style={{textAlign: 'start'}}>
+             {total} {t('trips-total')}
+           </caption>
+           <tbody>
+             <SmallBarChart rowName={null} specs={specs} leftBorder={false} />
+           </tbody>
+         </table>;
 }
 
 
 function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) {
   const { t } = useTranslation();
   const scale = group[0].total_trips;
-  return (<table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
-                 style={{float: 'left', marginRight: '10px'}}>
+  return <table cellSpacing={0} key={inbound ? 'inbound' : 'outbound'}
+                 style={{marginRight: '10px'}}>
             <caption style={{textAlign: 'start', fontWeight: 'bold', fontSize: 18}}>
               { inbound ? t('top-origins') : t('top-destinations')}
             </caption>
@@ -114,7 +116,34 @@ function POICounterPartsTable({inbound, group, transportModes, orderedModeIds}) 
                                        key={`${row.poiId}_${row.name}_${inbound}`} />
               ))}
             </tbody>
-          </table>)
+          </table>;
+}
+
+function AverageTripLengthTable({rangeLength, tripLenghts}) {
+  const { t } = useTranslation();
+  return <table cellSpacing={0}>
+           <caption style={{textAlign: 'start'}}>
+             { t('average-length') }
+           </caption>
+           <tbody>
+             <tr>
+               <td>
+                 label1
+               </td>
+               <td>
+                 bar1
+               </td>
+             </tr>
+             <tr>
+               <td>
+                 label2
+               </td>
+               <td>
+                 bar2
+               </td>
+             </tr>
+           </tbody>
+         </table>;
 }
 
 const getCircularReplacer = () => {
@@ -229,7 +258,10 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
     const outboundTrips = Math.round(totalTrips[false] ?? 0);
     const allTrips = Math.round(inboundTrips + outboundTrips);
     popupContents = groups ? [
-      <POITotalTripsBar inbound={inboundTrips} outbound={outboundTrips} />
+      <POITotalTripsBar inbound={inboundTrips} outbound={outboundTrips} />,
+      <AverageTripLengthTable rangeLength={rangeLength} tripLengths={{
+                                incoming: 1255,
+                                outgoing: 8232 }}/>
     ] : null;
     if (popupContents && groups != null) {
       popupContents = popupContents.concat([true, false].map(inbound => {
@@ -254,8 +286,15 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
                  maxWidth={560}
                  x={hoverInfo.x}
                  y={hoverInfo.y}
-                 children={popupContents}
-                 title={popupTitle} />}
+                 title={popupTitle}>
+            <div style={{
+                   display: 'grid',
+                   gridTemplateColumns: '1fr 1fr',
+                   gap: 4
+                 }}>
+              {popupContents}
+            </div>
+          </Popup>}
       </Layer>
     <DeckGL initialViewState={initialView}
             controller={true}

@@ -17,6 +17,7 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
                 position: 'absolute',
                 top: y,
                 left: adaptedX,
+                marginBottom: 10,
                 pointerEvents: 'none',
                 backgroundColor: 'white',
                 borderRadius: '0.5em',
@@ -28,7 +29,6 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
              </div>
              { children }
            </Block>
-           <div style={{clear: 'both', height: 20}} />
          </div>
 }
 
