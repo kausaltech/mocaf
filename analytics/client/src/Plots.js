@@ -165,6 +165,110 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
 
 }
 
+export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset, selectedArea }) {
+  if (!areaData)
+    return <Spinner />;
+
+  const modeOrder = orderedTransportModeIdentifiers(transportModes, 'walk');
+  const primaryModes = transportModes.filter(m => !m.synthetic);
+  const modeById = new Map(primaryModes.map(m => [m.identifier, m]));
+  const availableModes = modeOrder.filter(mode => modeById.has(mode));
+
+  // TODO: self-trips are so common they
+  // don't fit on the same scale. Figure
+  // out a way to display them
+  const breakdown = areaData
+    .params({selectedArea: selectedArea.id})
+    .filter((d, $) => (
+      $.selectedArea === d.destId ||
+      $.selectedArea === d.originId))
+    .filter(d => d.destId !== d.originId) // FIXME way to visualize this
+    .impute({originId: d => 'unknown',
+             destId: d => 'unknown',
+             mode: d => 'other'})
+    .derive({areaId: (d, $) => d.originId === $.selectedArea ? d.destId : d.originId})
+    .groupby('areaId', 'mode')
+    .rollup({total_trips: aq.op.sum('trips')})
+    .groupby('areaId')
+    .rollup({sum_total_trips: aq.op.sum('total_trips'),
+             breakdown: aq.op.object_agg('mode', 'total_trips')})
+        .orderby('sum_total_trips');
+
+  const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]));
+
+  const traces = availableModes.map((mode) => {
+    const x = [], y = [], customdata = [];
+    breakdown.objects().forEach(row => {
+      const { areaId } = row;
+      const area = areasById.get(areaId);
+      if (!area) {
+        console.warn('area not found');
+        return;
+      }
+      y.push(area.name);
+      x.push(row.breakdown[mode]);
+
+      // const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
+      //   Object.assign({}, m, {rel: row[m.identifier + '_rel'] * 100}));;
+      // customdata.push({
+      //   abs: row[mode], syntheticModes, average: (row['total'] / rangeLength)});
+    });
+    const trace = {
+      name: modeById.get(mode).name,
+      orientation: 'h',
+      type: 'bar',
+      x,
+      y,
+      customdata,
+      marker: {
+        color: modeById.get(mode).colors.primary,
+        line: {
+          color: '#ffffff',
+          width: 1,
+        }
+      },
+    };
+    return trace;
+  })
+  const layout = {
+    margin: {
+      l: 160,
+      r: 20,
+      t: 20,
+      b: 110,
+      pad: 5
+    },
+    height: Math.max(20 * areasById.size, 400),
+    bargap: 0,
+    barnorm: '',
+    xaxis: {
+      fixedrange: true,
+    },
+    barmode: 'stack',
+    dragmode: 'pan',
+    legend: {
+      traceorder: 'normal'
+    },
+  };
+  const config = {
+    responsive: true,
+    editable: false,
+    displayModeBar: false,
+    dragmode: 'pan',
+    //autosizable: true,
+  };
+  return (<>
+            <h1 style={{textAlign: 'center'}}>{ areasById.get(selectedArea).name }</h1>
+            <TransportModePlotWrapper
+            traces={traces}
+            layout={layout}
+            weekSubset={weekSubset}
+            config={config}
+          />
+          </>);
+
+}
+
 const MemoizedPopupEnabledPlot = React.memo(Plot);
 
 function TransportModePlotWrapper({traces, layout, config, weekSubset}) {

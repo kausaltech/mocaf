@@ -16,7 +16,7 @@ import Controls from './Controls';
 import VisualisationGuideModal from './VisualisationGuideModal';
 import { useAnalyticsData } from './data';
 import {userChoiceReducer, initializeUserChoiceState} from './userChoiceReducer';
-import { OriginDestinationMatrix, TransportModesPlot } from './Plots';
+import { AreaBarChart, TransportModesPlot } from './Plots';
 import preprocessTransportModes from './transportModes';
 
 
@@ -121,7 +121,12 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         />
       );
     } else {
-      visComponent = <OriginDestinationMatrix transportModes={transportModes} areaType={areaType} areaData={areaData} mode={selectedTransportMode} />
+      visComponent = <AreaBarChart
+                       transportModes={transportModes}
+                       areaType={areaType}
+                       areaData={areaData}
+                       selectedArea={3827}
+                     />
     }
   }
 
