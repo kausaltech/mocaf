@@ -128,6 +128,7 @@ const Controls = ({userChoices, dynamicOptions}) => {
   const { t } = useTranslation();
   const [ userChoiceState, dispatch ] = userChoices;
   const poiTripsMode = userChoices[0].analyticsQuantity === 'poi_trips';
+  const tripsMode = userChoices[0].analyticsQuantity === 'trips';
   let { transportModes } = dynamicOptions;
   if (userChoiceState.visualisation === 'table') {
     transportModes = transportModes.filter(m => !m.synthetic);
@@ -149,11 +150,11 @@ const Controls = ({userChoices, dynamicOptions}) => {
          }}>
       <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
       {
-        poiTripsMode ?
+        tripsMode || poiTripsMode ?
           <Select
             clearable={false}
             disabled={true}
-            placeholder={[t('map')]} /> :
+            placeholder={[tripsMode ? t('table') : t('map')]} /> :
           <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
       }
       <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />
@@ -175,7 +176,7 @@ const Controls = ({userChoices, dynamicOptions}) => {
           <Select
             clearable={false}
             disabled={true}
-            placeholder={['Kaikki kulkumuodot']} /> :
+            placeholder={[t('all-transport-modes')]} /> :
           <SelectControl
             userChoices={userChoices}
             lookup='transportMode'

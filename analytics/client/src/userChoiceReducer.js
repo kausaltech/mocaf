@@ -86,8 +86,14 @@ export function userChoiceReducer (state, action) {
   if (action.key === 'analyticsQuantity' && action.payload === 'poi_trips') {
     dependentState.visualisation = 'choropleth-map';
   }
+  if (action.key === 'analyticsQuantity' && action.payload === 'trips') {
+    dependentState.visualisation = 'table';
+  }
   if (action.key === 'visualisation' && state.analyticsQuantity === 'poi_trips') {
     action.payload = 'choropleth-map';
+  }
+  if (action.key === 'visualisation' && state.analyticsQuantity === 'trips') {
+    action.payload = 'table';
   }
   if (action.key == 'dateRange') {
     action.payload = restrictDateRange(action.payload);

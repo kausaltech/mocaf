@@ -20,5 +20,6 @@
   "inbound": "saapuvat",
   "outbound": "lähtevät",
   "trips-total": "matkaa yhteensä",
-  "average-length": "matkoja päivässä"
+  "average-length": "matkoja päivässä",
+  "all-transport-modes": "Kaikki kulkumuodot"
 }
