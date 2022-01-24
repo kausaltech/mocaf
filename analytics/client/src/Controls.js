@@ -146,8 +146,8 @@ const Controls = ({userChoices, dynamicOptions}) => {
            backgroundColor: '#ffffffdd',
            border: `1px solid #eee`,
          }}>
-      <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
       <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
+      <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
       <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />
       <SelectControl lookup='areaType'
                      userChoices={userChoices}
