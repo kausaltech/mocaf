@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Layer } from 'baseui/layer';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
+import { Select, TYPE } from 'baseui/select';
 import Plot from 'react-plotly.js';
 import * as aq from 'arquero';
 import lodash from 'lodash';
@@ -165,9 +167,38 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
 
 }
 
-export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset, selectedArea }) {
+function AreaSelector ({ areas, selectedArea, setSelectedArea }) {
+  const { t } = useTranslation();
+  return <div style={{marginLeft: '20%', marginRight: '20%'}}>
+    <Select
+      closeOnSelect={true}
+      ignoreCase={true}
+      searchable={true}
+      labelKey='label'
+      valueKey='id'
+      type={TYPE.search}
+      value={selectedArea.id != null ? [selectedArea]: null}
+      valueToLabel={() => 'foo'}
+      placeholder={t('choose-area')}
+      onChange={params => setSelectedArea(params.value[0])}
+      options={areas}
+    /></div>;
+};
+
+export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset }) {
   if (!areaData)
     return <Spinner />;
+
+  const [ selectedArea, setSelectedArea ] = useState({id: null, label: ''});
+  const areaSelector = <AreaSelector areas={areaType.areas.map(a => (
+                                       {label: a.name,
+                                        id: Number.parseInt(a.id)}))}
+                                     selectedArea={selectedArea}
+                                     setSelectedArea={setSelectedArea}/>;
+
+  if (selectedArea.id == null) {
+    return areaSelector;
+  }
 
   const modeOrder = orderedTransportModeIdentifiers(transportModes, 'walk');
   const primaryModes = transportModes.filter(m => !m.synthetic);
@@ -258,7 +289,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
     //autosizable: true,
   };
   return (<>
-            <h1 style={{textAlign: 'center'}}>{ areasById.get(selectedArea).name }</h1>
+            { areaSelector }
             <TransportModePlotWrapper
             traces={traces}
             layout={layout}
