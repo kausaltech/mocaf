@@ -49,6 +49,34 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
   return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
+export function AreaToAreaPopup ({y, x, children, rel, area, abs, transportMode, weekSubset}) {
+  const { t } = useTranslation();
+  if (area == null) {
+    return null;
+  }
+  const title = <>
+                  <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
+                </>
+
+  const contents = <div>
+               <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
+               <TripFigureElement {...{rel, abs}} />
+               {children}
+             </div>
+  return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
+}
+
+function TripFigureElement ({rel, abs, syntheticModes}) {
+  const { t } = useTranslation();
+  if (isNaN(rel)) {
+    return t('no-data');
+  }
+  return <>
+           {t('traveled-trips-share')} <strong>{formatFloat(rel*100)} % </strong>
+           <span style={{fontSize:'80%'}}>({formatDecimal(abs)} {t('trips-total')})</span>
+         </>
+}
+
 function FigureElement ({rel, average, syntheticModes}) {
   const { t } = useTranslation();
   if (isNaN(rel)) {

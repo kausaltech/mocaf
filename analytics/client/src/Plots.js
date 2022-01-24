@@ -7,7 +7,7 @@ import Plot from 'react-plotly.js';
 import * as aq from 'arquero';
 import lodash from 'lodash';
 
-import {AreaPopup as Popup } from './Popup';
+import {AreaPopup, AreaToAreaPopup } from './Popup';
 import {orderedTransportModeIdentifiers} from './transportModes';
 
 export function OriginDestinationMatrix({ transportModes, areaType, areaData, mode }) {
@@ -163,6 +163,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
             layout={layout}
             weekSubset={weekSubset}
             config={config}
+            Popup={AreaPopup}
           />);
 
 }
@@ -239,10 +240,9 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
       y.push(area.name);
       x.push(row.breakdown[mode]);
 
-      // const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
-      //   Object.assign({}, m, {rel: row[m.identifier + '_rel'] * 100}));;
-      // customdata.push({
-      //   abs: row[mode], syntheticModes, average: (row['total'] / rangeLength)});
+      customdata.push({
+        rel: row.breakdown[mode]  / row.sum_total_trips
+      });
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -295,6 +295,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
             layout={layout}
             weekSubset={weekSubset}
             config={config}
+            Popup={AreaToAreaPopup}
           />
           </>);
 
@@ -302,7 +303,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
 
 const MemoizedPopupEnabledPlot = React.memo(Plot);
 
-function TransportModePlotWrapper({traces, layout, config, weekSubset}) {
+function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
   const [popupState, setPopupState] = useState(null);
   const hoverHandler = ({event, points: [point]}) => {
     setPopupState(
@@ -310,8 +311,8 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset}) {
         name: point.label,
       },
        transportMode: point.data.name,
-       rel: point.value,
-       abs: point.customdata.abs,
+       rel: point.customdata.rel ?? point.value,
+       abs: point.customdata.abs ?? point.value,
        average: point.customdata.average,
        weekSubset,
        syntheticModes: point.customdata.syntheticModes,
