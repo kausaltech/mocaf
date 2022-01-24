@@ -133,25 +133,25 @@ const Controls = ({userChoices, dynamicOptions}) => {
   }
   return (
     <div className='controls'
-       style={{
-         position: 'fixed',
-         top: 20,
-         left: '50%',
-         transform: 'translateX(-50%)',
-         padding: 10,
-         display: 'grid',
-         gridTemplateColumns: '1fr 1fr 1fr 1fr',
-         gap: '4px',
-         minWidth: '30%',
-         backgroundColor: '#ffffffdd',
-         border: `1px solid #eee`,
-       }}>
-    <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
-    <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
-    <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />
-    <SelectControl lookup='areaType'
-                   userChoices={userChoices}
-                   values={dynamicOptions.areaTypes} />
+         style={{
+           position: 'fixed',
+           top: 20,
+           left: '50%',
+           transform: 'translateX(-50%)',
+           padding: 10,
+           display: 'grid',
+           gridTemplateColumns: '1fr 1fr 1fr 1fr',
+           gap: '4px',
+           minWidth: '30%',
+           backgroundColor: '#ffffffdd',
+           border: `1px solid #eee`,
+         }}>
+      <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
+      <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
+      <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />
+      <SelectControl lookup='areaType'
+                     userChoices={userChoices}
+                     values={dynamicOptions.areaTypes} />
       <div style={{paddingTop: "5px"}}>
         <Button
           kind={KIND.tertiary}
@@ -164,14 +164,14 @@ const Controls = ({userChoices, dynamicOptions}) => {
       <DateRangeSlider userChoices={userChoices} />
       {
         userChoices[0].analyticsQuantity === 'poi_trips' ?
-        <Select
-          clearable={false}
-          disabled={true}
-          placeholder={['Kaikki kulkumuodot']} /> :
-        <SelectControl
-          userChoices={userChoices}
-          lookup='transportMode'
-          values={transportModes} />
+          <Select
+            clearable={false}
+            disabled={true}
+            placeholder={['Kaikki kulkumuodot']} /> :
+          <SelectControl
+            userChoices={userChoices}
+            lookup='transportMode'
+            values={transportModes} />
       }
     </div>
   );
