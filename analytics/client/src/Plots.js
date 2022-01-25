@@ -181,16 +181,15 @@ function AreaSelector ({ areas, selectedArea, setSelectedArea }) {
       value={selectedArea.id != null ? [selectedArea]: null}
       valueToLabel={() => 'foo'}
       placeholder={t('choose-area')}
-      onChange={params => setSelectedArea(params.value[0])}
+      onChange={params => setSelectedArea(params.value[0].id)}
       options={areas}
     /></div>;
 };
 
-export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset }) {
+export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset, selectedArea, setSelectedArea }) {
   if (!areaData)
     return <Spinner />;
-
-  const [ selectedArea, setSelectedArea ] = useState({id: null, label: ''});
+  selectedArea = { id: selectedArea };
   const areaSelector = <AreaSelector areas={areaType.areas.map(a => (
                                        {label: a.name,
                                         id: Number.parseInt(a.id)}))}

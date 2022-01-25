@@ -15,6 +15,7 @@ export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
     analyticsQuantity: 'lengths',
     areaTypes,
     modalVisible: false,
+    visualisationState: { trips: { selectedArea: null } },
   };
   defaults.dateRange = areaTypeDateRange(
     defaults.analyticsQuantity,
@@ -98,8 +99,16 @@ export function userChoiceReducer (state, action) {
   if (action.key == 'dateRange') {
     action.payload = restrictDateRange(action.payload);
   }
-  return {
-    ...state,
-    ...dependentState,
-    ...{[action.key]: action.payload}};
+  if (action.key instanceof Array && action.key[0] === 'visualisationState') {
+    let target = state;
+    for (key of action.key.slice(0, -1)) target = target[key];
+    target[action.key.at(-1)] = action.payload;
+    return Object.assign({}, state);
+  }
+  else {
+    return {
+      ...state,
+      ...dependentState,
+      ...{[action.key]: action.payload}};
+  }
 }

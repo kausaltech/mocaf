@@ -121,11 +121,19 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         />
       );
     } else {
+      const selectedArea = userChoiceState.visualisationState.trips.selectedArea;
+      const setSelectedArea = (area) => {
+        dispatch({
+          type: 'set',
+          key: ['visualisationState', 'trips', 'selectedArea'],
+          payload: area
+      })};
       visComponent = <AreaBarChart
                        transportModes={transportModes}
                        areaType={areaType}
                        areaData={areaData}
-                       selectedArea={3827}
+                       selectedArea={selectedArea}
+                       setSelectedArea={setSelectedArea}
                      />
     }
   }
