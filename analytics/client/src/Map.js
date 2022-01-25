@@ -11,10 +11,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
 import { useAreaTopo } from './data';
-import { AreaPopup } from './Popup';
+import { AreaPopup, AreaToAreaPopup } from './Popup';
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea }) {
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
   console.log(colorStateKey);
@@ -47,7 +47,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
     <div>
       { hoverInfo.object && (
         <Layer>
-          <AreaPopup
+          <Popup
             x={hoverInfo.x}
             y={hoverInfo.y}
             weekSubset={weekSubset}
@@ -107,6 +107,7 @@ export function TransportModeShareMap({ areaType,
     const maxLength = absoluteVals[absoluteVals.length - 1];
     const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
     let scales;
+    console.log(quantity);
     if (quantity === 'lengths') {
       const limits = chroma.limits(relativeVals, 'q', 7);
       scales = chroma.scale([selectedTransportMode.colors.zero,
@@ -165,6 +166,7 @@ export function TransportModeShareMap({ areaType,
   return (
     <AreaMap
       geoData={geoData}
+      Popup={quantity === 'trips' ? AreaToAreaPopup : AreaPopup }
       getFillColor={getFillColor}
       colorStateKey={colorStateKey}
       getTooltip={getTooltip}

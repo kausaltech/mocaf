@@ -104,6 +104,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           transportModes={transportModes}
           rangeLength={rangeLength}
           weekSubset={weekSubset}
+          quantity={'lengths'}
         />
       );
       break;
