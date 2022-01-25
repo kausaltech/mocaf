@@ -89,10 +89,13 @@ function preprocessLengths(resultSet, transportModes) {
     .derive(Object.fromEntries(transportModes.map(mode =>
       [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
     )));
+  table.print();
   return table;
 }
 
-function preprocessTrips(resultSet) {
+function preprocessTrips(resultSet, selectedArea, transportModes) {
+  const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+  let availableModes = primaryModes.map(m => m.identifier)
   let table = aq.from(resultSet.rawData())
     .derive({
       trips: d => aq.op.parse_int(d['DailyTrips.totalTrips'])
@@ -103,7 +106,33 @@ function preprocessTrips(resultSet) {
       'TransportModes.identifier': 'mode',
       'trips': 'trips',
     })
-    .filter(d => d.trips >= 5);
+    .params({selectedArea: selectedArea})
+    .filter(d => d.trips >= 5)
+    .filter((d, $) => (
+      $.selectedArea === d.destId ||
+      $.selectedArea === d.originId))
+    .filter(d => d.destId !== d.originId) // FIXME way to visualize this
+    .impute({originId: d => 'unknown',
+             destId: d => 'unknown',
+             mode: d => 'other'})
+    .derive({areaId: (d, $) => d.originId === $.selectedArea ? d.destId : d.originId})
+    .groupby('areaId')
+    .pivot('mode', {value: d => aq.op.sum(d.trips)})
+    .derive({
+      total: aq.escape(d => lodash.sum(Object.values(lodash.pick(d, availableModes))))
+    });
+
+  for (mode of syntheticModes) {
+    table = table.derive({[mode.identifier]: aq.escape(
+      d => lodash.sum(Object.values(lodash.pick(d, mode.components))))});
+  }
+  table = table
+    .derive(Object.fromEntries(transportModes.map(mode =>
+      [`${mode.identifier}`, aq.escape(d => d[mode.identifier] ?? 0 )])))
+    .derive(Object.fromEntries(transportModes.map(mode =>
+      [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
+    )));
+
   return table;
 }
 
@@ -124,7 +153,7 @@ function preprocessPoiTrips(resultSet) {
   return table;
 }
 
-export function useAnalyticsData({ type, areaTypeId, poiTypeId, weekend, startDate, endDate, transportModes }) {
+export function useAnalyticsData({ type, areaTypeId, poiTypeId, weekend, startDate, endDate, transportModes, selectedArea }) {
   let queryOpts;
   let dateField;
 
@@ -230,7 +259,7 @@ export function useAnalyticsData({ type, areaTypeId, poiTypeId, weekend, startDa
   if (type === 'lengths') {
     return preprocessLengths(resultSet, transportModes);
   } else if (type === 'trips') {
-    return preprocessTrips(resultSet);
+    return preprocessTrips(resultSet, selectedArea, transportModes);
   } else if (type === 'poi_trips') {
     return preprocessPoiTrips(resultSet);
   }

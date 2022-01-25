@@ -76,11 +76,20 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
     type: userChoiceState.analyticsQuantity,
     areaTypeId: areaType.id,
     poiTypeId: poiType.id,
+    selectedArea: userChoiceState.visualisationState.trips.selectedArea,
     weekend: userChoiceState.weekSubset,
     startDate: format(start, 'yyyy-MM-dd'),
     endDate: format(end, 'yyyy-MM-dd'),
     transportModes,
   });
+
+  const selectedArea = userChoiceState.visualisationState.trips.selectedArea;
+  const setSelectedArea = (area) => {
+    dispatch({
+      type: 'set',
+      key: ['visualisationState', 'trips', 'selectedArea'],
+      payload: area
+    })};
 
   const weekSubset = userChoiceState.weekSubset;
   let visComponent;
@@ -110,6 +119,20 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           transportModes={transportModes} />
       );
       break;
+    case 'trips':
+      visComponent = (
+        <TransportModeShareMap
+          areaType={areaType}
+          areaData={areaData}
+          selectedTransportMode={selectedTransportMode}
+          transportModes={transportModes}
+          rangeLength={rangeLength}
+          weekSubset={weekSubset}
+          setSelectedArea={setSelectedArea}
+          selectedArea={selectedArea}
+        />
+      );
+      break;
     }
   } else if (userChoiceState.visualisation === 'table') {
     switch (userChoiceState.analyticsQuantity) {
@@ -126,13 +149,6 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
       );
       break;
     case 'trips':
-      const selectedArea = userChoiceState.visualisationState.trips.selectedArea;
-      const setSelectedArea = (area) => {
-        dispatch({
-          type: 'set',
-          key: ['visualisationState', 'trips', 'selectedArea'],
-          payload: area
-      })};
       visComponent = (
         <AreaBarChart
           transportModes={transportModes}

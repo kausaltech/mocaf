@@ -150,11 +150,11 @@ const Controls = ({userChoices, dynamicOptions}) => {
          }}>
       <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
       {
-        tripsMode || poiTripsMode ?
+        poiTripsMode ?
           <Select
             clearable={false}
             disabled={true}
-            placeholder={[tripsMode ? t('table') : t('map')]} /> :
+            placeholder={[t('map')]} /> :
           <StaticSelectControl lookup='visualisation' userChoices={userChoices} />
       }
       <StaticSelectControl lookup='weekSubset' userChoices={userChoices} />

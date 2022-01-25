@@ -87,19 +87,20 @@ export function userChoiceReducer (state, action) {
   if (action.key === 'analyticsQuantity' && action.payload === 'poi_trips') {
     dependentState.visualisation = 'choropleth-map';
   }
-  if (action.key === 'analyticsQuantity' && action.payload === 'trips') {
-    dependentState.visualisation = 'table';
-  }
+  // if (action.key === 'analyticsQuantity' && action.payload === 'trips') {
+  //   dependentState.visualisation = 'table';
+  // }
   if (action.key === 'visualisation' && state.analyticsQuantity === 'poi_trips') {
     action.payload = 'choropleth-map';
   }
-  if (action.key === 'visualisation' && state.analyticsQuantity === 'trips') {
-    action.payload = 'table';
-  }
+  // if (action.key === 'visualisation' && state.analyticsQuantity === 'trips') {
+  //   action.payload = 'table';
+  // }
   if (action.key == 'dateRange') {
     action.payload = restrictDateRange(action.payload);
   }
   if (action.key instanceof Array && action.key[0] === 'visualisationState') {
+    console.log('settings selected', action.payload);
     let target = state;
     for (key of action.key.slice(0, -1)) target = target[key];
     target[action.key.at(-1)] = action.payload;

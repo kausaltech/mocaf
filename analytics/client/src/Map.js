@@ -14,9 +14,10 @@ import { useAreaTopo } from './data';
 import { AreaPopup } from './Popup';
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset }) {
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
+  console.log(colorStateKey);
   const initialView = getInitialView(bbox);
   const layers = [
     new GeoJsonLayer({
@@ -31,9 +32,12 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
       onHover: info => setHoverInfo(info),
+      onClick: (setSelectedArea != null && ((info) => {
+        setSelectedArea(info?.object?.properties?.id);
+      })),
       //getElevation,
       updateTriggers: {
-        getFillColor: colorStateKey
+        getFillColor: colorStateKey,
       }
     })
   ];
@@ -64,7 +68,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
 }
 
 
-export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode, rangeLength, weekSubset}) {
+export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode, rangeLength, weekSubset, selectedArea, setSelectedArea}) {
   const geoData = useAreaTopo(areaType);
   if (!geoData) return <Spinner />;
 
@@ -74,12 +78,12 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
 
   let getFillColor = d => [0, 0, 0, 0];
   let getElevation;
-  let colorStateKey = `${modeId}-nodata`;
+  let colorStateKey = `${modeId}-nodata-${selectedArea}`;
 
   if (areaData) {
     const availableModes = areaData.columnNames((col) => modeById.has(col));
     if (!availableModes.includes(modeId)) {
-      throw new Error('selected transport mode not found in data');
+      throw new Error(`selected transport mode ${modeId} not found in data`);
     }
     areaData.objects().forEach((row) => {
       const area = areasById.get(row.areaId);
@@ -105,14 +109,18 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     };
     getFillColor = (d) => {
       const id = d.properties.id;
+      console.log(id, selectedArea);
+      if (id === selectedArea) {
+        return [174, 30, 32, 255];
+      }
       const area = areasById.get(id);
       if (!area.data) return [0, 0, 0, 0];
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
-      if (abs < 100) return [0, 0, 0, 0];
+      // if (abs < 100) return [0, 0, 0, 0];
       return [...scales(val).rgb(), 220];
     },
-    colorStateKey = modeId;
+    colorStateKey = `${modeId}-${selectedArea}`;
   }
   const getTooltip = ({object}) => {
     if (!object) return null;
@@ -140,6 +148,8 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       getFillColor={getFillColor}
       colorStateKey={colorStateKey}
       getTooltip={getTooltip}
+      selectedArea={selectedArea}
+      setSelectedArea={setSelectedArea}
       weekSubset={weekSubset}
     />
   );
