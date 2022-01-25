@@ -113,6 +113,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           poiType={poiType}
           areaType={areaType}
           areaData={areaData}
+          quantity={userChoiceState.analyticsQuantity}
           weekSubset={weekSubset}
           rangeLength={rangeLength}
           selectedTransportMode={selectedTransportMode}
@@ -124,6 +125,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         <TransportModeShareMap
           areaType={areaType}
           areaData={areaData}
+          quantity={userChoiceState.analyticsQuantity}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
           rangeLength={rangeLength}

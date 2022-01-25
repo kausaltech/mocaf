@@ -89,7 +89,6 @@ function preprocessLengths(resultSet, transportModes) {
     .derive(Object.fromEntries(transportModes.map(mode =>
       [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
     )));
-  table.print();
   return table;
 }
 
@@ -132,7 +131,6 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
     .derive(Object.fromEntries(transportModes.map(mode =>
       [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
     )));
-
   return table;
 }
 

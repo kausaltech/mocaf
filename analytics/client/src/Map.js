@@ -67,8 +67,16 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   );
 }
 
-
-export function TransportModeShareMap({ areaType, areaData, transportModes, selectedTransportMode, rangeLength, weekSubset, selectedArea, setSelectedArea}) {
+export function TransportModeShareMap({ areaType,
+                                        areaData,
+                                        transportModes,
+                                        selectedTransportMode,
+                                        rangeLength,
+                                        weekSubset,
+                                        selectedArea,
+                                        setSelectedArea,
+                                        quantity
+                                      }) {
   const geoData = useAreaTopo(areaType);
   if (!geoData) return <Spinner />;
 
@@ -97,9 +105,17 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     absoluteVals.sort((a, b) => a - b);
     const minLength = absoluteVals[0];
     const maxLength = absoluteVals[absoluteVals.length - 1];
-    const relativeVals = areaData.array(`${modeId}_rel`);
-    const limits = chroma.limits(relativeVals, 'q', 7);
-    const scales = chroma.scale([selectedTransportMode.colors.zero, selectedTransportMode.colors.primary]).classes(limits);
+    const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
+    let scales;
+    if (quantity === 'lengths') {
+      const limits = chroma.limits(relativeVals, 'q', 7);
+      scales = chroma.scale([selectedTransportMode.colors.zero,
+                             selectedTransportMode.colors.primary]).classes(limits);
+    }
+    else if (quantity === 'trips') {
+      scales = chroma.scale([selectedTransportMode.colors.zero,
+                             selectedTransportMode.colors.primary]);
+    }
 
     getElevation = (d) => {
       const id = d.properties.id;
@@ -109,7 +125,9 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
     };
     getFillColor = (d) => {
       const id = d.properties.id;
-      console.log(id, selectedArea);
+      if (quantity === 'trips' && selectedArea == null) {
+        return [0, 0, 0, 0]
+      }
       if (id === selectedArea) {
         return [174, 30, 32, 255];
       }
@@ -117,7 +135,9 @@ export function TransportModeShareMap({ areaType, areaData, transportModes, sele
       if (!area.data) return [0, 0, 0, 0];
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
-      // if (abs < 100) return [0, 0, 0, 0];
+      if (quantity !== 'trips') {
+        if (abs < 100) return [0, 0, 0, 0];
+      }
       return [...scales(val).rgb(), 220];
     },
     colorStateKey = `${modeId}-${selectedArea}`;
