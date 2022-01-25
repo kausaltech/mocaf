@@ -85,7 +85,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
   const weekSubset = userChoiceState.weekSubset;
   let visComponent;
   if (userChoiceState.visualisation === 'choropleth-map') {
-    if (userChoiceState.analyticsQuantity === 'lengths') {
+    switch (userChoiceState.analyticsQuantity) {
+    case 'lengths':
       visComponent = (
         <TransportModeShareMap
           areaType={areaType}
@@ -96,7 +97,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           weekSubset={weekSubset}
         />
       );
-    } else {
+      break;
+    case 'poi_trips':
       visComponent = (
         <POIMap
           poiType={poiType}
@@ -106,10 +108,12 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           rangeLength={rangeLength}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes} />
-      )
+      );
+      break;
     }
   } else if (userChoiceState.visualisation === 'table') {
-    if (userChoiceState.analyticsQuantity === 'lengths') {
+    switch (userChoiceState.analyticsQuantity) {
+    case 'lengths':
       visComponent = (
         <TransportModesPlot
           areaType={areaType}
@@ -120,7 +124,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           rangeLength={rangeLength}
         />
       );
-    } else {
+      break;
+    case 'trips':
       const selectedArea = userChoiceState.visualisationState.trips.selectedArea;
       const setSelectedArea = (area) => {
         dispatch({
@@ -128,13 +133,15 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
           key: ['visualisationState', 'trips', 'selectedArea'],
           payload: area
       })};
-      visComponent = <AreaBarChart
-                       transportModes={transportModes}
-                       areaType={areaType}
-                       areaData={areaData}
-                       selectedArea={selectedArea}
-                       setSelectedArea={setSelectedArea}
-                     />
+      visComponent = (
+        <AreaBarChart
+          transportModes={transportModes}
+          areaType={areaType}
+          areaData={areaData}
+          selectedArea={selectedArea}
+          setSelectedArea={setSelectedArea}
+        />);
+      break;
     }
   }
 
