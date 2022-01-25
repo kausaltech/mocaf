@@ -19,6 +19,7 @@
       const config = {
         graphqlUrl: '{% url "graphql" %}',
         cubeUrl: '{% url "cubejs-api" %}',
+        sentryDSN: '{{ SENTRY_DSN }}',
       };
       initializeApp(document.getElementById('app'), config);
     </script>
