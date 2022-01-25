@@ -17,7 +17,6 @@ import { AreaPopup, AreaToAreaPopup } from './Popup';
 function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
-  console.log(colorStateKey);
   const initialView = getInitialView(bbox);
   const layers = [
     new GeoJsonLayer({
@@ -107,7 +106,6 @@ export function TransportModeShareMap({ areaType,
     const maxLength = absoluteVals[absoluteVals.length - 1];
     const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
     let scales;
-    console.log(quantity);
     if (quantity === 'lengths') {
       const limits = chroma.limits(relativeVals, 'q', 7);
       scales = chroma.scale([selectedTransportMode.colors.zero,

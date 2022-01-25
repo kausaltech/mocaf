@@ -100,7 +100,6 @@ export function userChoiceReducer (state, action) {
     action.payload = restrictDateRange(action.payload);
   }
   if (action.key instanceof Array && action.key[0] === 'visualisationState') {
-    console.log('settings selected', action.payload);
     let target = state;
     for (key of action.key.slice(0, -1)) target = target[key];
     target[action.key.at(-1)] = action.payload;

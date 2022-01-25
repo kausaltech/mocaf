@@ -205,31 +205,11 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
   const modeById = new Map(primaryModes.map(m => [m.identifier, m]));
   const availableModes = modeOrder.filter(mode => modeById.has(mode));
 
-  // TODO: self-trips are so common they
-  // don't fit on the same scale. Figure
-  // out a way to display them
-  const breakdown = areaData
-    .params({selectedArea: selectedArea.id})
-    .filter((d, $) => (
-      $.selectedArea === d.destId ||
-      $.selectedArea === d.originId))
-    .filter(d => d.destId !== d.originId) // FIXME way to visualize this
-    .impute({originId: d => 'unknown',
-             destId: d => 'unknown',
-             mode: d => 'other'})
-    .derive({areaId: (d, $) => d.originId === $.selectedArea ? d.destId : d.originId})
-    .groupby('areaId', 'mode')
-    .rollup({total_trips: aq.op.sum('trips')})
-    .groupby('areaId')
-    .rollup({sum_total_trips: aq.op.sum('total_trips'),
-             breakdown: aq.op.object_agg('mode', 'total_trips')})
-        .orderby('sum_total_trips');
-
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]));
 
   const traces = availableModes.map((mode) => {
     const x = [], y = [], customdata = [];
-    breakdown.objects().forEach(row => {
+    areaData.orderby('total').objects().forEach(row => {
       const { areaId } = row;
       const area = areasById.get(areaId);
       if (!area) {
@@ -237,10 +217,10 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
         return;
       }
       y.push(area.name);
-      x.push(row.breakdown[mode]);
+      x.push(row[mode]);
 
       customdata.push({
-        rel: row.breakdown[mode]  / row.sum_total_trips
+        rel: row[`${mode}_rel`]
       });
     });
     const trace = {
