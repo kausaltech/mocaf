@@ -22,6 +22,7 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
            pointerEvents: 'none',
            backgroundColor: 'white',
            borderRadius: '0.5em',
+           minWidth: 500,
            boxShadow: '5px 5px 5px #00000033'
          }}>
       <Block style={{ padding: '0.5em' }}>
