@@ -110,16 +110,27 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     dispatch(userChoiceSetAction('dateRange', { bounds, range: [start, end] }));
   }
   return (
-    <div style={{gridColumn: '1/4'}} >
+    <div style={{gridColumn: '1/4', padding: '0px 10px'}} >
       <Slider value={value.sliderValue}
               marks={true}
               onChange={onChange}
               onFinalChange={onFinalChange}
               label={label}
               min={0}
+              persistentThumb={true}
               max={differenceInCalendarMonths(bounds[1], bounds[0])}
               valueToLabel={valueToLabel}
               step={1}
+              overrides={{
+                InnerThumb: ({$value, $thumbIndex}) => (
+                  <div style={{position: 'absolute', top: 30, fontSize: 12}}>
+                    {valueToLabel($value[$thumbIndex])}
+                  </div>
+                ),
+                ThumbValue: () => null,
+                TickBar: { style: () => ({ display: 'none' })},
+                Thumb: { style: () => ({ position: 'relative' })},
+              }}
       />
     </div>
   );
