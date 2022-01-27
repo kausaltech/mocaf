@@ -220,7 +220,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
       x.push(row[mode]);
 
       customdata.push({
-        rel: row[`${mode}_rel`]
+        rel: row[`${mode}_rel`] * 100
       });
     });
     const trace = {
@@ -250,7 +250,6 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
     },
     height: Math.max(20 * areasById.size, 400),
     bargap: 0,
-    barnorm: '',
     xaxis: {
       fixedrange: true,
     },
