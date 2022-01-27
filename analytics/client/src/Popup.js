@@ -13,23 +13,25 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
     t('all-days')
   );
 
-  return <div style={{
-                position: 'absolute',
-                top: y,
-                left: adaptedX,
-                marginBottom: 10,
-                pointerEvents: 'none',
-                backgroundColor: 'white',
-                borderRadius: '0.5em',
-                boxShadow: '5px 5px 5px #00000033'
-              }}>
-           <Block style={{ padding: '0.5em' }}>
-             <div style={{ marginBottom: '0.5em' }}>
-               { title } <span style={{fontSize: '80%'}}>{ weekSubsetName }</span>
-             </div>
-             { children }
-           </Block>
-         </div>
+  return (
+    <div style={{
+           position: 'absolute',
+           top: y,
+           left: adaptedX,
+           marginBottom: 10,
+           pointerEvents: 'none',
+           backgroundColor: 'white',
+           borderRadius: '0.5em',
+           boxShadow: '5px 5px 5px #00000033'
+         }}>
+      <Block style={{ padding: '0.5em' }}>
+        <div style={{ marginBottom: '0.5em' }}>
+          { title } <span style={{fontSize: '80%'}}>{ weekSubsetName }</span>
+        </div>
+        { children }
+      </Block>
+    </div>
+  );
 }
 
 export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average, weekSubset}) {
@@ -37,15 +39,16 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
   if (area == null) {
     return null;
   }
-  const title = <>
-                  <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
-                </>
-
-  const contents = <div>
-               <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
-               <FigureElement {...{rel, average, syntheticModes}} />
-               {children}
-             </div>
+  const title = (
+    <><strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}</>
+  );
+  const contents = (
+    <div>
+      <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
+      <FigureElement {...{rel, average, syntheticModes}} />
+      {children}
+    </div>
+  );
   return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
@@ -54,15 +57,17 @@ export function AreaToAreaPopup ({y, x, children, rel, area, abs, transportMode,
   if (area == null) {
     return null;
   }
-  const title = <>
-                  <strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}
-                </>
+  const title = (
+    <><strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}</>
+  );
 
-  const contents = <div>
-               <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
-               <TripFigureElement {...{rel, abs}} />
-               {children}
-             </div>
+  const contents = (
+    <div>
+      <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
+      <TripFigureElement {...{rel, abs}} />
+      {children}
+    </div>
+  );
   return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
@@ -71,10 +76,12 @@ function TripFigureElement ({rel, abs, syntheticModes}) {
   if (isNaN(rel)) {
     return t('no-data');
   }
-  return <>
-           {t('traveled-trips-share')} <strong>{formatFloat(rel)} % </strong>
-           <span style={{fontSize:'80%'}}>({formatDecimal(abs)} {t('trips-total')})</span>
-         </>
+  return (
+    <>
+      {t('traveled-trips-share')} <strong>{formatFloat(rel)} % </strong>
+      <span style={{fontSize:'80%'}}>({formatDecimal(abs)} {t('trips-total')})</span>
+    </>
+  );
 }
 
 function FigureElement ({rel, average, syntheticModes}) {
@@ -87,9 +94,11 @@ function FigureElement ({rel, average, syntheticModes}) {
     <div key={m.name} style={{fontSize: '80%'}}>{
       `${m.name}: ` + (isNaN(m.rel) ? t('no-data') : `${formatFloat(m.rel)} %`)
     }</div>);
-  return <>
-           {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
-           {average != 0 && !isNaN(average) && ` (${formatDecimal(average)} ${t('kilometers-per-day')})`}
-           {syntheticFigures}
-         </>
+  return (
+    <>
+      {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
+      {average != 0 && !isNaN(average) && ` (${formatDecimal(average)} ${t('kilometers-per-day')})`}
+      {syntheticFigures}
+    </>
+  );
 }
