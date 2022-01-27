@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import {Select} from 'baseui/select';
-import {Button, KIND, SIZE, SHAPE} from "baseui/button";
+import {StyledLink} from 'baseui/link'
 import {FormControl} from 'baseui/form-control';
 import {Slider} from 'baseui/slider';
 import {format, parseISO, differenceInCalendarMonths, addMonths, setDate, lastDayOfMonth} from 'date-fns';
@@ -110,8 +110,9 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     dispatch(userChoiceSetAction('dateRange', { bounds, range: [start, end] }));
   }
   return (
-    <div style={{gridColumn: '2/4'}} >
+    <div style={{gridColumn: '1/4'}} >
       <Slider value={value.sliderValue}
+              marks={true}
               onChange={onChange}
               onFinalChange={onFinalChange}
               label={label}
@@ -148,6 +149,19 @@ const Controls = ({userChoices, dynamicOptions}) => {
            backgroundColor: '#ffffffdd',
            border: `1px solid #eee`,
          }}>
+      <div style={{gridColumn: "1/5", color: '#666'}}>
+        <h1 style={{ float: 'left', margin: 0, paddingLeft: 4, fontSize: 16, fontWeight: 'normal', letterSpacing: 1}}>
+          {t('site-name')}
+        </h1>
+        <div style={{float: 'right', fontSize: 12}}>
+          ⓘ
+          <StyledLink
+            href="#"
+            onClick={(e) => dispatch({type: 'set', key: 'modalVisible', payload: true})} >
+            {t('visualisation-guide')}
+          </StyledLink>
+        </div>
+      </div>
       <StaticSelectControl lookup='analyticsQuantity' userChoices={userChoices} />
       {
         poiTripsMode ?
@@ -161,15 +175,6 @@ const Controls = ({userChoices, dynamicOptions}) => {
       <SelectControl lookup='areaType'
                      userChoices={userChoices}
                      values={dynamicOptions.areaTypes} />
-      <div style={{paddingTop: "5px"}}>
-        <Button
-          kind={KIND.tertiary}
-          size={SIZE.mini}
-          shape={SHAPE.pill}
-          onClick={(e) => dispatch({type: 'set', key: 'modalVisible', payload: true})} >
-          ⓘ {t('visualisation-guide')}
-        </Button>
-      </div>
       <DateRangeSlider userChoices={userChoices} />
       {
         poiTripsMode ?
