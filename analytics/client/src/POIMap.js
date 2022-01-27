@@ -218,13 +218,10 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
       .objects();
   }
   const getFillColor = (d) => {
-    if (hoverInfo?.object?.properties == null) {
-      return [255,255,255,200];
+    if (d.properties.id === hoverInfo?.object?.properties?.id) {
+      return [174,30,32,255];
     }
-    if (d.properties.id === hoverInfo.object.properties.id) {
-      return [255,220,80,150];
-    }
-    return [255,255,255,200];
+    return [0,65,125,255];
   }
 
   const layers = [
@@ -245,7 +242,7 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
       stroked: true,
       filled: true,
       getFillColor,
-      getLineColor: [127, 0, 0, 200],
+      getLineColor: [255, 255, 255, 255],
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 3,
       updateTriggers: {
