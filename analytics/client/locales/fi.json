@@ -20,7 +20,7 @@
   "inbound": "saapuvat",
   "outbound": "lähtevät",
   "trips-total": "matkaa yhteensä",
-  "average-length": "matkoja päivässä",
+  "average-length": "keskimääräinen pituus",
   "all-transport-modes": "Kaikki kulkumuodot",
   "traveled-trips-share": "Osuus matkoista",
   "choose-area": "Valitse tarkasteltava alue",

@@ -8,7 +8,7 @@ import { Layer } from 'baseui/layer';
 import { useTranslation } from 'react-i18next';
 import * as aq from 'arquero';
 
-import { formatDecimal } from './utils';
+import { formatFloat } from './utils';
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
 import { Popup } from './Popup.js';
 import { orderedTransportModeIdentifiers } from './transportModes';
@@ -130,18 +130,28 @@ function AverageTripLengthTable({rangeLength, tripLengths}) {
            </caption>
            <tbody>
              {
-               ['inbound', 'outbound'].map ((key) => <tr>
+               ['inbound', 'outbound'].map ((key) => (
+                 <tr>
                    <td style={{paddingRight: 2, fontSize: 14, textAlign: 'right', verticalAlign: 'top'}}>
                      { t(key) }
                    </td>
                    <td style={{position: 'relative', width: 120}}>
-                     <SmallBarChartElement verticalOffset={-5} spec={{
-                                             cumulativeX: 0, x: 100*tripLengths[key]/scale, color: '#335595'}}>
-                      <span style={{whiteSpace: 'nowrap', paddingTop: 4, color: 'white', mixBlendMode: 'difference'}}>{formatDecimal(tripLengths[key])}&nbsp;km</span>
+                     <SmallBarChartElement
+                       verticalOffset={-5}
+                       spec={{
+                         cumulativeX: 0,
+                         x: 100*tripLengths[key]/scale, color: '#335595'
+                       }}>
+                      <span style={{whiteSpace: 'nowrap',
+                                    paddingTop: 4,
+                                    paddingLeft: 4,
+                                    color: 'white',
+                                    mixBlendMode: 'difference'}}>
+                      {isNaN(tripLengths[key]) ? 0 : formatFloat(tripLengths[key])}&nbsp;km</span>
                        </SmallBarChartElement>
                    </td>
                  </tr>
-             )
+               ))
              }
            </tbody>
          </table>;
@@ -203,7 +213,8 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
     totalTrips = currentPoiData
       .select('isInbound', 'trips', 'length')
       .groupby('isInbound')
-      .rollup({total_trips: aq.op.sum('trips'), total_length: aq.op.sum('length')})
+      .rollup({total_trips: aq.op.sum('trips'),
+               total_length: aq.op.sum('length')})
       .objects();
   }
   const getFillColor = (d) => {
@@ -258,8 +269,8 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
     const inboundTrips = Math.round(inboundTripProperties?.total_trips ?? 0);
     const outboundTrips = Math.round(outboundTripProperties?.total_trips ?? 0);
     const allTrips = Math.round(inboundTrips + outboundTrips);
-    const inboundLength = Math.round(inboundTripProperties?.total_length ?? 0) / rangeLength;
-    const outboundLength = Math.round(outboundTripProperties?.total_length ?? 0) / rangeLength;
+    const inboundLength = Math.round(inboundTripProperties?.total_length ?? 0) / inboundTrips;
+    const outboundLength = Math.round(outboundTripProperties?.total_length ?? 0) / outboundTrips;
     popupContents = groups ? [
       <POITotalTripsBar inbound={inboundTrips} outbound={outboundTrips} />,
       <AverageTripLengthTable rangeLength={rangeLength} tripLengths={{
