@@ -98,7 +98,7 @@ function FigureElement ({rel, average, syntheticModes}) {
   return (
     <>
       {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
-      {average != 0 && !isNaN(average) && ` (${formatDecimal(average)} ${t('kilometers-per-day')})`}
+      {average != 0 && !isNaN(average) && ` (${formatFloat(average)} ${t('kilometers-per-day')})`}
       {syntheticFigures}
     </>
   );
