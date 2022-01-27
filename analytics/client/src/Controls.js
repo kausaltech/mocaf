@@ -160,12 +160,12 @@ const Controls = ({userChoices, dynamicOptions}) => {
            backgroundColor: '#ffffffdd',
            border: `1px solid #eee`,
          }}>
-      <div style={{gridColumn: "1/5", color: '#666'}}>
-        <h1 style={{ float: 'left', margin: 0, paddingLeft: 4, fontSize: 16, fontWeight: 'normal', letterSpacing: 1}}>
-          {t('site-name')}
+      <div style={{gridColumn: "1/5", color: '#555'}}>
+        <h1 style={{ float: 'left', margin: 0, paddingLeft: 4, paddingTop: 10, paddingBottom: 6, fontSize: 16, fontWeight: 'normal', letterSpacing: 1}}>
+            {t('site-name')}
         </h1>
-        <div style={{float: 'right', fontSize: 12}}>
-          ⓘ
+        <div style={{float: 'right', fontSize: 12, color: '#AE1E20', paddingTop: 10}}>
+          <span style={{}}>ⓘ</span>
           <StyledLink
             href="#"
             onClick={(e) => dispatch({type: 'set', key: 'modalVisible', payload: true})} >
