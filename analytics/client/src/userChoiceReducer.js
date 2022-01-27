@@ -6,11 +6,13 @@ const syntheticModeNames = syntheticModes.map(m => m.identifier);
 const defaultDateBounds = [
   new Date(2021, 6, 1), new Date(2021, 10, 1)]
 
+const DEFAULT_TRANSPORTMODE = 'walk';
+
 export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
   const defaults = {
     visualisation: 'choropleth-map',
     weekSubset: null,
-    transportMode: 'walk',
+    transportMode: DEFAULT_TRANSPORTMODE,
     areaType: initialAreaType,
     analyticsQuantity: 'lengths',
     areaTypes,
@@ -68,7 +70,7 @@ export function userChoiceReducer (state, action) {
   let dependentState = {};
   if (action.key === 'visualisation' && action.payload === 'table' &&
       syntheticModeNames.includes(state.transportMode)) {
-    dependentState.transportMode = initialUserChoiceState.transportMode;
+    dependentState.transportMode = DEFAULT_TRANSPORTMODE;
   }
   if (action.key === 'areaType') {
     dependentState.dateRange = areaTypeDateRange(
@@ -87,15 +89,9 @@ export function userChoiceReducer (state, action) {
   if (action.key === 'analyticsQuantity' && action.payload === 'poi_trips') {
     dependentState.visualisation = 'choropleth-map';
   }
-  // if (action.key === 'analyticsQuantity' && action.payload === 'trips') {
-  //   dependentState.visualisation = 'table';
-  // }
   if (action.key === 'visualisation' && state.analyticsQuantity === 'poi_trips') {
     action.payload = 'choropleth-map';
   }
-  // if (action.key === 'visualisation' && state.analyticsQuantity === 'trips') {
-  //   action.payload = 'table';
-  // }
   if (action.key == 'dateRange') {
     action.payload = restrictDateRange(action.payload);
   }
