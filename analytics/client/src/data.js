@@ -147,6 +147,9 @@ function preprocessPoiTrips(resultSet) {
       'TransportModes.identifier': 'mode',
       'DailyPoiTrips.totalLength': 'length',
       'trips': 'trips',
+    })
+    .derive({
+      length: d => d.length / 1000,  // convert to km
     });
   return table;
 }
