@@ -284,7 +284,9 @@ const MemoizedPopupEnabledPlot = React.memo(Plot);
 
 function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
   const [popupState, setPopupState] = useState(null);
+  const onUnhover = lodash.debounce(x => setPopupState(null), 200);
   const hoverHandler = ({event, points: [point]}) => {
+    onUnhover.cancel();
     setPopupState(
       {area: {
         name: point.label,
@@ -322,6 +324,7 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
              style={{width: '100%'}}
              useResizeHandler
              onHover={onHoverCallback}
+             onUnhover={onUnhover}
            />
          </div>
 }
