@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.gis.db.models.aggregates import Extent
 
 from django.db import connection
-from django.contrib.gis.db.models.functions import Transform
+from django.contrib.gis.db.models.functions import Transform, Area as GisArea
 from subprocess import Popen, PIPE
 
 from analytics.models import AreaType, Area
@@ -63,7 +63,10 @@ class AreaImporter:
             raise Exception('Invalid geometries remain')
 
         print('Generating GeoJSON')
-        areas = list(area_type.areas.all().values('id').annotate(geom=Transform('geometry', 4326)))
+        areas = list(area_type.areas.all().values('id').annotate(
+            area=GisArea('geometry'),
+            geom=Transform('geometry', 4326)))
+        areas = sorted(areas, key=lambda x: x['area'], reverse=True)
         bbox = area_type.areas.all().annotate(
             geom=Transform('geometry', 4326)).aggregate(Extent('geom')
         )['geom__extent']
