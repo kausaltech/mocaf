@@ -144,6 +144,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
     barnorm: 'percent',
     xaxis: {
       fixedrange: true,
+      zeroline: false,
     },
     barmode: 'stack',
     dragmode: 'pan',

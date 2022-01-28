@@ -175,7 +175,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         contents={visualisationGuideContents}
         visible={userChoiceState.modalVisible}
         dispatch={dispatch} />
-      <div style={{width: '100vw', height: '100vh', paddingTop: '180px'}}>
+      <div style={{width: '100vw', height: '100vh', paddingTop: '200px'}}>
         {visComponent}
       </div>
     </div>
