@@ -19,7 +19,6 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
   const getLineColor = d => {
-    console.log(hoverInfo?.object?.properties, d);
     return (hoverInfo?.object?.properties !== undefined &&
      d?.properties?.id === hoverInfo?.object?.properties?.id) ?
       [174, 30, 32] : [0, 0, 0, 50]

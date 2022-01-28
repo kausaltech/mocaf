@@ -3,8 +3,8 @@ export const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/sty
 export function getInitialView(bbox) {
   return {
     longitude: (bbox[0] + bbox[2]) / 2,
-    latitude: (bbox[1] + bbox[3]) / 2,
-    zoom: 9,
+    latitude: (bbox[1] + bbox[3]) / 2 - 0.15,
+    zoom: 11,
     pitch: 0,
     bearing: 0,
   };
