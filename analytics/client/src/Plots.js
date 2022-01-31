@@ -143,6 +143,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
     bargap: 0,
     barnorm: 'percent',
     xaxis: {
+      showgrid: false,
       fixedrange: true,
       zeroline: false,
     },
@@ -252,6 +253,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
     height: Math.max(20 * areasById.size, 400),
     bargap: 0,
     xaxis: {
+      showgrid: false,
       zeroline: false,
       fixedrange: true,
     },
