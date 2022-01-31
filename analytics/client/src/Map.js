@@ -95,31 +95,34 @@ export function TransportModeShareMap({ areaType,
 
   if (areaData) {
     const availableModes = areaData.columnNames((col) => modeById.has(col));
-    if (!availableModes.includes(modeId)) {
-      throw new Error(`selected transport mode ${modeId} not found in data`);
-    }
     areaData.objects().forEach((row) => {
       const area = areasById.get(row.areaId);
       if (!area) {
-        console.warn('Unknown area in input data', row);
+        if (row.areaId !== 'unknown') console.warn('Unknown area in input data', row);
         return;
       }
       area.data = row;
     });
-    const absoluteVals = areaData.array(modeId);
-    absoluteVals.sort((a, b) => a - b);
-    const minLength = absoluteVals[0];
-    const maxLength = absoluteVals[absoluteVals.length - 1];
-    const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
     let scales;
-    if (quantity === 'lengths') {
-      const limits = chroma.limits(relativeVals, 'q', 7);
-      scales = chroma.scale([selectedTransportMode.colors.zero,
-                             selectedTransportMode.colors.primary]).classes(limits);
+    if (!availableModes.includes(modeId)) {
+      //console.warn(`selected transport mode ${modeId} not found in data`);
     }
-    else if (quantity === 'trips') {
-      scales = chroma.scale([selectedTransportMode.colors.zero,
-                             selectedTransportMode.colors.primary]);
+    else {
+      const absoluteVals = areaData.array(modeId);
+      absoluteVals.sort((a, b) => a - b);
+      const minLength = absoluteVals[0];
+      const maxLength = absoluteVals[absoluteVals.length - 1];
+      const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
+
+      if (quantity === 'lengths') {
+        const limits = chroma.limits(relativeVals, 'q', 7);
+        scales = chroma.scale([selectedTransportMode.colors.zero,
+                               selectedTransportMode.colors.primary]).classes(limits);
+      }
+      else if (quantity === 'trips') {
+        scales = chroma.scale([selectedTransportMode.colors.zero,
+                               selectedTransportMode.colors.primary]);
+      }
     }
 
     getElevation = (d) => {
