@@ -137,7 +137,7 @@ export function TransportModeShareMap({ areaType,
         return [174, 30, 32, 255];
       }
       const area = areasById.get(id);
-      if (!area.data) return [0, 0, 0, 0];
+      if (!area.data || area.data[modeId] == null) return [0, 0, 0, 0];
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
       if (quantity !== 'trips') {
@@ -151,7 +151,7 @@ export function TransportModeShareMap({ areaType,
     if (!object) return null;
     const { id, name, identifier } = object.properties;
     const area = areasById.get(id);
-    if (!area.data) return null;
+    if (!area.data || area.data[modeId] == null) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
     const average = area.data[modeId] / rangeLength;

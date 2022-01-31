@@ -127,8 +127,6 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
   }
   table = table
     .derive(Object.fromEntries(transportModes.map(mode =>
-      [`${mode.identifier}`, aq.escape(d => d[mode.identifier] ?? 0 )])))
-    .derive(Object.fromEntries(transportModes.map(mode =>
       [`${mode.identifier}_rel`, aq.escape(d => d[mode.identifier] / d.total)]
     )));
   return table;

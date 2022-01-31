@@ -74,7 +74,7 @@ export function AreaToAreaPopup ({y, x, children, rel, area, abs, transportMode,
 
 function TripFigureElement ({rel, abs, syntheticModes}) {
   const { t } = useTranslation();
-  if (isNaN(rel)) {
+  if (isNaN(rel) || rel == null || abs == null) {
     return t('no-data');
   }
   return (
