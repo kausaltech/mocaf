@@ -322,7 +322,6 @@ export function usePoiGeojson(poiType) {
       return;
     }
 
-    console.log('fetching poi geojson', poiType.geojsonUrl);
     fetch(poiType.geojsonUrl)
       .then(res => res.json())
       .then(

@@ -16,11 +16,15 @@ import { useAreaTopo, usePoiGeojson } from './data';
 
 function SmallBarChartElement({spec, children, verticalOffset, fontSize, padding}) {
   fontSize = fontSize ?? 12;
+  let width = null;
+  if (spec.x != null && !isNaN(spec.x)) {
+    width = spec.x;
+  }
   return <div style={{
                 position: 'absolute',
                 top: 5 + verticalOffset,
                 left: spec.cumulativeX,
-                width: spec.x,
+                width,
                 height: 15,
                 backgroundColor: spec.color,
                 fontSize,
@@ -43,15 +47,18 @@ function SmallBarChart({rowName, specs, leftBorder}) {
   }
   let legendRow;
   if (specs[0].legend != null) {
-    legendRow = <tr> { rowName && <td/> }
+    const rowNameCell = rowName != null ? <td/> : null;
+    legendRow = <tr>
+                  { rowNameCell }
                   <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
       {specs.map((spec, index) => <SmallBarChartLegend key={index} spec={spec} />)}
     </td>
     </tr>
   }
+  const rowNameCell = rowName != null ? <td style={{verticalAlign: 'top', paddingRight: 4, paddingTop: 5, textAlign: 'right', fontSize: 14, height: 15}}>{rowName}</td> : null;
   return <>
     <tr>
-      { rowName && <td style={{verticalAlign: 'top', paddingRight: 4, paddingTop: 5, textAlign: 'right', fontSize: 14, height: 15}}>{rowName}</td> }
+      { rowNameCell  }
       <td style={{position: 'relative', width: '100px', borderLeft: leftBorder ? '1px solid black' : null}}>
         {specs.map((spec, index) => (
           <SmallBarChartElement key={index} spec={spec} verticalOffset={0} padding={spec.value != null ? 2 : null}>
@@ -131,7 +138,7 @@ function AverageTripLengthTable({rangeLength, tripLengths}) {
            <tbody>
              {
                ['inbound', 'outbound'].map ((key) => (
-                 <tr>
+                 <tr key={`average-trip-length-${key}`}>
                    <td style={{paddingRight: 2, fontSize: 14, textAlign: 'right', verticalAlign: 'top'}}>
                      { t(key) }
                    </td>
@@ -269,8 +276,8 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
     const inboundLength = Math.round(inboundTripProperties?.total_length ?? 0) / inboundTrips;
     const outboundLength = Math.round(outboundTripProperties?.total_length ?? 0) / outboundTrips;
     popupContents = groups ? [
-      <POITotalTripsBar inbound={inboundTrips} outbound={outboundTrips} />,
-      <AverageTripLengthTable rangeLength={rangeLength} tripLengths={{
+      <POITotalTripsBar key="poi-total-trips" inbound={inboundTrips} outbound={outboundTrips} />,
+      <AverageTripLengthTable key="poi-average-trip-length" rangeLength={rangeLength} tripLengths={{
                                 inbound: inboundLength,
                                 outbound: outboundLength }}/>
     ] : null;
@@ -283,6 +290,7 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
         return <POICounterPartsTable
                  inbound={inbound}
                  group={group}
+                 key={`table-${inbound}`}
                  transportModes={new Map(transportModes.map(m => [m.identifier, m.colors.primary]))}
                  orderedModeIds={orderedTransportModeIdentifiers(transportModes, 'car')}
                />;
