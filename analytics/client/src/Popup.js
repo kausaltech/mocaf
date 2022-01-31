@@ -53,13 +53,13 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
   return <Popup weekSubset={weekSubset} x={x} y={y} children={contents} title={title} maxWidth={320}/>
 }
 
-export function AreaToAreaPopup ({y, x, children, rel, area, abs, transportMode, weekSubset}) {
+export function AreaToAreaPopup ({y, x, children, rel, area, abs, transportMode, weekSubset, selectedArea}) {
   const { t } = useTranslation();
   if (area == null) {
     return null;
   }
   const title = (
-    <><strong>{area.name}</strong> {area.identifier && `(${area.identifier})`}</>
+    <><strong>{selectedArea?.name} &mdash; {area.name}</strong> {area.identifier && `(${area.identifier})`}</>
   );
 
   const contents = (

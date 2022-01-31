@@ -168,7 +168,7 @@ export function TransportModeShareMap({ areaType,
         rel: area.data['public_transportation_rel'] * 100,
       }
     ];
-    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, average };
+    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, average, selectedArea: areasById.get(selectedArea) };
   };
   return (
     <AreaMap
