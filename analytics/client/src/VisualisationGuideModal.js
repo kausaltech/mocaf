@@ -32,7 +32,7 @@ export default ({visible, dispatch, contents}) => {
       role={ROLE.dialog}
     >
       <ModalHeader>{ title }</ModalHeader>
-      <ModalBody dangerouslySetInnerHTML={{__html: body}}>
+      <ModalBody id="help-modal-body" dangerouslySetInnerHTML={{__html: body}}>
       </ModalBody>
       <ModalFooter>
         <ModalButton onClick={closeModal}>{t('close')}</ModalButton>
