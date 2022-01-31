@@ -252,6 +252,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
     height: Math.max(20 * areasById.size, 400),
     bargap: 0,
     xaxis: {
+      zeroline: false,
       fixedrange: true,
     },
     barmode: 'stack',
