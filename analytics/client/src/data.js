@@ -67,6 +67,7 @@ function preprocessLengths(resultSet, transportModes) {
 
   let availableModes = primaryModes.map(m => m.identifier)
   let table = aq.from(resultSet.rawData())
+    .impute({ 'TransportModes.identifier': () => 'combined' })
     .select({
       'DailyLengths.areaId': 'areaId',
       'TransportModes.identifier': 'mode',
@@ -112,7 +113,7 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
       $.selectedArea === d.originId))
     .impute({originId: d => 'unknown',
              destId: d => 'unknown',
-             mode: d => 'other'})
+             mode: d => 'combined'})
     .derive({areaId: (d, $) => d.originId === $.selectedArea ? d.destId : d.originId})
     .groupby('areaId')
     .pivot('mode', {value: d => aq.op.sum(d.trips)})
@@ -133,7 +134,7 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
 
 function preprocessPoiTrips(resultSet) {
   let table = aq.from(resultSet.rawData())
-    .impute({ 'TransportModes.identifier': () => 'other' })
+    .impute({ 'TransportModes.identifier': () => 'combined' })
     .derive({
       trips: d => aq.op.parse_int(d['DailyPoiTrips.totalTrips'])
     })

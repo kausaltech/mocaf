@@ -25,7 +25,7 @@ const colors = {
     primary: '#abc872',
     zero: '#e8edee'
   },
-  other: {
+  combined: {
     primary: '#bebfbf',
     zero: '#e8edee'
   },
@@ -76,8 +76,8 @@ export function orderedTransportModeIdentifiers (transportModes, selectedTranspo
     .sort((a, b) => (
       a.includes(selected) ? -1 :
       b.includes(selected) ? 1 :
-      a.includes('other') ? 1 :
-      b.includes('other') ? -1 :
+      a.includes('combined') ? 1 :
+      b.includes('combined') ? -1 :
       a.includes('car') ? 1 :
       b.includes('car') ? -1 :
       0));
@@ -90,7 +90,8 @@ export default function preprocessTransportModes(transportModes, language) {
     extender(m => ({ synthetic: true,
                      name: m.name[language] ?? m.name['fi'] })));
   return transportModes
-    .filter(m => m.identifier !== 'still')
+    .concat([{id: '999', identifier: 'combined', name: 'Useita kulkumuotoja'}])
+    .filter(m => (m.identifier !== 'still' && m.identifier !== 'other'))
     .map(extender(m => ({ synthetic: false })))
     .concat(translatedSyntheticModes)
     .map(extender(m => ({ colors: colors[m.identifier] })));
