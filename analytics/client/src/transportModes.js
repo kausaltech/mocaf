@@ -2,23 +2,23 @@ import lodash from 'lodash';
 
 const colors = {
   walk: {
-    primary: '#e0b565',
+    primary: '#e8b455',
     zero: '#e8edee'
   },
   bicycle: {
-    primary: '#477168',
+    primary: '#bf7045',
     zero: '#e8edee'
   },
   car: {
-    primary: '#b9483d',
+    primary: '#ae1e20',
     zero: '#e8edee'
   },
   bus: {
-    primary: '#5090b2',
+    primary: '#6b9f88',
     zero: '#e8edee'
   },
   tram: {
-    primary: '#cb676c',
+    primary: '#397368',
     zero: '#e8edee'
   },
   train: {
@@ -30,11 +30,11 @@ const colors = {
     zero: '#e8edee'
   },
   public_transportation: {
-    primary: '#5090b2',
+    primary: '#729e6d',
     zero: '#e8edee'
   },
   walk_and_bicycle: {
-    primary: '#477168',
+    primary: '#c78742',
     zero: '#e8edee'
   }
 }
