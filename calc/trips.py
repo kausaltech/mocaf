@@ -303,7 +303,7 @@ def split_trip_legs(conn, uid, df, include_all=False):
     df['int_atype'] = df.atype.map(ALL_ATYPES.index).astype(int)
     df['leg_id'] = filter_legs(
         time=df.epoch_ts.to_numpy(), x=df.x.to_numpy(), y=df.y.to_numpy(), atype=df.int_atype.to_numpy(),
-        distance=df.distance.to_numpy(), loc_error=df.loc_error.to_numpy(), speed=df.speed.to_numpy()
+        distance=df.distance.to_numpy(), loc_error=df.loc_error.to_numpy(), speed=df.speed.to_numpy(na_value=np.nan)
     )
     df.atype = df.int_atype.map(lambda x: ALL_ATYPES[x])
 
