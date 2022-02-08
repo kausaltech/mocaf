@@ -239,6 +239,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
       x.push(row[mode]);
 
       customdata.push({
+        selectedArea: areasById.get(selectedArea.id),
         rel: row[`${mode}_rel`] * 100
       });
     });
@@ -318,6 +319,7 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
        average: point.customdata.average,
        weekSubset,
        syntheticModes: point.customdata.syntheticModes,
+       selectedArea: point.customdata.selectedArea,
        x: event.x,
        y: event.y});
   };
