@@ -41,21 +41,21 @@ const colors = {
 
 export const syntheticModes = [
   {
-    identifier: 'public_transportation',
-    components: ['bus', 'tram', 'train'],
-    name: {
-      fi: 'Julkinen liikenne',
-      en: 'Public transportation'
-    }
-  },
-  {
     identifier: 'walk_and_bicycle',
     components: ['walk', 'bicycle'],
     name: {
       fi: 'Kävely ja pyöräily',
       en: 'Walking and cycling'
     }
-  }
+  },
+  {
+    identifier: 'public_transportation',
+    components: ['tram', 'bus', 'train'],
+    name: {
+      fi: 'Julkinen liikenne',
+      en: 'Public transportation'
+    }
+  },
 ]
 
 const extender = (ext) => ((o) => (Object.assign({}, o, ext(o))));
@@ -76,8 +76,10 @@ export function orderedTransportModeIdentifiers (transportModes, selectedTranspo
     .sort((a, b) => (
       a.includes(selected) ? -1 :
       b.includes(selected) ? 1 :
-      a.includes('car') ? -1 :
-      b.includes('car') ? 1 :
+      a.includes('other') ? 1 :
+      b.includes('other') ? -1 :
+      a.includes('car') ? 1 :
+      b.includes('car') ? -1 :
       0));
   return lodash.flatten(modeGroups).sort((a, b) => a === selected ? -1 : 0);
 
