@@ -196,7 +196,7 @@ function ReflexiveTripsFilter({reflexiveTripsState}) {
            checked={showReflexive}
            onChange={e => setReflexive(e.target.checked)}
            labelPlacement={LABEL_PLACEMENT.right}>
-           {t('Show trips from chosen area to itself')}
+           {t('show-reflexive-trips')}
          </Checkbox></div>
 }
 

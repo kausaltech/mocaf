@@ -24,5 +24,6 @@
   "all-transport-modes": "Kaikki kulkumuodot",
   "traveled-trips-share": "Osuus matkoista",
   "choose-area": "Valitse tarkasteltava alue",
-  "site-name": "Liikkumisen hiilijalanjälkilaskurin analytiikkatyökalu"
+  "site-name": "Liikkumisen hiilijalanjälkilaskurin analytiikkatyökalu",
+  "show-reflexive-trips": "Näytä valittuun alueeseen kohdistuvat matkat"
 }
