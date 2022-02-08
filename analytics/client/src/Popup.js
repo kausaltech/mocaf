@@ -79,7 +79,7 @@ function TripFigureElement ({rel, abs, syntheticModes}) {
   }
   return (
     <>
-      {t('traveled-trips-share')} <strong>{formatFloat(rel)} % </strong>
+      <strong>{formatFloat(rel)} % </strong>
       <span style={{fontSize:'80%'}}>({formatDecimal(abs)} {t('trips-total')})</span>
     </>
   );
