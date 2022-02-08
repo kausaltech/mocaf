@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { StaticMap } from 'react-map-gl';
+import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Layer } from 'baseui/layer';
@@ -12,9 +13,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
 import { useAreaTopo } from './data';
 import { AreaPopup, AreaToAreaPopup } from './Popup';
+import ColorLegend from './ColorLegend';
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup }) {
+
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup, scales }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
@@ -46,20 +49,40 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       }
     })
   ];
-
+  const { t } = useTranslation();
   const popupValues = getTooltip(hoverInfo) ?? {};
+
+  let elements = [];
+  let title = null;
+  if (scales != null) {
+    if (scales.classes()) {
+      title = t('transport-mode-share-km')
+      elements = scales?.classes().map(val => (
+        [scales(val).alpha(AREA_ALPHA).hex(), val]));
+    }
+    else {
+      title = t('transport-mode-share-trips')
+      for (let i=0; i<11; i++) {
+        let val = i*0.1;
+        elements.push([scales(val).alpha(AREA_ALPHA).hex(), val])
+      }
+    }
+  }
+
   return (
     <div>
-      { hoverInfo.object && (
-        <Layer>
+      <Layer>
+        { elements && <ColorLegend title={title} elements={elements.reverse()} /> }
+        { hoverInfo.object && (
           <Popup
             x={hoverInfo.x}
             y={hoverInfo.y}
             weekSubset={weekSubset}
             {...popupValues}
           />
+        )}
         </Layer>
-      )}
+
       <DeckGL
         initialViewState={initialView}
         controller={true}
@@ -71,6 +94,8 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
     </div>
   );
 }
+
+const AREA_ALPHA = 0.86;
 
 export function TransportModeShareMap({ areaType,
                                         areaData,
@@ -93,6 +118,7 @@ export function TransportModeShareMap({ areaType,
   let getElevation;
   let colorStateKey = `${modeId}-nodata-${selectedArea}`;
 
+  let scales = undefined;
   if (areaData) {
     const availableModes = areaData.columnNames((col) => modeById.has(col));
     areaData.objects().forEach((row) => {
@@ -103,7 +129,6 @@ export function TransportModeShareMap({ areaType,
       }
       area.data = row;
     });
-    let scales;
     if (!availableModes.includes(modeId)) {
       //console.warn(`selected transport mode ${modeId} not found in data`);
     }
@@ -146,7 +171,8 @@ export function TransportModeShareMap({ areaType,
       if (quantity !== 'trips') {
         if (abs < 100) return [0, 0, 0, 0];
       }
-      return [...scales(val).rgb(), 220];
+      const color = scales(val).alpha(AREA_ALPHA);
+      return [...color.rgb(), color.alpha()*255];
     },
     colorStateKey = `${modeId}-${selectedArea}`;
   }
@@ -172,6 +198,7 @@ export function TransportModeShareMap({ areaType,
   };
   return (
     <AreaMap
+      scales={scales}
       geoData={geoData}
       Popup={quantity === 'trips' ? AreaToAreaPopup : AreaPopup }
       getFillColor={getFillColor}

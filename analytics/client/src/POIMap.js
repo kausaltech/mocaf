@@ -13,6 +13,7 @@ import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
 import { Popup } from './Popup.js';
 import { orderedTransportModeIdentifiers } from './transportModes';
 import { useAreaTopo, usePoiGeojson } from './data';
+import ColorLegend from './ColorLegend';
 
 function SmallBarChartElement({spec, children, verticalOffset, fontSize, padding}) {
   fontSize = fontSize ?? 12;
@@ -180,10 +181,16 @@ const getCircularReplacer = () => {
 export default function POIMap({ poiType, areaType, areaData, transportModes,
                          selectedTransportMode, weekSubset, rangeLength }) {
   const [hoverInfo, setHoverInfo] = useState({});
+  const { t } = useTranslation();
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
   const poiById = new Map(poiType.areas.map(a => [Number(a.id), {name: a.name, identifier: a.identifier}]));
   if (!poiGeoData || !geoData || !areaData) return <Spinner />;
+
+  const title = t('transport-modes');
+  const colorElements = transportModes.filter(m => !m.synthetic).map(m => (
+    [m.colors.primary, m.name]
+  ));
 
   const { bbox, geojson } = geoData;
 
@@ -300,6 +307,9 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
   return (
     <div>
       <Layer>
+        { colorElements &&
+          <ColorLegend elements={colorElements} title={title} />
+        }
         { popupContents.length > 0 &&
           <Popup weekSubset={weekSubset}
                  maxWidth={560}
