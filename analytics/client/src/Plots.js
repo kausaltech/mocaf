@@ -11,6 +11,11 @@ import lodash from 'lodash';
 import {AreaPopup, AreaToAreaPopup } from './Popup';
 import {orderedTransportModeIdentifiers} from './transportModes';
 
+const TOP_MARGIN = 20;
+const BOTTOM_MARGIN = 110;
+
+const getHeight = table => (table.numRows() * 20 + TOP_MARGIN + BOTTOM_MARGIN + 50);
+
 export function TransportModesPlot({ transportModes, areaType, areaData, selectedTransportMode, rangeLength, weekSubset }) {
   if (!areaData)
     return <Spinner />;
@@ -60,13 +65,13 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
   })
   const layout = {
     margin: {
-      l: 160,
+      l: 160 + (areaType.identifier === 'tre:paavo' ? 40 : 0),
       r: 20,
-      t: 20,
-      b: 110,
+      t: TOP_MARGIN,
+      b: BOTTOM_MARGIN,
       pad: 5
     },
-    height: Math.max(20 * areasById.size, 400),
+    height: getHeight(table),
     bargap: 0,
     barnorm: 'percent',
     xaxis: {
@@ -190,13 +195,13 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
   })
   const layout = {
     margin: {
-      l: 160,
+      l: 160 + (areaType.identifier === 'tre:paavo' ? 40 : 0),
       r: 20,
-      t: 20,
-      b: 110,
+      t: TOP_MARGIN,
+      b: BOTTOM_MARGIN,
       pad: 5
     },
-    height: Math.max(20 * areasById.size, 400),
+    height: getHeight(areaData),
     bargap: 0,
     xaxis: {
       showgrid: false,
