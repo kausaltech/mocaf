@@ -131,7 +131,8 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
     return <Spinner />;
   selectedArea = { id: selectedArea };
   const areaSelector = <AreaSelector areas={areaType.areas.map(a => (
-                                       {label: a.name,
+                                       {label: a.name + (
+                                         areaType.identifier === 'tre:paavo' ? ` (${a.identifier})` : ''),
                                         id: Number.parseInt(a.id)}))}
                                      selectedArea={selectedArea}
                                      setSelectedArea={setSelectedArea}/>;
