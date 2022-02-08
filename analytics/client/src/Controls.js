@@ -189,7 +189,7 @@ const Controls = ({userChoices, dynamicOptions}) => {
                      values={dynamicOptions.areaTypes} />
       <DateRangeSlider userChoices={userChoices} />
       {
-        poiTripsMode ?
+        (poiTripsMode || (tripsMode && userChoiceState.visualisation === 'table')) ?
           <Select
             clearable={false}
             disabled={true}
