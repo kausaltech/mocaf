@@ -29,12 +29,12 @@ export default function ColorLegend({title, elements}) {
   return (
     <div style={style}>
       <table>
-        <caption><strong>{title}</strong></caption>
+        <caption style={{textAlign: 'left'}}><strong>{title}</strong></caption>
         <tbody>
           { elements.map(([color, value]) => (
             <tr key={value}>
-              <td><div style={getElStyle(color)}/></td>
-              <td style={{verticalAlign: 'bottom'}}>
+              <td style={{width: 14}}><div style={getElStyle(color)}/></td>
+              <td style={{textAlign: 'left', verticalAlign: 'bottom'}}>
                 { parseFloat(value) ? formatFloat(value*100) + '%' : value }
               </td>
             </tr>
