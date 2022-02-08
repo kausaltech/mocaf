@@ -221,7 +221,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
 
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]));
 
-  const reflexiveTripsState = useState(false);
+  const reflexiveTripsState = useState(true);
 
   const traces = availableModes.map((mode) => {
     const x = [], y = [], customdata = [];
