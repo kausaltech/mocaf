@@ -178,7 +178,10 @@ export function TransportModeShareMap({ areaType,
   }
   const getTooltip = ({object}) => {
     if (!object) return null;
-    const { id, name, identifier } = object.properties;
+    let { id, name, identifier } = object.properties;
+    if (areaType.identifier !== 'tre:paavo') {
+      identifier = null;
+    }
     const area = areasById.get(id);
     if (!area || !area.data || area.data[modeId] == null) return null;
     const rel = area.data[modeId + '_rel'] * 100;

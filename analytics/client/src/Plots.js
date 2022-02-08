@@ -32,7 +32,8 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
         console.warn('area not found');
         return;
       }
-      y.push(area.name);
+      const name = area.name + (areaType.identifier === 'tre:paavo' ? ` (${area.identifier})` : '');
+      y.push(name);
       x.push(row[mode + '_rel']);
 
       const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
@@ -160,7 +161,8 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
         console.warn('area not found');
         return;
       }
-      y.push(area.name);
+      const name = area.name + (areaType.identifier === 'tre:paavo' ? ` (${area.identifier})` : '');
+      y.push(name);
       x.push(row[mode]);
 
       customdata.push({
