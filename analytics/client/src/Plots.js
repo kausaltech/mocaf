@@ -113,7 +113,7 @@ export function TransportModesPlot({ transportModes, areaType, areaData, selecte
       const syntheticModes = transportModes.filter(m => m.synthetic).map(m =>
         Object.assign({}, m, {rel: row[m.identifier + '_rel'] * 100}));;
       customdata.push({
-        abs: row[mode], syntheticModes, average: (row['total'] / rangeLength)});
+        abs: row[mode], syntheticModes, total: row['total']});
     });
     const trace = {
       name: modeById.get(mode).name,
@@ -316,7 +316,7 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
        transportMode: point.data.name,
        rel: point.customdata.rel ?? point.value,
        abs: point.customdata.abs ?? point.value,
-       average: point.customdata.average,
+       total: point.customdata.total,
        weekSubset,
        syntheticModes: point.customdata.syntheticModes,
        selectedArea: point.customdata.selectedArea,

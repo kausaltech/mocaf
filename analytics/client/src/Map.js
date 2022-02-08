@@ -183,7 +183,7 @@ export function TransportModeShareMap({ areaType,
     if (!area || !area.data || area.data[modeId] == null) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
-    const average = area.data[modeId] / rangeLength;
+    const total = area.data[modeId];
     const syntheticModes = [
       {
         name: modeById.get('walk_and_bicycle').name,
@@ -194,7 +194,7 @@ export function TransportModeShareMap({ areaType,
         rel: area.data['public_transportation_rel'] * 100,
       }
     ];
-    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, average, selectedArea: areasById.get(selectedArea) };
+    return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, total, selectedArea: areasById.get(selectedArea) };
   };
   return (
     <AreaMap

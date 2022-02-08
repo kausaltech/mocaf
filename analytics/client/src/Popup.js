@@ -35,7 +35,7 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
   );
 }
 
-export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, average, weekSubset}) {
+export function AreaPopup ({y, x, children, rel, area, abs, transportMode, syntheticModes, total, weekSubset}) {
   const { t } = useTranslation();
   if (area == null) {
     return null;
@@ -46,7 +46,7 @@ export function AreaPopup ({y, x, children, rel, area, abs, transportMode, synth
   const contents = (
     <div>
       <strong>{transportMode}</strong> - {t('transport-mode-share')}<br/>
-      <FigureElement {...{rel, average, syntheticModes}} />
+      <FigureElement {...{rel, total, syntheticModes}} />
       {children}
     </div>
   );
@@ -85,7 +85,7 @@ function TripFigureElement ({rel, abs, syntheticModes}) {
   );
 }
 
-function FigureElement ({rel, average, syntheticModes}) {
+function FigureElement ({rel, total, syntheticModes}) {
   const { t } = useTranslation();
   if (isNaN(rel)) {
     return t('no-data');
@@ -98,7 +98,7 @@ function FigureElement ({rel, average, syntheticModes}) {
   return (
     <>
       {t('traveled-kilometers-share')} <strong>{formatFloat(rel)} %</strong>
-      {average != 0 && !isNaN(average) && ` (${formatFloat(average)} ${t('kilometers-per-day')})`}
+      {total != 0 && !isNaN(total) && ` (${formatFloat(total)} km)`}
       {syntheticFigures}
     </>
   );
