@@ -110,7 +110,6 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
     .filter((d, $) => (
       $.selectedArea === d.destId ||
       $.selectedArea === d.originId))
-    .filter(d => d.destId !== d.originId) // FIXME way to visualize this
     .impute({originId: d => 'unknown',
              destId: d => 'unknown',
              mode: d => 'other'})

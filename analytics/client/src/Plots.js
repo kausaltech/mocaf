@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Layer } from 'baseui/layer';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Select, TYPE } from 'baseui/select';
+import { Checkbox, LABEL_PLACEMENT } from 'baseui/checkbox';
 import Plot from 'react-plotly.js';
 import * as aq from 'arquero';
 import lodash from 'lodash';
@@ -188,6 +189,17 @@ function AreaSelector ({ areas, selectedArea, setSelectedArea }) {
     /></div>;
 };
 
+function ReflexiveTripsFilter({reflexiveTripsState}) {
+  const [showReflexive, setReflexive] = reflexiveTripsState;
+  const { t } = useTranslation();
+  return <div style={{marginLeft: '20%', marginRight: '20%', marginTop: 10}}><Checkbox
+           checked={showReflexive}
+           onChange={e => setReflexive(e.target.checked)}
+           labelPlacement={LABEL_PLACEMENT.right}>
+           {t('Show trips from chosen area to itself')}
+         </Checkbox></div>
+}
+
 export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, weekSubset, selectedArea, setSelectedArea }) {
   if (!areaData)
     return <Spinner />;
@@ -209,10 +221,15 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
 
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]));
 
+  const reflexiveTripsState = useState(false);
+
   const traces = availableModes.map((mode) => {
     const x = [], y = [], customdata = [];
     areaData.orderby('total').objects().forEach(row => {
       const { areaId } = row;
+      if (reflexiveTripsState[0] === false && areaId === selectedArea.id) {
+        return;
+      }
       const area = areasById.get(areaId);
       if (!area) {
         console.warn('area not found');
@@ -272,6 +289,7 @@ export function AreaBarChart({ transportModes, areaType, areaData, rangeLength, 
   };
   return (<>
             { areaSelector }
+            <ReflexiveTripsFilter reflexiveTripsState={reflexiveTripsState} />
             <TransportModePlotWrapper
             traces={traces}
             layout={layout}
