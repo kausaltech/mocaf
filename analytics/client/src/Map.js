@@ -24,7 +24,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   const getLineColor = d => {
     return (hoverInfo?.object?.properties !== undefined &&
      d?.properties?.id === hoverInfo?.object?.properties?.id) ?
-      [174, 30, 32] : [0, 0, 0, 50]
+      [174, 30, 32] : [0, 0, 0, 60]
   };
   const layers = [
     new GeoJsonLayer({
