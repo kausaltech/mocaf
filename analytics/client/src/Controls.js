@@ -142,6 +142,7 @@ const Controls = ({userChoices, dynamicOptions}) => {
   const poiTripsMode = userChoices[0].analyticsQuantity === 'poi_trips';
   const tripsMode = userChoices[0].analyticsQuantity === 'trips';
   let { transportModes } = dynamicOptions;
+  transportModes = transportModes.filter(m => m.identifier !=='combined');
   if (userChoiceState.visualisation === 'table') {
     transportModes = transportModes.filter(m => !m.synthetic);
   }
