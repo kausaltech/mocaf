@@ -1,8 +1,8 @@
 {
   "error-graphql": "Virhe GraphQL-kyselyssä",
   "weekends": "Viikonloput",
-  "transportation-kms": "Matkustuskilometrit",
-  "trips": "Matkat",
+  "transportation-kms": "Matkasuorite (km)",
+  "trips": "Matkat (kpl)",
   "poi-trips": "Paikkakohtaiset matkat",
   "map": "Kartta",
   "table": "Taulukko",

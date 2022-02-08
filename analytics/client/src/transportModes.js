@@ -52,7 +52,7 @@ export const syntheticModes = [
     identifier: 'public_transportation',
     components: ['tram', 'bus', 'train'],
     name: {
-      fi: 'Julkinen liikenne',
+      fi: 'Joukkoliikenne',
       en: 'Public transportation'
     }
   },
