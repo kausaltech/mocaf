@@ -78,6 +78,7 @@ export function userChoiceReducer (state, action) {
       action.payload,
       state.areaTypes,
       state.dateRange);
+    dependentState.visualisationState = { trips: { selectedArea: null } };
   }
   if (action.key === 'analyticsQuantity') {
     dependentState.dateRange = areaTypeDateRange(
