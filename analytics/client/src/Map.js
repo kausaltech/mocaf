@@ -154,7 +154,7 @@ export function TransportModeShareMap({ areaType,
     if (!object) return null;
     const { id, name, identifier } = object.properties;
     const area = areasById.get(id);
-    if (!area.data || area.data[modeId] == null) return null;
+    if (!area || !area.data || area.data[modeId] == null) return null;
     const rel = area.data[modeId + '_rel'] * 100;
     const abs = area.data[modeId];
     const average = area.data[modeId] / rangeLength;
