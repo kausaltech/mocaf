@@ -6,7 +6,7 @@ import { formatFloat, formatDecimal } from './utils';
 export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
   const { t } = useTranslation();
   const popupWidth = maxWidth ?? 150;
-  const adaptedX = Math.min(window.innerWidth - popupWidth, x);
+  const adaptedX = Math.min(window.innerWidth - popupWidth, x + 15);
   const weekSubsetName = (
     (weekSubset === true) ? t('weekends') :
     (weekSubset === false) ? t('workdays') :
@@ -16,7 +16,7 @@ export function Popup ({y, x, children, title, maxWidth, weekSubset}) {
   return (
     <div style={{
            position: 'absolute',
-           top: y,
+           top: y + 15,
            left: adaptedX,
            marginBottom: 10,
            pointerEvents: 'none',
