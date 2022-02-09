@@ -11,7 +11,7 @@ POIS = [
     'Kauppahalli', 'Kehräsaari', 'Keskustori', 'Kulttuuritalo Laikku', 'Laikun lava',
     'Laukontori', 'Linja-autoasema', 'Museokeskus Vapriikki', 'Mustalahti',
     'Näsinneula', 'Ortodoksinen kirkko', 'Pyynikin näkötorni', 'Pyynikin uimahalli',
-    'Pyynikintori', 'Pääkirjasto Metso', 'Ratinan stadion', 'Rautatieasema',
+    'Pyynikintori', 'Tampereen pääkirjasto Metso', 'Ratinan stadion', 'Rautatieasema',
     'Sampolan kirjasto', 'Santalahden tapahtumapuisto', 'Sara Hildenin taidemuseo', 'Särkänniemi',
     'Tallipiha', 'Tammelan stadion', 'Tammelantori', 'Tampereen komediateatteri',
     'Tampereen taidemuseo', 'Tampereen teatteri', 'Tampereen työväenteatteri',
