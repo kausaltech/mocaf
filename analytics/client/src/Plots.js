@@ -239,9 +239,16 @@ const MemoizedPopupEnabledPlot = React.memo(Plot);
 
 function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
   const [popupState, setPopupState] = useState(null);
-  const onUnhover = lodash.debounce(x => setPopupState(null), 200);
-  const hoverHandler = ({event, points: [point]}) => {
-    onUnhover.cancel();
+  const [hoverState, setHoverState] = useState({
+    hover: false, event: null, point: null
+  });
+  const onHoverCallback = ({event, points: [point]}) => setHoverState({
+    hover: true, event, point
+  });
+  const onUnhoverCallback = () => setHoverState({
+    hover: false, event: null, point: null
+  })
+  const hoverHandler = ({event, point}) => {
     setPopupState(
       {area: {
         name: point.label,
@@ -256,15 +263,24 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
        x: event.x,
        y: event.y});
   };
-  const onHoverCallback = useMemo(
-    () => lodash.throttle(hoverHandler, 100),
-    [setPopupState]
-  );
   useEffect(() => {
-    return () => {
-      onHoverCallback.cancel();
+    let onHover, onUnhover;
+    if (hoverState.hover === true) {
+      const {event, point} = hoverState;
+      onHover = lodash.throttle(() => hoverHandler({event, point}), 100);
+      onUnhover?.cancel();
+      onHover();
     }
-  }, []);
+    else {
+      onUnhover = lodash.debounce(() => setPopupState(null), 200);
+      onUnhover();
+    }
+    return () => {
+      onHover?.cancel();
+      onUnhover?.cancel();
+    }
+  }, [hoverState]);
+
   let popup = null;
   if (popupState !== null) {
     popup = <Popup {...popupState} />;
@@ -280,7 +296,7 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
              style={{width: '100%'}}
              useResizeHandler
              onHover={onHoverCallback}
-             onUnhover={onUnhover}
+             onUnhover={onUnhoverCallback}
            />
          </div>
 }
