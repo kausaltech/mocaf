@@ -62,10 +62,31 @@ class AreaImporter:
         if nr_rows:
             raise Exception('Invalid geometries remain')
 
+        print('Creating masked versions of geometries with water areas removed')
+        query = """
+            WITH nearby_water_areas AS (
+                SELECT
+                    ST_Union(ST_Buffer(osm.way, 2)) AS geom
+                FROM planet_osm_polygon osm
+                WHERE
+                    osm.way && (SELECT ST_Extent(geometry) FROM analytics_area WHERE type_id = %(area_type)s)
+                    AND (osm.water = 'lake' OR osm.natural = 'water')
+                    AND ST_Area(osm.way) > 400000
+            )
+            UPDATE analytics_area SET
+                geometry_masked = ST_Multi(COALESCE(ST_Difference(
+                    geometry,
+                    nearby_water_areas.geom
+                ), geometry))
+            FROM nearby_water_areas
+            WHERE type_id = %(area_type)s
+        """
+        cursor.execute(query, params=dict(area_type=area_type.id))
+
         print('Generating GeoJSON')
         areas = list(area_type.areas.all().values('id').annotate(
             area=GisArea('geometry'),
-            geom=Transform('geometry', 4326)))
+            geom=Transform('geometry_masked', 4326)))
         areas = sorted(areas, key=lambda x: x['area'], reverse=True)
         bbox = area_type.areas.all().annotate(
             geom=Transform('geometry', 4326)).aggregate(Extent('geom')

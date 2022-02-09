@@ -77,6 +77,7 @@ class Area(models.Model):
     )
     name = models.CharField(max_length=50, verbose_name=_('Name'))
     geometry = models.MultiPolygonField(null=False, srid=settings.LOCAL_SRS, db_index=True)
+    geometry_masked = models.MultiPolygonField(null=True, srid=settings.LOCAL_SRS, db_index=True)
     centroid = models.PointField(null=True, srid=settings.LOCAL_SRS, db_index=True)
 
     properties = models.JSONField(null=True)
