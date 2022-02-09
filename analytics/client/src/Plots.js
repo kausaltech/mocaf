@@ -249,19 +249,18 @@ function TransportModePlotWrapper({traces, layout, config, weekSubset, Popup}) {
     hover: false, event: null, point: null
   })
   const hoverHandler = ({event, point}) => {
-    setPopupState(
-      {area: {
-        name: point.label,
-      },
-       transportMode: point.data.name,
-       rel: point.customdata.rel ?? point.value,
-       abs: point.customdata.abs ?? point.value,
-       total: point.customdata.total,
-       weekSubset,
-       syntheticModes: point.customdata.syntheticModes,
-       selectedArea: point.customdata.selectedArea,
-       x: event.x,
-       y: event.y});
+    setPopupState({
+      area: { name: point.label },
+      transportMode: point.data.name,
+      rel: point.customdata.rel ?? point.value,
+      abs: point.customdata.abs ?? point.value,
+      total: point.customdata.total,
+      weekSubset,
+      syntheticModes: point.customdata.syntheticModes,
+      selectedArea: point.customdata.selectedArea,
+      x: event.x,
+      y: event.y
+    });
   };
   useEffect(() => {
     let onHover, onUnhover;
