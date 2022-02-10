@@ -40,8 +40,8 @@ export default function ColorLegend({title, elements}) {
   }
   const formatValuePair = (value) => {
     const x = value.map(
-      v => (<>{parseFloat(v) ? formatFloat(v*100) : v}</>));
-    x.splice(1, 0, <>&ndash;</>);
+      (v, i) => (<span key={i}>{parseFloat(v) ? formatFloat(v*100) : v}</span>));
+    x.splice(1, 0, <span key='none'>&ndash;</span>);
     return x;
   };
   const formatValue = (value) => (Array.isArray(value) ? formatValuePair(value) : value);
@@ -51,7 +51,7 @@ export default function ColorLegend({title, elements}) {
         <caption style={{textAlign: 'left'}}><strong>{title}</strong></caption>
         <tbody>
           { elementPairs.map(([color, value]) => (
-            <tr key={value}>
+            <tr key={color}>
               <td style={{width: 14}}><div style={getElStyle(color)}/></td>
               <td style={{textAlign: 'left', verticalAlign: 'bottom'}}>
                 { formatValue(value) }
