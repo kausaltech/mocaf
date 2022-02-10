@@ -13,11 +13,24 @@ from .models import AreaType, Area, DailyTripSummary
 from pages.models import VisualisationGuidePage
 
 
+class AreaPropertyNode(graphene.ObjectType):
+    identifier = graphene.ID()
+    value = graphene.Float()
+
+
 class AreaNode(graphene.ObjectType):
     id = graphene.ID()
     identifier = graphene.ID()
     name = graphene.String()
     centroid = PointScalar()
+
+    properties = graphene.List(AreaPropertyNode)
+
+    def resolve_properties(root: dict, info):
+        props = root.get('properties', {})
+        if not props:
+            return None
+        return [dict(identifier=x[0], value=x[1]) for x in props.items()]
 
 
 class PropertyMeta(graphene.ObjectType):
@@ -39,7 +52,7 @@ class AreaTypeNode(DjangoNode):
 
     def resolve_areas(root, info):
         return root.areas.all()\
-            .values('id', 'identifier', 'name')\
+            .values('id', 'identifier', 'name', 'properties')\
             .annotate(centroid=Transform('centroid', 4326))
 
     def resolve_topojson_url(root: AreaType, info):
@@ -79,12 +92,6 @@ class AreaTypeNode(DjangoNode):
         fields = ['id', 'identifier', 'name', 'areas']
 
 
-class AreaNode(DjangoNode):
-    class Meta:
-        model = Area
-        fields = ['id', 'identifier', 'name']
-
-
 class DailyTripSummaryNode(graphene.ObjectType):
     date = graphene.Date()
     origin_id = graphene.ID()
@@ -105,7 +112,7 @@ class VisualisationGuidePageNode(DjangoObjectType):
 
 
 class Analytics(graphene.ObjectType):
-    area_types = graphene.List(AreaTypeNode)
+    area_types = graphene.List(AreaTypeNode, id=graphene.ID(required=False))
     visualisation_guide = graphene.Field(VisualisationGuidePageNode, id=graphene.ID(required=True))
     visualisation_guides = graphene.List(VisualisationGuidePageNode)
 
@@ -115,8 +122,11 @@ class Analytics(graphene.ObjectType):
             'date', 'origin_id', 'dest_id', 'mode_id', 'trips',
         ))
 
-    def resolve_area_types(root, info):
-        return AreaType.objects.all()
+    def resolve_area_types(root, info, id=None):
+        types = AreaType.objects.all()
+        if id is not None:
+            types = types.filter(id=id)
+        return types
 
     def resolve_visualisation_guide(root, info, id, **kwargs):
         return (VisualisationGuidePage.objects
