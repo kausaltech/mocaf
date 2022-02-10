@@ -18,6 +18,7 @@ export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
     areaTypes,
     modalVisible: false,
     visualisationState: { trips: { selectedArea: null } },
+    statisticsKey: null,
   };
   defaults.dateRange = areaTypeDateRange(
     defaults.analyticsQuantity,
