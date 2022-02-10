@@ -25,7 +25,7 @@
   "choose-area": "Valitse tarkasteltava alue",
   "site-name": "Liikkumisen hiilijalanjälkilaskurin analytiikkatyökalu",
   "show-reflexive-trips": "Näytä valittuun alueeseen kohdistuvat matkat",
-  "transport-mode-share-km": "Kulkumuodon osuus matkasuoritteesta",
-  "transport-mode-share-trips": "Kulkumuodon osuus matkoista",
+  "transport-mode-share-km": "Kulkumuodon osuus matkasuoritteesta %",
+  "transport-mode-share-trips": "Kulkumuodon osuus matkoista %",
   "transport-modes": "Kulkumuoto"
 }

@@ -55,24 +55,15 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   let elements = [];
   let title = null;
   if (scales != null) {
-    if (scales.classes()) {
-      title = t('transport-mode-share-km')
-      elements = scales?.classes().map(val => (
-        [scales(val).alpha(AREA_ALPHA).hex(), val]));
-    }
-    else {
-      title = t('transport-mode-share-trips')
-      for (let i=0; i<11; i++) {
-        let val = i*0.1;
-        elements.push([scales(val).alpha(AREA_ALPHA).hex(), val])
-      }
-    }
+    title = t('transport-mode-share-km')
+    elements = scales?.classes().map(val => (
+      [scales(val).alpha(AREA_ALPHA).hex(), val]));
   }
 
   return (
     <div>
       <Layer>
-        { elements && <ColorLegend title={title} elements={elements.reverse()} /> }
+        { elements && <ColorLegend title={title} elements={elements} /> }
         { hoverInfo.object && (
           <Popup
             x={hoverInfo.x}
@@ -139,15 +130,9 @@ export function TransportModeShareMap({ areaType,
       const maxLength = absoluteVals[absoluteVals.length - 1];
       const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
 
-      if (quantity === 'lengths') {
-        const limits = chroma.limits(relativeVals, 'q', 7);
-        scales = chroma.scale([selectedTransportMode.colors.zero,
-                               selectedTransportMode.colors.primary]).classes(limits);
-      }
-      else if (quantity === 'trips') {
-        scales = chroma.scale([selectedTransportMode.colors.zero,
-                               selectedTransportMode.colors.primary]);
-      }
+      const limits = chroma.limits(relativeVals, 'q', 8);
+      scales = chroma.scale([selectedTransportMode.colors.zero,
+                             selectedTransportMode.colors.primary]).classes(limits);
     }
 
     getElevation = (d) => {
