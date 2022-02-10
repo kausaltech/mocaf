@@ -336,3 +336,25 @@ export function usePoiGeojson(poiType) {
   }, [poiType.id]);
   return poiAreaData;
 }
+
+export function areaTypeStatsBoundaries(areaType, statisticsKey) {
+  if (areaType.propertiesMeta == null) {
+    return null;
+  }
+  const boundaries = {
+    max: Number.MIN_VALUE, min: Number.MAX_VALUE
+  };
+  for (const area of areaType.areas) {
+    for (let {identifier, value} of area.properties) {
+      if (identifier !== statisticsKey) {
+        continue;
+      }
+      if (value > boundaries.max) { boundaries.max = value; }
+      if (value < boundaries.min) { boundaries.min = value; }
+      if (identifier === statisticsKey) {
+        break;
+      }
+    }
+  }
+  return boundaries;
+}

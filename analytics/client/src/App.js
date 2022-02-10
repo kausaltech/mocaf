@@ -98,6 +98,13 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
       key: ['visualisationState', 'trips', 'selectedArea'],
       payload: area
     })};
+  const setStatisticsKey = (property) => {
+    dispatch({
+      type: 'set',
+      key: 'statisticsKey',
+      payload: property ?? null
+    })};
+
 
   const weekSubset = userChoiceState.weekSubset;
   let visComponent;
@@ -108,6 +115,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         <TransportModeShareMap
           areaType={areaType}
           areaData={areaData}
+          statisticsKey={userChoiceState.statisticsKey}
+          setStatisticsKey={setStatisticsKey}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}
           rangeLength={rangeLength}
@@ -134,6 +143,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
         <TransportModeShareMap
           areaType={areaType}
           areaData={areaData}
+          statisticsKey={userChoiceState.statisticsKey}
+          setStatisticsKey={setStatisticsKey}
           quantity={userChoiceState.analyticsQuantity}
           selectedTransportMode={selectedTransportMode}
           transportModes={transportModes}

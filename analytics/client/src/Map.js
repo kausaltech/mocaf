@@ -5,19 +5,20 @@ import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
 import { StyledSpinnerNext as Spinner } from 'baseui/spinner';
 import { Layer } from 'baseui/layer';
+import {Select, TYPE} from 'baseui/select';
 import chroma from 'chroma-js';
 import numbro from 'numbro';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
-import { useAreaTopo } from './data';
+import { useAreaTopo, areaTypeStatsBoundaries } from './data';
 import { AreaPopup, AreaToAreaPopup } from './Popup';
 import ColorLegend from './ColorLegend';
 
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup, scales }) {
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup, scales, selector, statisticsKey }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
@@ -33,7 +34,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       pickable: true,
       stroked: true,
       filled: true,
-      //extruded: !!getElevation,
+      extruded: !!getElevation,
       getFillColor: getFillColor,
       getLineColor: getLineColor,
       lineWidthMinPixels: 1,
@@ -42,10 +43,11 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
       onClick: (setSelectedArea != null && ((info) => {
         setSelectedArea(info?.object?.properties?.id);
       })),
-      //getElevation,
+      getElevation,
       updateTriggers: {
         getFillColor: colorStateKey,
         getLineColor: hoverInfo?.object?.properties?.id,
+        getElevation: statisticsKey
       }
     })
   ];
@@ -63,6 +65,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   return (
     <div>
       <Layer>
+        { selector }
         { elements && <ColorLegend title={title} elements={elements} /> }
         { hoverInfo.object && (
           <Popup
@@ -86,6 +89,23 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   );
 }
 
+function StatsPropertySelector ({ properties, selectedProperty, setSelectedProperty }) {
+  const { t } = useTranslation();
+  return <div style={{position: 'absolute', bottom: 20, right: 20}}>
+    <Select
+      closeOnSelect={true}
+      ignoreCase={true}
+      searchable={true}
+      labelKey='description'
+      valueKey='identifier'
+      type={TYPE.search}
+      value={selectedProperty.identifier != null ? [selectedProperty]: null}
+      placeholder={t('choose-property')}
+      onChange={params => setSelectedProperty(params.value[0]?.identifier)}
+      options={properties}
+    /></div>;
+};
+
 const AREA_ALPHA = 1;
 
 export function TransportModeShareMap({ areaType,
@@ -96,14 +116,16 @@ export function TransportModeShareMap({ areaType,
                                         weekSubset,
                                         selectedArea,
                                         setSelectedArea,
-                                        quantity
+                                        quantity,
+                                        statisticsKey,
+                                        setStatisticsKey
                                       }) {
   const geoData = useAreaTopo(areaType);
   if (!geoData) return <Spinner />;
-
   const modeId = selectedTransportMode.identifier;
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
+  const statisticsBoundaries = areaTypeStatsBoundaries(areaType, statisticsKey);
 
   let getFillColor = d => [0, 0, 0, 0];
   let getElevation;
@@ -138,8 +160,8 @@ export function TransportModeShareMap({ areaType,
     getElevation = (d) => {
       const id = d.properties.id;
       const area = areasById.get(id);
-      const val = area.data[modeId];
-      return (val - minLength) / (maxLength - minLength) * 5000;
+      const val = area.properties.find(v => v.identifier === statisticsKey);
+      return (val.value - statisticsBoundaries.min) / (statisticsBoundaries.max - statisticsBoundaries.min) * 1000;
     };
     getFillColor = (d) => {
       const id = d.properties.id;
@@ -184,10 +206,20 @@ export function TransportModeShareMap({ areaType,
     ];
     return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, total, selectedArea: areasById.get(selectedArea) };
   };
+  const selector = statisticsBoundaries != null ? (
+    <StatsPropertySelector
+      properties={areaType.propertiesMeta}
+      selectedProperty={{identifier: statisticsKey}}
+      setSelectedProperty={setStatisticsKey} />) :
+    null;
+
   return (
     <AreaMap
+      selector={selector}
+      statisticsKey={statisticsKey}
       scales={scales}
       geoData={geoData}
+      getElevation={statisticsKey == null || statisticsBoundaries == null ? null : getElevation}
       Popup={quantity === 'trips' ? AreaToAreaPopup : AreaPopup }
       getFillColor={getFillColor}
       colorStateKey={colorStateKey}
