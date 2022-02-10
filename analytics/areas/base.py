@@ -66,7 +66,11 @@ class AreaImporter:
         query = """
             WITH nearby_water_areas AS (
                 SELECT
-                    ST_Union(ST_Buffer(osm.way, 2)) AS geom
+                    ST_Union(ST_Buffer(
+                        -- Strip islands from lakes
+                        ST_MakePolygon(ST_ExteriorRing(osm.way)),
+                        2
+                    )) AS geom
                 FROM planet_osm_polygon osm
                 WHERE
                     osm.way && (SELECT ST_Extent(geometry) FROM analytics_area WHERE type_id = %(area_type)s)
