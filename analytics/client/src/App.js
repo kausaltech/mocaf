@@ -41,10 +41,18 @@ const GET_AREAS = gql`
         dailyPoiTripsDateRange
         dailyLengthsDateRange
         isPoi
+        propertiesMeta {
+          identifier
+          description
+        }
         areas {
           id
           identifier
           name
+          properties {
+            identifier
+            value
+          }
         }
       }
       visualisationGuides {
