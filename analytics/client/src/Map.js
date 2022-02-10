@@ -95,7 +95,7 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   );
 }
 
-const AREA_ALPHA = 0.86;
+const AREA_ALPHA = 1;
 
 export function TransportModeShareMap({ areaType,
                                         areaData,
