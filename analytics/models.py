@@ -36,9 +36,6 @@ class AreaType(models.Model):
     daily_lengths_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
     daily_poi_trips_date_range = ArrayField(models.DateField(null=True), blank=True, null=True)
 
-    # Metadata for optional properties
-    properties_meta = models.JSONField(null=True)
-
     i18n = TranslationField(fields=('name',))
 
     def update_summaries(self):
@@ -70,6 +67,20 @@ class AreaType(models.Model):
         return self.name
 
 
+class AreaProperty(models.Model):
+    area_type = models.ForeignKey(AreaType, on_delete=models.CASCADE, related_name='properties_meta')
+    identifier = models.CharField(max_length=100)
+    order = models.PositiveIntegerField()
+    description = models.CharField(max_length=200)
+
+    class Meta:
+        unique_together = (('area_type', 'identifier'),)
+        ordering = ('area_type', 'order')
+
+    def __str__(self):
+        return self.description
+
+
 class Area(models.Model):
     type = models.ForeignKey(AreaType, on_delete=models.CASCADE, related_name='areas')
     identifier = models.CharField(
@@ -80,8 +91,6 @@ class Area(models.Model):
     geometry_masked = models.MultiPolygonField(null=True, srid=settings.LOCAL_SRS, db_index=True)
     centroid = models.PointField(null=True, srid=settings.LOCAL_SRS, db_index=True)
 
-    properties = models.JSONField(null=True)
-
     i18n = TranslationField(fields=('name',))
 
     class Meta:
@@ -89,6 +98,18 @@ class Area(models.Model):
 
     def __str__(self):
         return '%s: %s (%s)' % (str(self.type), self.name, self.identifier)
+
+
+class AreaPropertyValue(models.Model):
+    area = models.ForeignKey(Area, related_name='property_values', on_delete=models.CASCADE)
+    property = models.ForeignKey(AreaProperty, related_name='area_values', on_delete=models.CASCADE)
+    value = models.FloatField()
+
+    class Meta:
+        unique_together = (('area', 'property'),)
+
+    def __str__(self):
+        return '%s: %s' % (self.area, self.property)
 
 
 class TripSummary(models.Model):

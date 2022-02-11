@@ -14,7 +14,7 @@ from pages.models import VisualisationGuidePage
 
 
 class AreaPropertyNode(graphene.ObjectType):
-    identifier = graphene.ID()
+    property_id = graphene.ID()
     value = graphene.Float()
 
 
@@ -26,14 +26,18 @@ class AreaNode(graphene.ObjectType):
 
     properties = graphene.List(AreaPropertyNode)
 
-    def resolve_properties(root: dict, info):
-        props = root.get('properties', {})
-        if not props:
-            return None
-        return [dict(identifier=x[0], value=x[1]) for x in props.items()]
+    def resolve_properties(root: Area, info):
+        props = []
+        for prop in root.property_values.all():
+            props.append(dict(property_id=prop.property_id, value=prop.value))
+        return props
+
+    def resolve_centroid(root: Area, info):
+        return root.centroid_wsg84
 
 
 class PropertyMeta(graphene.ObjectType):
+    id = graphene.ID()
     identifier = graphene.ID()
     description = graphene.String()
 
@@ -52,8 +56,9 @@ class AreaTypeNode(DjangoNode):
 
     def resolve_areas(root, info):
         return root.areas.all()\
-            .values('id', 'identifier', 'name', 'properties')\
-            .annotate(centroid=Transform('centroid', 4326))
+            .only('id', 'identifier', 'name', 'type')\
+            .prefetch_related('property_values')\
+            .annotate(centroid_wsg84=Transform('centroid', 4326))
 
     def resolve_topojson_url(root: AreaType, info):
         request = info.context
@@ -80,9 +85,7 @@ class AreaTypeNode(DjangoNode):
         return request.build_absolute_uri(url)
 
     def resolve_properties_meta(root: AreaType, info):
-        if not root.properties_meta:
-            return None
-        return [dict(identifier=x[0], description=x[1]) for x in root.properties_meta.items()]
+        return root.properties_meta.all()
 
     def resolve_name(root: AreaType, info):
         return resolve_i18n_field(root, 'name', info)
@@ -123,7 +126,7 @@ class Analytics(graphene.ObjectType):
         ))
 
     def resolve_area_types(root, info, id=None):
-        types = AreaType.objects.all()
+        types = AreaType.objects.all().prefetch_related('properties_meta')
         if id is not None:
             types = types.filter(id=id)
         return types

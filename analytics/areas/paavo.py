@@ -24,7 +24,7 @@ class PaavoImporter(WFSImporter):
     def read_post_areas(self, identifier: str) -> dict:
         layer_name = 'postialue:pno_tilasto'
 
-        META_REMOVE = ('namn', 'euref_x', 'euref_y')
+        META_REMOVE = ('namn', 'euref_x', 'euref_y', 'kunta',)
         props_meta = self.get_props_meta()
         del props_meta['nimi']
         del props_meta['posti_alue']

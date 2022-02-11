@@ -7,7 +7,7 @@ from django.db import connection
 from django.contrib.gis.db.models.functions import Transform, Area as GisArea
 from subprocess import Popen, PIPE
 
-from analytics.models import AreaType, Area
+from analytics.models import AreaPropertyValue, AreaType, Area
 
 
 class AreaImporter:
@@ -120,8 +120,13 @@ class AreaImporter:
         if 'name_en' in conf:
             area_type.name_en = conf['name_en']
         area_type.is_poi = conf.get('is_poi', self.is_poi)
-        area_type.properties_meta = conf.get('properties_meta')
         area_type.save()
+        area_type.properties_meta.all().delete()
+        props_meta = conf.get('properties_meta', {})
+        props_by_identifier = {}
+        for idx, (key, desc) in enumerate(props_meta.items()):
+            prop = area_type.properties_meta.create(identifier=key, order=idx, description=desc)
+            props_by_identifier[key] = prop
 
         existing = {a.identifier: a for a in area_type.areas.all()}
         print('Saving')
@@ -131,16 +136,22 @@ class AreaImporter:
                 obj = Area(type=area_type, identifier=area['identifier'])
                 print('New: %s (%s)' % (area['name'], area['identifier']))
             obj.name = area['name']
-            props = area.get('properties', None)
-            if props is not None:
-                assert isinstance(props, dict)
-            obj.properties = props
             obj.geometry = area['geometry']
             if 'centroid' in area:
                 obj.centroid = area['centroid']
             else:
                 obj.centroid = area['geometry'].centroid
             obj.save()
+
+            obj.property_values.all().delete()
+            props = area.get('properties', None)
+            if props is not None:
+                assert isinstance(props, dict)
+            prop_objs = []
+            for key, val in props.items():
+                prop = props_by_identifier[key]
+                prop_objs.append(AreaPropertyValue(area=obj, property=prop, value=val))
+            AreaPropertyValue.objects.bulk_create(prop_objs)
 
         for area in existing.values():
             print('Deleted: %s' % area)
