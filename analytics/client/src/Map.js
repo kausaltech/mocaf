@@ -164,7 +164,7 @@ export function TransportModeShareMap({ areaType,
       if (val.value < 0) {
         return 0;
       }
-      const result = 1000 * (val.value - statisticsBoundaries.min) / (
+      const result = 2000 * (val.value - statisticsBoundaries.min) / (
         statisticsBoundaries.max - statisticsBoundaries.min);
       return result;
     };
