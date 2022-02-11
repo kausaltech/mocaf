@@ -15,6 +15,7 @@ from django.contrib.gis.gdal import CoordTransform, SpatialReference
 from transitrt.models import VehicleLocation
 from trips.models import TransportMode
 from gtfs.models import FeedInfo, Route
+from .exceptions import CommonTaskFailure
 
 
 MIN_TIME_BETWEEN_SAMPLES = 2  # in seconds
@@ -207,7 +208,10 @@ class TransitRTImporter:
         assert count > 0
         transaction.set_autocommit(False)
         while count > 0:
-            resp = self.perform_http_query()
+            try:
+                resp = self.perform_http_query()
+            except (requests.ReadTimeout, requests.ConnectTimeout, requests.ConnectionError):
+                raise CommonTaskFailure('There was a network error when retrieving siri live data.')
             self.update_from_data(resp)
             self.commit()
             count -= 1

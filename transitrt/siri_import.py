@@ -53,19 +53,25 @@ class SiriImporter(TransitRTImporter):
         return act
 
     def update_from_data(self, data: bytes):
+        original_data = data
         data = orjson.loads(data)
 
-        assert len(data) == 1
-        data = data['Siri']
-        assert len(data) == 1
-        data = data['ServiceDelivery']
+        try:
+            assert len(data) == 1
+            data = data['Siri']
+            assert len(data) == 1
+            data = data['ServiceDelivery']
 
-        data_ts = js_to_dt(data['ResponseTimestamp'])
-        data = data['VehicleMonitoringDelivery']
-        assert len(data) == 1
-        data = data[0]
-        resp_ts = js_to_dt(data['ResponseTimestamp'])
-        assert data_ts == resp_ts
+            data_ts = js_to_dt(data['ResponseTimestamp'])
+            data = data['VehicleMonitoringDelivery']
+            assert len(data) == 1
+            data = data[0]
+            resp_ts = js_to_dt(data['ResponseTimestamp'])
+            assert data_ts == resp_ts
+        except AssertionError:
+            self.logger.info('Invalid siri data', original_data)
+            return
+
         if 'VehicleActivity' not in data:
             self.logger.info('No vehicle data found')
             return
