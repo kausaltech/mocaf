@@ -42,7 +42,7 @@ const GET_AREAS = gql`
         dailyLengthsDateRange
         isPoi
         propertiesMeta {
-          identifier
+          id
           description
         }
         areas {
@@ -50,7 +50,7 @@ const GET_AREAS = gql`
           identifier
           name
           properties {
-            identifier
+            propertyId
             value
           }
         }
