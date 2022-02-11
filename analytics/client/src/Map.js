@@ -161,7 +161,12 @@ export function TransportModeShareMap({ areaType,
       const id = d.properties.id;
       const area = areasById.get(id);
       const val = area.properties.find(v => v.identifier === statisticsKey);
-      return (val.value - statisticsBoundaries.min) / (statisticsBoundaries.max - statisticsBoundaries.min) * 1000;
+      if (val.value < 0) {
+        return 0;
+      }
+      const result = 1000 * (val.value - statisticsBoundaries.min) / (
+        statisticsBoundaries.max - statisticsBoundaries.min);
+      return result;
     };
     getFillColor = (d) => {
       const id = d.properties.id;
