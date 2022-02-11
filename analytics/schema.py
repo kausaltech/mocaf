@@ -49,6 +49,7 @@ class AreaTypeNode(DjangoNode):
     properties_meta = graphene.List(PropertyMeta)
     # daily_trips_url = graphene.String()
     # daily_lengths_url = graphene.String()
+    property_values_url = graphene.String(required=False)
     daily_trips_date_range = graphene.List(graphene.Date)
     daily_lengths_date_range = graphene.List(graphene.Date)
     daily_poi_trips_date_range = graphene.List(graphene.Date)
@@ -82,6 +83,13 @@ class AreaTypeNode(DjangoNode):
     def resolve_daily_lengths_url(root: AreaType, info):
         request = info.context
         url = reverse('area-type-stats', kwargs=dict(id=root.id, type='daily-lengths'))
+        return request.build_absolute_uri(url)
+
+    def resolve_property_values_url(root: AreaType, info):
+        if not root.properties_meta.exists():
+            return None
+        request = info.context
+        url = reverse('area-type-stats', kwargs=dict(id=root.id, type='properties'))
         return request.build_absolute_uri(url)
 
     def resolve_properties_meta(root: AreaType, info):

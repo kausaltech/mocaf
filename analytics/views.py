@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 from django.http import Http404, HttpResponse
 
-from .models import AreaType, DailyModeSummary, DailyTripSummary
+from .models import AreaPropertyValue, AreaType, DailyModeSummary, DailyTripSummary
 
 
 def area_type_topojson(request, id: int):
@@ -33,6 +33,7 @@ def area_type_stats(request, id: int, type: str):
     except AreaType.DoesNotExist:
         raise Http404()
 
+    """
     if type == 'daily-trips':
         col_names = ('date', 'origin_area', 'dest_area', 'mode', 'trips')
         cols = ('date', 'origin__identifier', 'dest__identifier', 'mode__identifier', 'trips')
@@ -42,6 +43,12 @@ def area_type_stats(request, id: int, type: str):
         col_names = ('date', 'area', 'mode', 'length')
         cols = ('date', 'area__identifier', 'mode__identifier', 'length')
         vals = DailyModeSummary.objects.filter(area__type=area_type)\
+            .values_list(*cols)
+    """
+    if type == 'properties':
+        col_names = ('area', 'property', 'value')
+        cols = ('area_id', 'property_id', 'value')
+        vals = AreaPropertyValue.objects.filter(area__type=area_type)\
             .values_list(*cols)
     else:
         raise Http404()
