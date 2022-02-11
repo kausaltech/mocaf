@@ -350,7 +350,7 @@ export function areaTypeStatsBoundaries(areaType, statisticsKey) {
         continue;
       }
       if (value > boundaries.max) { boundaries.max = value; }
-      if (value < boundaries.min) { boundaries.min = value; }
+      if (value != -1 && value < boundaries.min) { boundaries.min = value; }
       if (identifier === statisticsKey) {
         break;
       }
