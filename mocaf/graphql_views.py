@@ -1,3 +1,4 @@
+import orjson
 import logging
 import sentry_sdk
 from graphene_django.views import GraphQLView
@@ -43,3 +44,8 @@ class MocafGraphQLView(GraphQLView):
                 sentry_sdk.capture_exception(error.original_error)
             except AttributeError:
                 sentry_sdk.capture_exception(error)
+
+    def json_encode(self, request, d, pretty=False):
+        if not (self.pretty or pretty) and not request.GET.get("pretty"):
+            return orjson.dumps(d)
+        return orjson.dumps(d, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2)
