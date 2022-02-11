@@ -294,19 +294,20 @@ export function useAreaTopo(areaType) {
       setAreaData(topoCache[areaType.id]);
       return;
     }
-
-    fetch(areaType.topojsonUrl)
-      .then(res => res.json())
-      .then(
-        (res) => {
-          const data = processTopo(areaType, res);
-          topoCache[areaType.id] = data;
-          setAreaData(data);
-        },
-        (error) => {
-          console.error(error);
-        }
-      )
+    const fetchData = async () => {
+      const response = await fetch(areaType.topojsonUrl);
+      const topoJson = await response.json();
+      const data = processTopo(areaType, topoJson);
+      if (areaType.propertyValuesUrl != null) {
+        const dt = await aq.loadCSV(areaType.propertyValuesUrl);
+        data['statistics'] = dt;
+      }
+      topoCache[areaType.id] = data;
+      setAreaData(data);
+    }
+    fetchData().catch(error => {
+      console.error(error);
+    });
   }, [areaType.id]);
   return areaData;
 }
@@ -335,26 +336,4 @@ export function usePoiGeojson(poiType) {
       )
   }, [poiType.id]);
   return poiAreaData;
-}
-
-export function areaTypeStatsBoundaries(areaType, statisticsKey) {
-  if (areaType.propertiesMeta == null || areaType.propertiesMeta.length === 0) {
-    return null;
-  }
-  const boundaries = {
-    max: Number.MIN_VALUE, min: Number.MAX_VALUE
-  };
-  for (const area of areaType.areas) {
-    for (let {propertyId, value} of area.properties) {
-      if (propertyId !== statisticsKey) {
-        continue;
-      }
-      if (value > boundaries.max) { boundaries.max = value; }
-      if (value != -1 && value < boundaries.min) { boundaries.min = value; }
-      if (propertyId === statisticsKey) {
-        break;
-      }
-    }
-  }
-  return boundaries;
 }
