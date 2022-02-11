@@ -144,14 +144,14 @@ class AreaImporter:
             obj.save()
 
             obj.property_values.all().delete()
-            props = area.get('properties', None)
-            if props is not None:
-                assert isinstance(props, dict)
+            props = area.get('properties', {})
+            assert isinstance(props, dict)
             prop_objs = []
             for key, val in props.items():
                 prop = props_by_identifier[key]
                 prop_objs.append(AreaPropertyValue(area=obj, property=prop, value=val))
-            AreaPropertyValue.objects.bulk_create(prop_objs)
+            if prop_objs:
+                AreaPropertyValue.objects.bulk_create(prop_objs)
 
         for area in existing.values():
             print('Deleted: %s' % area)
