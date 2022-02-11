@@ -35,6 +35,7 @@ const GET_AREAS = gql`
         id
         topojsonUrl
         geojsonUrl
+        propertyValuesUrl
         identifier
         name
         dailyTripsDateRange
@@ -49,10 +50,6 @@ const GET_AREAS = gql`
           id
           identifier
           name
-          properties {
-            propertyId
-            value
-          }
         }
       }
       visualisationGuides {

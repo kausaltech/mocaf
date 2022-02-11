@@ -8,11 +8,12 @@ import { Layer } from 'baseui/layer';
 import {Select, TYPE} from 'baseui/select';
 import chroma from 'chroma-js';
 import numbro from 'numbro';
+import * as aq from 'arquero';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { MAP_STYLE, getInitialView, getCursor } from './mapUtils';
-import { useAreaTopo, areaTypeStatsBoundaries } from './data';
+import { useAreaTopo } from './data';
 import { AreaPopup, AreaToAreaPopup } from './Popup';
 import ColorLegend from './ColorLegend';
 
@@ -125,7 +126,12 @@ export function TransportModeShareMap({ areaType,
   const modeId = selectedTransportMode.identifier;
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));
   const areasById = new Map(areaType.areas.map(area => [parseInt(area.id), {...area}]))
-  const statisticsBoundaries = areaTypeStatsBoundaries(areaType, statisticsKey);
+  const statisticsBoundaries = geoData
+    ?.statistics
+    ?.params({statisticsKey})
+    .filter((d, $) => d.property == $.statisticsKey)
+    .filter(d => d.value !== -1)
+    .rollup({min: aq.op.min('value'), max: aq.op.max('value')});
 
   let getFillColor = d => [0, 0, 0, 0];
   let getElevation;
@@ -159,13 +165,16 @@ export function TransportModeShareMap({ areaType,
 
     getElevation = (d) => {
       const id = d.properties.id;
-      const area = areasById.get(id);
-      const val = area.properties.find(v => v.propertyId === statisticsKey);
-      if (val.value < 0) {
+      const val = geoData?.statistics
+        ?.params({id, statisticsKey})
+        .filter((d, $) => (d.area === $.id && d.property == $.statisticsKey))
+        .get('value', 0);
+      if (val < 0) {
         return 0;
       }
-      const result = 2000 * (val.value - statisticsBoundaries.min) / (
-        statisticsBoundaries.max - statisticsBoundaries.min);
+      const [min, max] = [statisticsBoundaries.get('min', 0),
+                          statisticsBoundaries.get('max', 0)];
+      const result = 2000 * (val - min) / (max - min);
       return result;
     };
     getFillColor = (d) => {
@@ -177,7 +186,7 @@ export function TransportModeShareMap({ areaType,
         return [174, 30, 32, 255];
       }
       const area = areasById.get(id);
-      if (!area.data || area.data[modeId] == null) return [0, 0, 0, 0];
+      if (area == null || !area.data || area.data[modeId] == null) return [0, 0, 0, 0];
       const val = area.data[modeId + '_rel'];
       const abs = area.data[modeId];
       if (quantity !== 'trips') {
@@ -211,8 +220,7 @@ export function TransportModeShareMap({ areaType,
     ];
     return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, total, selectedArea: areasById.get(selectedArea) };
   };
-  console.log(statisticsBoundaries);
-  const selector = statisticsBoundaries != null ? (
+  const selector = geoData?.statistics != null ? (
     <StatsPropertySelector
       properties={areaType.propertiesMeta}
       selectedProperty={{id: statisticsKey}}
@@ -225,7 +233,7 @@ export function TransportModeShareMap({ areaType,
       statisticsKey={statisticsKey}
       scales={scales}
       geoData={geoData}
-      getElevation={statisticsKey == null || statisticsBoundaries == null ? null : getElevation}
+      getElevation={statisticsKey == null || geoData?.statistics == null ? null : getElevation}
       Popup={quantity === 'trips' ? AreaToAreaPopup : AreaPopup }
       getFillColor={getFillColor}
       colorStateKey={colorStateKey}
