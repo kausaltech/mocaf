@@ -97,11 +97,11 @@ function StatsPropertySelector ({ properties, selectedProperty, setSelectedPrope
       ignoreCase={true}
       searchable={true}
       labelKey='description'
-      valueKey='identifier'
+      valueKey='id'
       type={TYPE.search}
-      value={selectedProperty.identifier != null ? [selectedProperty]: null}
+      value={selectedProperty.id != null ? [selectedProperty]: null}
       placeholder={t('choose-property')}
-      onChange={params => setSelectedProperty(params.value[0]?.identifier)}
+      onChange={params => setSelectedProperty(params.value[0]?.id)}
       options={properties}
     /></div>;
 };
@@ -160,7 +160,7 @@ export function TransportModeShareMap({ areaType,
     getElevation = (d) => {
       const id = d.properties.id;
       const area = areasById.get(id);
-      const val = area.properties.find(v => v.identifier === statisticsKey);
+      const val = area.properties.find(v => v.propertyId === statisticsKey);
       if (val.value < 0) {
         return 0;
       }
@@ -211,10 +211,11 @@ export function TransportModeShareMap({ areaType,
     ];
     return { area: {name, identifier}, rel, transportMode: selectedTransportMode?.name, abs, syntheticModes, total, selectedArea: areasById.get(selectedArea) };
   };
+  console.log(statisticsBoundaries);
   const selector = statisticsBoundaries != null ? (
     <StatsPropertySelector
       properties={areaType.propertiesMeta}
-      selectedProperty={{identifier: statisticsKey}}
+      selectedProperty={{id: statisticsKey}}
       setSelectedProperty={setStatisticsKey} />) :
     null;
 

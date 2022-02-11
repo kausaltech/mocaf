@@ -338,20 +338,20 @@ export function usePoiGeojson(poiType) {
 }
 
 export function areaTypeStatsBoundaries(areaType, statisticsKey) {
-  if (areaType.propertiesMeta == null) {
+  if (areaType.propertiesMeta == null || areaType.propertiesMeta.length === 0) {
     return null;
   }
   const boundaries = {
     max: Number.MIN_VALUE, min: Number.MAX_VALUE
   };
   for (const area of areaType.areas) {
-    for (let {identifier, value} of area.properties) {
-      if (identifier !== statisticsKey) {
+    for (let {propertyId, value} of area.properties) {
+      if (propertyId !== statisticsKey) {
         continue;
       }
       if (value > boundaries.max) { boundaries.max = value; }
       if (value != -1 && value < boundaries.min) { boundaries.min = value; }
-      if (identifier === statisticsKey) {
+      if (propertyId === statisticsKey) {
         break;
       }
     }
