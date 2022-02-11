@@ -282,11 +282,11 @@ class Command(BaseCommand):
         if options['start_date']:
             start_date = dateutil.parser.isoparse(options['start_date']).date()
         else:
-            start_date = None
+            start_date = date.today() - timedelta(days=7)
         if options['end_date']:
             end_date = dateutil.parser.isoparse(options['end_date']).date()
         else:
-            end_date = None
+            end_date = date.today() - timedelta(days=1)
         if options['lengths']:
             for area_type in area_types:
                 if area_type.is_poi:
@@ -296,6 +296,8 @@ class Command(BaseCommand):
                 area_type.update_summaries()
         if options['od']:
             for area_type in area_types:
+                if area_type.is_poi:
+                    continue
                 print('OD for %s' % str(area_type))
                 get_daily_od(area_type, start_date=start_date, end_date=end_date)
                 area_type.update_summaries()
