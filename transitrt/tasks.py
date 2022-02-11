@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 importer_instances = {}
 
 
-@shared_task(ignore_result=True, throws=(CommonTaskFailure,))
 def fetch_live_locations(importer_id):
     rt_importer = importer_instances.get(importer_id)
     if rt_importer is None:
@@ -20,3 +19,15 @@ def fetch_live_locations(importer_id):
 
     logger.info('Reading transit locations for %s' % importer_id)
     rt_importer.update_from_url()
+
+
+@shared_task(ignore_result=True, throws=(CommonTaskFailure,))
+def fetch_live_locations_tampere(importer_id):
+    assert importer_id == 'tampere'
+    fetch_live_locations(importer_id)
+
+
+@shared_task(ignore_result=True, throws=(CommonTaskFailure,))
+def fetch_live_locations_rata(importer_id):
+    assert importer_id == 'rata'
+    fetch_live_locations(importer_id)

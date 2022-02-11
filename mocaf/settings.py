@@ -87,7 +87,7 @@ TRANSITRT_IMPORTERS = {
 }
 
 TRANSITRT_TASKS = {'transitrt-import-%s' % key: dict(
-    task='transitrt.tasks.fetch_live_locations',
+    task=f'transitrt.tasks.fetch_live_locations_{key}',
     schedule=val['frequency'],
     options=dict(expires=val['frequency'] - 1),
     args=(key,),
