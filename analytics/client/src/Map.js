@@ -24,9 +24,12 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
   const getLineColor = d => {
+    if (selectedArea == d?.properties?.id) {
+      return [0,0,0,255];
+    }
     return (hoverInfo?.object?.properties !== undefined &&
      d?.properties?.id === hoverInfo?.object?.properties?.id) ?
-      [174, 30, 32] : [0, 0, 0, 60]
+      [174, 30, 32] : [0, 0, 0, 60];
   };
   const layers = [
     new GeoJsonLayer({
@@ -183,7 +186,7 @@ export function TransportModeShareMap({ areaType,
         return [0, 0, 0, 0]
       }
       if (id === selectedArea) {
-        return [174, 30, 32, 255];
+        return [255, 255, 255, 255];
       }
       const area = areasById.get(id);
       if (area == null || !area.data || area.data[modeId] == null) return [0, 0, 0, 0];
