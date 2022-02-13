@@ -19,7 +19,7 @@ import ColorLegend from './ColorLegend';
 
 
 
-function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup, scales, selector, statisticsKey }) {
+function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKey, weekSubset, selectedArea, setSelectedArea, Popup, scales, selector, statisticsKey, quantity }) {
   const { bbox, geojson } = geoData;
   const [hoverInfo, setHoverInfo] = useState({});
   const initialView = getInitialView(bbox);
@@ -61,9 +61,20 @@ function AreaMap({ geoData, getFillColor, getElevation, getTooltip, colorStateKe
   let elements = [];
   let title = null;
   if (scales != null) {
-    title = t('transport-mode-share-km')
-    elements = scales?.classes().map(val => (
-      [scales(val).alpha(AREA_ALPHA).hex(), val]));
+    title = quantity === 'trips' ? t('transport-mode-share-trips') : t('transport-mode-share-km');
+    const classes = scales?.classes();
+    if (classes) {
+      const set = new Set(classes);
+      let uniq = [...set];
+      if ((set.size < classes.length) && set.has(1)) {
+        // For a data set with lots of 1's chroma ouputs an
+        // unnecessary amount of 1's when querying the classes.
+        // We need exactly two for the color legend to work
+        uniq.push(1);
+      }
+      elements = uniq.map(val => (
+        [scales(val).alpha(AREA_ALPHA).hex(), val]));
+    }
   }
 
   return (
@@ -161,7 +172,7 @@ export function TransportModeShareMap({ areaType,
       const maxLength = absoluteVals[absoluteVals.length - 1];
       const relativeVals = areaData.orderby(`${modeId}_rel`).array(`${modeId}_rel`);
 
-      const limits = chroma.limits(relativeVals, 'q', 8);
+      let limits  = chroma.limits(relativeVals, 'q', 8);
       scales = chroma.scale([selectedTransportMode.colors.zero,
                              selectedTransportMode.colors.primary]).classes(limits);
     }
@@ -233,6 +244,7 @@ export function TransportModeShareMap({ areaType,
   return (
     <AreaMap
       selector={selector}
+      quantity={quantity}
       statisticsKey={statisticsKey}
       scales={scales}
       geoData={geoData}
