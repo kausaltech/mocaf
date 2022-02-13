@@ -50,14 +50,21 @@ export default function ColorLegend({title, elements}) {
       <table>
         <caption style={{textAlign: 'left'}}><strong>{title}</strong></caption>
         <tbody>
-          { elementPairs.map(([color, value]) => (
-            <tr key={color}>
+          { elementPairs.map(([color, value]) => {
+            let key = color;
+            if (Array.isArray(value)) {
+              key += '-' + value.join('-');
+            }
+            else {
+              key += '-' +  value;
+            }
+            return <tr key={key}>
               <td style={{width: 14}}><div style={getElStyle(color)}/></td>
               <td style={{textAlign: 'left', verticalAlign: 'bottom'}}>
                 { formatValue(value) }
               </td>
             </tr>
-          ))}
+          })}
         </tbody>
       </table>
     </div>
