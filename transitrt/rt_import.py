@@ -210,7 +210,12 @@ class TransitRTImporter:
         while count > 0:
             try:
                 resp = self.perform_http_query()
-            except (requests.ReadTimeout, requests.ConnectTimeout, requests.ConnectionError):
+            except (
+                requests.ReadTimeout,
+                requests.ConnectTimeout,
+                requests.ConnectionError,
+                requests.HTTPError
+            ):
                 raise CommonTaskFailure('There was a network error when retrieving siri live data.')
             self.update_from_data(resp)
             self.commit()
