@@ -81,7 +81,7 @@ class EventProcessor:
 
             # Sometimes we get individual timestamps from 1980s...
             if dt.year < 2000:
-                logger.error('Invalid timestamp for location: %s' % ts)
+                logger.info('Invalid timestamp for location: %s' % ts)
                 continue
 
             obj.time = sane_time_or_bye(dt)
@@ -210,12 +210,11 @@ class EventProcessor:
                         with transaction.atomic():
                             try:
                                 self.process_event(event)
+                            except InvalidEventError as e:
+                                logger.info(e)
+                                raise
                             except Exception as e:
                                 sentry_sdk.capture_exception(e)
-                                if isinstance(e, InvalidEventError):
-                                    logger.error(e)
-                                else:
-                                    logger.error(e, exc_info=True)
                                 raise
                     except Exception:
                         self.mark_imported(event, failed=True)
