@@ -1,5 +1,4 @@
-import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import orjson
 import pytz
@@ -8,7 +7,10 @@ from .rt_import import TransitRTImporter
 
 
 MIN_TIME_BETWEEN_LOCATIONS = 2  # in seconds
-
+FINLAND_BOUNDS = {
+    'lat': [59.846373196, 70.1641930203],
+    'lon': [20.6455928891, 31.5160921567]
+}
 
 LOCAL_TZ = pytz.timezone('Europe/Helsinki')
 
@@ -33,8 +35,17 @@ class SiriImporter(TransitRTImporter):
         else:
             route_type = route.type_id
             route = route.pk
+        lon = d['VehicleLocation']['Longitude']
+        lat = d['VehicleLocation']['Latitude']
+        min_lon, max_lon = FINLAND_BOUNDS['lon']
+        min_lat, max_lat = FINLAND_BOUNDS['lat']
+        if (lon < min_lon or lon > max_lon or lat < min_lat or lat > max_lat):
+            self.logger.info(
+                f'Siri import: vehicle coordinates {lat} {lon} outside Finland. Skipping coordinate point.'
+            )
+            return None
 
-        loc = dict(lon=d['VehicleLocation']['Longitude'], lat=d['VehicleLocation']['Latitude'])
+        loc = dict(lon=lon, lat=lat)
         jr = d['FramedVehicleJourneyRef']
         journey_ref = '%s:%s' % (jr['DataFrameRef']['value'], jr['DatedVehicleJourneyRef'])
 
