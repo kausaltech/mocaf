@@ -324,7 +324,11 @@ def split_trip_legs(conn, uid, df, include_all=False):
         if leg_df.iloc[0].atype != 'in_vehicle':
             continue
 
-        transit_locs = get_transit_locations(conn, uid, leg_df.time.min(), leg_df.time.max())
+        try:
+            transit_locs = get_transit_locations(conn, uid, leg_df.time.min(), leg_df.time.max())
+        except pd.io.sql.DatabaseError as e:
+            logger.error('Error when querying transit locations from the db.', exc_info=e)
+            continue
         if not len(transit_locs):
             continue
         transit_locs['time'] = transit_locs.epoch_time
