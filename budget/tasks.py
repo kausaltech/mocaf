@@ -132,8 +132,8 @@ class MonthlyPrizeTask:
                 budget_level=self.budget_level,
                 prize_month_start=self.prize_month_start
             )
-            # TODO: Award all prizes in a single API call
-            self.prize_api.award([prize])
+            # Disable API calls for now
+            # self.prize_api.award([prize])
 
 
 @shared_task
