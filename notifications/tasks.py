@@ -305,6 +305,66 @@ class MonthlySummaryBronzeOrWorseNotificationTask(MonthlySummaryNotificationTask
 
 
 @register_for_management_command
+class MonthlySummaryBronzeNotificationTask(MonthlySummaryNotificationTask):
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_BRONZE
+
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
+        restrict_average=False, min_active_days=0
+    ):
+        super().__init__(
+            now=now,
+            engine=engine,
+            dry_run=dry_run,
+            devices=devices,
+            force=force,
+            default_emissions=default_emissions,
+            restrict_average=restrict_average,
+            min_active_days=min_active_days,
+        )
+        self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
+        self.silver_level = EmissionBudgetLevel.objects.get(identifier='silver', year=self.summary_month_start.year)
+        self.bronze_threshold = self.bronze_level.calculate_for_date(
+            self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG
+        )
+        self.silver_threshold = self.silver_level.calculate_for_date(
+            self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG
+        )
+
+    def footprint_eligible(self, footprint):
+        # Anything worse than silver gets a notification even if not within bronze level
+        return footprint > self.silver_threshold and footprint <= self.bronze_threshold
+
+
+@register_for_management_command
+class MonthlySummaryNoLevelNotificationTask(MonthlySummaryNotificationTask):
+    event_type = EventTypeChoices.MONTHLY_SUMMARY_NO_LEVEL_REACHED
+
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices=None, force=False, default_emissions=None,
+        restrict_average=False, min_active_days=0
+    ):
+        super().__init__(
+            now=now,
+            engine=engine,
+            dry_run=dry_run,
+            devices=devices,
+            force=force,
+            default_emissions=default_emissions,
+            restrict_average=restrict_average,
+            min_active_days=min_active_days,
+        )
+        self.bronze_level = EmissionBudgetLevel.objects.get(identifier='bronze', year=self.summary_month_start.year)
+        self.bronze_threshold = self.bronze_level.calculate_for_date(
+            self.summary_month_start, TimeResolution.MONTH, EmissionUnit.KG
+        )
+
+    def footprint_eligible(self, footprint):
+        # Anything worse than silver gets a notification even if not within bronze level
+        return footprint > self.bronze_threshold
+
+
+@register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
     def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
         super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run, devices, force)
@@ -343,6 +403,7 @@ def award_prizes_and_send_notifications(devices=None, **kwargs):
     MonthlyPrizeTask('bronze', 'silver', devices=devices, **kwargs).award_prizes()
     MonthlyPrizeTask('silver', 'gold', devices=devices, **kwargs).award_prizes()
     MonthlyPrizeTask('gold', devices=devices, **kwargs).award_prizes()
-    MonthlySummaryBronzeOrWorseNotificationTask(devices=devices, **kwargs).send_notifications()
+    MonthlySummaryNoLevelNotificationTask(devices=devices, **kwargs).send_notifications()
+    MonthlySummaryBronzeNotificationTask(devices=devices, **kwargs).send_notifications()
     MonthlySummarySilverNotificationTask(devices=devices, **kwargs).send_notifications()
     MonthlySummaryGoldNotificationTask(devices=devices, **kwargs).send_notifications()

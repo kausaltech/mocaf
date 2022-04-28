@@ -15,6 +15,8 @@ class EventTypeChoices(models.TextChoices):
     MONTHLY_SUMMARY_GOLD = 'monthly_summary_gold', _("Monthly summary (gold-level budget)")
     MONTHLY_SUMMARY_SILVER = 'monthly_summary_silver', _("Monthly summary (silver-level budget)")
     MONTHLY_SUMMARY_BRONZE_OR_WORSE = 'monthly_summary_geq_bronze', _("Monthly summary (bronze-level budget or worse)")
+    MONTHLY_SUMMARY_BRONZE = 'monthly_summary_bronze', _("Monthly summary (bronze-level budget)")
+    MONTHLY_SUMMARY_NO_LEVEL_REACHED = 'monthly_summary_no_level', _("Monthly summary (worse than bronze budget)")
     WELCOME_MESSAGE = 'welcome_message', _("Welcome message")
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
 
