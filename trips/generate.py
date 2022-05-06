@@ -64,6 +64,14 @@ class TripGenerator:
         }
 
     def insert_leg_locations(self, rows):
+        # Having "None" as the speed column is a periodically recurring
+        # issue. Raise error to continue with other uuids if None found
+        # in speed column
+        try:
+            next(x for x in rows if x[4] is None)
+            raise GeneratorError('Encountered invalid value None as speed for leg')
+        except StopIteration:
+            pass
         pc = PerfCounter('save_locations', show_time_to_last=True)
         query = f'''INSERT INTO {LEG_LOCATION_TABLE} (
             leg_id, loc, time, speed
