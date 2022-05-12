@@ -2,23 +2,10 @@ from django.db import connection
 from django.contrib.gis.db.models.aggregates import Extent, GeoAggregate
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon
 from .base import AreaImporter
+from .pois import POIS
 from analytics.models import AreaType
 
 
-POIS = [
-    'Aleksanterin kirkko', 'Amurin työläismuseokortteli', 'Arboretum (nimi vielä auki???)',
-    'Finlayson', 'Finlaysonin kirkko', 'Kalevan kirkko', 'Kansi ja Areena',
-    'Kauppahalli', 'Kehräsaari', 'Keskustori', 'Kulttuuritalo Laikku', 'Laikun lava',
-    'Laukontori', 'Linja-autoasema', 'Museokeskus Vapriikki', 'Mustalahti',
-    'Näsinneula', 'Ortodoksinen kirkko', 'Pyynikin näkötorni', 'Pyynikin uimahalli',
-    'Pyynikintori', 'Tampereen pääkirjasto Metso', 'Ratinan stadion', 'Rautatieasema',
-    'Sampolan kirjasto', 'Santalahden tapahtumapuisto', 'Sara Hildenin taidemuseo', 'Särkänniemi',
-    'Tallipiha', 'Tammelan stadion', 'Tammelantori', 'Tampereen komediateatteri',
-    'Tampereen taidemuseo', 'Tampereen teatteri', 'Tampereen työväenteatteri',
-    'Tampereen vanha kirkko', 'Tampere-talo', 'Tullikamarin kulttuurikeskus',
-    'Tuomiokirkko', 'Työväenmuseo Werstas', 'Vakoilumuseo', 'Verkaranta',
-    'Yliopisto'
-]
 
 FIXES = {
     'Rautatieasema': 'Tampereen rautatieasema',
@@ -26,12 +13,21 @@ FIXES = {
 }
 
 for src, dest in FIXES.items():
-    POIS.remove(src)
-    POIS.append(dest)
+    POIS.remove((src, None))
+    POIS.append((dest, None))
 
 
 BUFFER_RADIUS = 50
 
+def get_query(table_name, order_clause):
+    return f"""
+        SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
+            FROM {table_name}
+            WHERE
+                ((%s is not null AND osm_id = %s) OR name = %s)
+                AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
+            {order_clause}
+    """
 
 class TamperePOIImporter(AreaImporter):
     id = 'tampere_poi'
@@ -49,26 +45,13 @@ class TamperePOIImporter(AreaImporter):
         bbox = bbox_area_type.areas.aggregate(Extent('geometry'))['geometry__extent']
         cursor = connection.cursor()
         areas = []
-        for name in POIS:
-            cursor.execute(f"""
-                SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
-                    FROM planet_osm_polygon
-                    WHERE
-                        name = %s
-                        AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
-                    ORDER BY
-                        ST_Area(way) ASC
-            """, params=(name, *bbox)
-            )
+        for name, osm_id in POIS:
+            query = get_query('planet_osm_polygon', 'ORDER BY ST_Area(way) ASC')
+            cursor.execute(query, params=(osm_id, osm_id, name, *bbox))
             rows = cursor.fetchall()
             if not len(rows):
-                cursor.execute(f"""
-                    SELECT osm_id, name, ST_Buffer(way, {BUFFER_RADIUS}), ST_Centroid(way)
-                        FROM planet_osm_point
-                        WHERE
-                            name = %s
-                            AND way && ST_MakeEnvelope(%s, %s, %s, %s, 3067)
-                """, params=(name, *bbox))
+                query = get_query('planet_osm_point', '')
+                cursor.execute(query, params=(osm_id, osm_id, name, *bbox))
                 rows = cursor.fetchall()
 
             if not len(rows):
