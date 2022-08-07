@@ -49,7 +49,7 @@ def read_locations(conn, uid, start_time=None, end_time=None, include_all=False)
     prepare_sql_statements(conn)
 
     if start_time is None:
-        start_time = '2010-01-01'
+        start_time = "DATE(NOW() - INTERVAL '2 week')"
     if end_time is None:
         end_time = 'NOW()'
 
