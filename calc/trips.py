@@ -2,7 +2,7 @@ import os
 import logging
 import numba
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import pandas as pd
 from utils.perf import PerfCounter
 
@@ -48,10 +48,14 @@ def read_locations(conn, uid, start_time=None, end_time=None, include_all=False)
 
     prepare_sql_statements(conn)
 
-    if start_time is None:
-        start_time = "NOW() - INTERVAL '2 week'"
     if end_time is None:
-        end_time = 'NOW()'
+        end_time = datetime.utcnow()
+
+    if start_time is None:
+        if isinstance(end_time, datetime):
+            start_time = end_time - timedelta(days=14)
+        else:
+            start_time = (date.today() - timedelta(days=14)).isoformat()
 
     params = dict(uuid=uid, start_time=start_time, end_time=end_time)
     query = 'EXECUTE read_locations(%(uuid)s, %(start_time)s, %(end_time)s)'
