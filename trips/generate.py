@@ -1,5 +1,6 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
+from typing import Optional
 import sentry_sdk
 import geopandas as gpd
 
@@ -159,7 +160,6 @@ class TripGenerator:
                 return
 
         count = device.trips.filter(legs__in=legs).delete()
-        print(count)
         pc.display('deleted')
 
         last_ts = df.time.min()
@@ -206,8 +206,8 @@ class TripGenerator:
             self.save_trip(device, df, device._default_variants)
         pc.display('trip saved')
 
-    def generate_trips(self, uuid, start_time, end_time):
-        device = Device.objects.filter(uuid=uuid).first()
+    def generate_trips(self, uuid, start_time, end_time, generation_started_at=None):
+        device: Device = Device.objects.filter(uuid=uuid).first()
         if device is None:
             raise GeneratorError('Device %s not found' % uuid)
 
@@ -227,25 +227,37 @@ class TripGenerator:
                 scope.set_tag('end_time', trip_df.time.max().isoformat())
                 self.process_trip(device, trip_df)
                 scope.clear()
+
+        if generation_started_at is not None:
+            device.last_processed_data_received_at = generation_started_at
+            device.save(update_fields=['last_processed_data_received_at'])
         transaction.commit()
         pc.display('trips generated')
         sentry_sdk.set_tag('uuid', None)
 
-    def find_uuids_with_new_samples(self):
-        one_week_ago = timezone.now() - timedelta(days=7)
+    def find_uuids_with_new_samples(self, min_received_at: Optional[datetime]=None):
+        if not min_received_at:
+            min_received_at = timezone.now() - timedelta(days=7)
         devices = (
             Device.objects.annotate(
                 last_leg_received_at=Max('trips__legs__received_at'),
-                last_leg_end_time=Max('trips__legs__end_time')
-            ).values('uuid', 'last_leg_received_at', 'last_leg_end_time').exclude(last_leg_received_at=None)
+                last_leg_end_time=Max('trips__legs__end_time'),
+            )
+            .values('uuid', 'last_leg_received_at', 'last_leg_end_time', 'last_processed_data_received_at')
+            .filter(last_leg_received_at__gte=min_received_at)
+            .exclude(last_leg_received_at=None)
         )
-        last_leg_by_uuid = {
-            x['uuid']: dict(received_at=x['last_leg_received_at'], end_time=x['last_leg_end_time'])
+        dev_by_uuid = {
+            x['uuid']: dict(
+                last_leg_received_at=x['last_leg_received_at'],
+                last_leg_end_time=x['last_leg_end_time'],
+                last_data_processed_at=x['last_processed_data_received_at'],
+            )
             for x in devices
         }
         uuids = (
             Location.objects
-            .filter(deleted_at__isnull=True, time__gte=one_week_ago)
+            .filter(deleted_at__isnull=True, time__gte=min_received_at)
             .values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
             .values('uuid', 'newest_created_at')
         )
@@ -254,18 +266,23 @@ class TripGenerator:
             uuid = row['uuid']
             newest_created_at = row['newest_created_at']
 
-            last_leg = last_leg_by_uuid.get(uuid)
-            if not last_leg or newest_created_at > last_leg['received_at']:
-                uuids_to_process.append([
-                    uuid,
-                    last_leg['end_time'] if last_leg else None
-                ])
+            dev = dev_by_uuid.get(uuid)
+            end_time = min_received_at
+            if dev:
+                if newest_created_at <= dev['last_leg_received_at']:
+                    continue
+                if dev['last_data_processed_at'] and newest_created_at <= dev['last_data_processed_at']:
+                    continue
+                if dev['last_leg_end_time'] and dev['last_leg_end_time'] > min_received_at:
+                    end_time = dev['last_leg_end_time']
+
+            uuids_to_process.append([uuid, end_time, newest_created_at])
 
         return uuids_to_process
 
     def generate_new_trips(self, only_uuid=None):
-        uuids = self.find_uuids_with_new_samples()
         now = timezone.now()
+        uuids = self.find_uuids_with_new_samples()
         for uuid, last_leg_end in uuids:
             if only_uuid is not None:
                 if str(uuid) != only_uuid:
@@ -278,7 +295,7 @@ class TripGenerator:
                 end_time = None
 
             try:
-                self.generate_trips(uuid, start_time=start_time, end_time=end_time)
+                self.generate_trips(uuid, start_time=start_time, end_time=end_time, generation_started_at=now)
             except GeneratorError as e:
                 sentry_sdk.capture_exception(e)
 
