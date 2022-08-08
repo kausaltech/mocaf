@@ -6,7 +6,7 @@ from datetime import date, timedelta, datetime, time
 from typing import Optional
 import dateutil.parser
 from django.core.management.base import BaseCommand
-from django.db.models import Prefetch, Sum
+from django.db.models import Prefetch, Sum, F, fields
 from django.db import connection
 from django.db.models.query_utils import Q
 from analytics.models import Area, DailyModeSummary, DailyPoiTripSummary, DailyTripSummary
@@ -218,39 +218,137 @@ def generate_daily_poi_trip_summaries(
         start_date += timedelta(days=1)
 
 
-def get_daily_device_trips():
-    start_date = date(2021, 6, 1)
-    end_date = date.today()
+def generate_device_id(uuid):
+    b = uuid.bytes + settings.SECRET_KEY.encode('utf8')
+    return hashlib.sha1(b).hexdigest()[0:8]
 
-    seed = random.randbytes(10)
 
-    def generate_id(uuid):
-        b = uuid.bytes + seed
-        return hashlib.sha1(b).hexdigest()[0:8]
+def get_daily_device_trips(start_date: Optional[date] = None, end_date: Optional[date] = None):
+    QUERY = '''
+        SELECT
+            d.uuid,
+            m.identifier,
+            mv.identifier,
+            SUM(leg.length) AS "total_length",
+            SUM(leg.carbon_footprint) AS "total_carbon_footprint",
+            SUM(EXTRACT(EPOCH FROM (leg.end_time - leg.start_time))) / 60 AS "total_mins",
+            COUNT(t.id) AS "total_trips"
+        FROM trips_leg leg
+        INNER JOIN trips_trip t ON (leg.trip_id = t.id)
+        INNER JOIN trips_device d ON (t.device_id = d.id)
+        INNER JOIN trips_transportmode m ON (leg.mode_id = m.id)
+        LEFT JOIN trips_transportmodevariant mv ON (leg.mode_variant_id = mv.id)
+        WHERE (
+            leg.deleted_at IS NULL
+            AND leg.start_time >= %(start_time)s
+            AND leg.start_time < %(end_time)s
+        )
+        GROUP BY d.uuid, m.identifier, mv.identifier
+    '''
+
+    if start_date is None:
+        start_date = date(2021, 6, 1)
+    if end_date is None:
+        end_date = date.today()
+
+    cursor = connection.cursor()
 
     f = open('device_daily_trips.csv', 'w')
     out = csv.writer(f)
-    out.writerow(['date', 'device', 'mode', 'length', 'carbon_footprint'])
+    out.writerow(['date', 'device', 'mode', 'mode_variant', 'length', 'carbon_footprint', 'mins'])
 
     while start_date < end_date:
         start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
         end_time = start_time + timedelta(days=1)
-        data = Leg.objects.active().filter(start_time__gte=start_time, start_time__lt=end_time)\
-            .values('trip__device__uuid', 'mode__identifier').order_by()\
-            .annotate(total_length=Sum('length'), total_carbon_footprint=Sum('carbon_footprint'))
 
+        cursor.execute(QUERY, params=dict(start_time=start_time, end_time=end_time))
+        rows = cursor.fetchall()
         unique_uuids = set()
         unique_ids = set()
-        for row in data:
-            user_id = generate_id(row['trip__device__uuid'])
-            unique_uuids.add(row['trip__device__uuid'])
+        for row in rows:
+            user_id = generate_device_id(row[0])
+            unique_uuids.add(row[0])
             unique_ids.add(user_id)
             out.writerow([
                 start_date.isoformat(),
                 user_id,
-                row['mode__identifier'],
-                row['total_length'],
-                row['total_carbon_footprint'],
+                row[1], row[2], round(row[3]), round(row[4], 1), round(row[5], 1)
+            ])
+
+        if len(unique_uuids) != len(unique_ids):
+            print('ID collision')
+
+        print('%s: %d' % (start_date.isoformat(), len(unique_uuids)))
+        start_date += timedelta(days=1)
+
+
+def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional[date] = None):
+    QUERY = f'''
+        SELECT
+            d.uuid,
+            COUNT(t.id) AS trip_count,
+            (SELECT area.identifier
+                FROM trips_leg
+                INNER JOIN trips_trip ON (trips_leg.trip_id = trips_trip.id)
+                INNER JOIN trips_device ON (trips_trip.device_id = trips_device.id)
+                LEFT JOIN analytics_area area ON (
+                    ST_Contains(area.geometry, ST_Transform(start_loc, {LOCAL_SRS}))
+                        AND area.type_id = %(area_type)s
+                )
+                WHERE
+                    start_time >= %(start_time)s
+                    AND start_time < %(end_time)s
+                    AND trips_device.uuid = d.uuid
+                ORDER BY start_time
+                LIMIT 1
+            ) AS first_post_code,
+            (SELECT nr_queries
+                FROM analytics_devicedailyapiactivity api
+                INNER JOIN trips_device dev ON (dev.uuid = d.uuid)
+                WHERE
+                    api.date = DATE(%(start_time)s)
+                    AND dev.uuid = d.uuid
+            ) AS nr_queries
+        FROM trips_leg leg
+        INNER JOIN trips_trip t ON (leg.trip_id = t.id)
+        INNER JOIN trips_device d ON (t.device_id = d.id)
+        WHERE (
+            leg.deleted_at IS NULL
+            AND leg.start_time >= %(start_time)s
+            AND leg.start_time < %(end_time)s
+        )
+        GROUP BY d.uuid
+    '''
+    if start_date is None:
+        start_date = date(2021, 6, 1)
+    if end_date is None:
+        end_date = date.today()
+
+    cursor = connection.cursor()
+
+    f = open('device_daily_stats.csv', 'w')
+    out = csv.writer(f)
+    out.writerow(['date', 'device', 'trip_count', 'first_post_code', 'nr_api_queries'])
+
+    while start_date < end_date:
+        start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
+        end_time = start_time + timedelta(days=1)
+
+        cursor.execute(QUERY, params=dict(
+            start_time=start_time, end_time=end_time, area_type=5,
+        ))
+        rows = cursor.fetchall()
+
+        unique_uuids = set()
+        unique_ids = set()
+        for row in rows:
+            user_id = generate_device_id(row[0])
+            unique_uuids.add(row[0])
+            unique_ids.add(user_id)
+            out.writerow([
+                start_date.isoformat(),
+                user_id,
+                row[1], row[2], row[3]
             ])
 
         if len(unique_uuids) != len(unique_ids):
@@ -271,6 +369,7 @@ class Command(BaseCommand):
         parser.add_argument('--od', action='store_true')
         parser.add_argument('--poi', action='store_true')
         parser.add_argument('--daily-device-trips', action='store_true')
+        parser.add_argument('--daily-device-stats', action='store_true')
 
     def handle(self, *args, **options):
         area_types: list[AreaType]
@@ -312,4 +411,7 @@ class Command(BaseCommand):
                 area_type.update_summaries()
 
         if options['daily_device_trips']:
-            get_daily_device_trips()
+            get_daily_device_trips(start_date=start_date, end_date=end_date)
+
+        if options['daily_device_stats']:
+            get_daily_device_stats(start_date=start_date, end_date=end_date)
