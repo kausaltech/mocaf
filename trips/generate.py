@@ -217,6 +217,9 @@ class TripGenerator:
         pc = PerfCounter('update trips for %s' % uuid, show_time_to_last=True)
         df = read_locations(connection, uuid, start_time=start_time, end_time=end_time)
         if df is None or not len(df):
+            if generation_started_at is not None:
+                device.last_processed_data_received_at = generation_started_at
+                device.save(update_fields=['last_processed_data_received_at'])
             return
         pc.display('read done, got %d rows' % len(df))
 
