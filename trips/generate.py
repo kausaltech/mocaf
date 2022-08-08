@@ -241,14 +241,20 @@ class TripGenerator:
     def find_uuids_with_new_samples(self, min_received_at: Optional[datetime]=None):
         if not min_received_at:
             min_received_at = timezone.now() - timedelta(days=7)
+
+        uuid_qs = (
+            Location.objects
+            .filter(deleted_at__isnull=True, time__gte=min_received_at)
+            .values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
+        )
+        uuids = uuid_qs.values('uuid')
         devices = (
             Device.objects.annotate(
                 last_leg_received_at=Max('trips__legs__received_at'),
                 last_leg_end_time=Max('trips__legs__end_time'),
             )
             .values('uuid', 'last_leg_received_at', 'last_leg_end_time', 'last_processed_data_received_at')
-            .filter(last_leg_received_at__gte=min_received_at)
-            .exclude(last_leg_received_at=None)
+            .filter(uuid__in=uuids)
         )
         dev_by_uuid = {
             x['uuid']: dict(
@@ -258,12 +264,9 @@ class TripGenerator:
             )
             for x in devices
         }
-        uuids = (
-            Location.objects
-            .filter(deleted_at__isnull=True, time__gte=min_received_at)
-            .values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
-            .values('uuid', 'newest_created_at')
-        )
+
+        uuids = uuid_qs.values('uuid', 'newest_created_at')
+
         uuids_to_process = []
         for row in uuids:
             uuid = row['uuid']
@@ -272,7 +275,7 @@ class TripGenerator:
             dev = dev_by_uuid.get(uuid)
             end_time = min_received_at
             if dev:
-                if newest_created_at <= dev['last_leg_received_at']:
+                if dev['last_leg_received_at'] and newest_created_at <= dev['last_leg_received_at']:
                     continue
                 if dev['last_data_processed_at'] and newest_created_at <= dev['last_data_processed_at']:
                     continue
