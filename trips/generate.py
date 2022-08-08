@@ -276,7 +276,7 @@ class TripGenerator:
                 if dev['last_leg_end_time'] and dev['last_leg_end_time'] > min_received_at:
                     end_time = dev['last_leg_end_time']
 
-            uuids_to_process.append([uuid, end_time, newest_created_at])
+            uuids_to_process.append([uuid, end_time])
 
         return uuids_to_process
 
