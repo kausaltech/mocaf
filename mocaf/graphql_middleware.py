@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from graphql.error import GraphQLError
+
+from analytics.models import DeviceDailyAPIActivity
 from .graphql_helpers import GraphQLAuthFailedError, GraphQLAuthRequiredError
 from graphql.language.ast import Variable
 
@@ -49,6 +51,7 @@ class APITokenMiddleware:
             raise GraphQLAuthFailedError("Mocaf disabled", [directive])
 
         info.context.device = dev
+        DeviceDailyAPIActivity.record_api_hit(dev)
 
     def resolve(self, next, root, info, **kwargs):
         context = info.context

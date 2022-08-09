@@ -1,3 +1,9 @@
+from __future__ import annotations
+
+from datetime import date
+from typing import Type
+from django.db import transaction
+from django.db.models import F
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
@@ -5,7 +11,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.gdal import SpatialReference, CoordTransform
 from django.contrib.postgres.fields import ArrayField
 
-from trips.models import LOCAL_TZ, Trip, TransportMode
+from trips.models import LOCAL_TZ, Trip, TransportMode, Device
 from modeltrans.fields import TranslationField
 
 
@@ -207,3 +213,26 @@ class DailyPoiTripSummary(models.Model):
 
     class Meta:
         unique_together = (('date', 'poi', 'area', 'is_inbound', 'mode', 'mode_specifier'),)
+
+
+class DeviceDailyAPIActivity(models.Model):
+    device = models.ForeignKey(
+        Device, on_delete=models.CASCADE, related_name='daily_api_activity'
+    )
+    date = models.DateField()
+    nr_queries = models.PositiveIntegerField(default=1)
+
+    @classmethod
+    def record_api_hit(cls: Type[DeviceDailyAPIActivity], device: Device):
+        today = date.today()
+        with transaction.atomic():
+            kwargs = dict(device=device, date=today)
+            obj = cls.objects.filter(**kwargs).select_related('device').select_for_update().first()
+            if obj is None:
+                DeviceDailyAPIActivity.objects.create(**kwargs)
+            else:
+                obj.nr_queries = obj.nr_queries + 1
+                obj.save()
+
+    class Meta:
+        unique_together = (('device', 'date'),)
