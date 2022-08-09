@@ -1,11 +1,10 @@
 from __future__ import annotations
-from typing_extensions import Literal
 
 from django.db.models.query_utils import Q
 from budget.models import DeviceDailyCarbonFootprint, DeviceDailyHealthImpact, EmissionBudgetLevel
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
-from typing import List, Optional
+from typing import List, Optional, Literal
 import calendar
 import pandas as pd
 import uuid
