@@ -182,7 +182,8 @@ class ClearUserDataMutation(graphene.Mutation, AuthenticatedDeviceNode):
         now = timezone.now()
         with transaction.atomic():
             dev.trips.all().delete()
-            Location.objects.filter(uuid=dev.uuid).update(deleted_at=now)
+            # Rows in compressed hypertable chunks can't be deleted
+            # Location.objects.filter(uuid=dev.uuid).update(deleted_at=now)
             dev.receive_data.all().delete()
             dev.delete()
 
