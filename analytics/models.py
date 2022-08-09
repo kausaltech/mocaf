@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Type
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import F
 from django.conf import settings
 from django.contrib.gis.db import models
@@ -229,7 +229,10 @@ class DeviceDailyAPIActivity(models.Model):
             kwargs = dict(device=device, date=today)
             obj = cls.objects.filter(**kwargs).select_related('device').select_for_update().first()
             if obj is None:
-                DeviceDailyAPIActivity.objects.create(**kwargs)
+                try:
+                    DeviceDailyAPIActivity.objects.create(**kwargs)
+                except IntegrityError:
+                    pass
             else:
                 obj.nr_queries = obj.nr_queries + 1
                 obj.save()
