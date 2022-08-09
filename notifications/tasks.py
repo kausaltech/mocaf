@@ -180,7 +180,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
                 .filter(id__in=sufficiently_active_devices)
                 .exclude(id__in=earlier_recipients))
 
-    def contexts(self, device):
+    def contexts(self, device: Device):
         def rounded_float(f):
             return '%s' % int(float('%.3g' % f))
         contexts = super().contexts(device)
@@ -191,7 +191,7 @@ class MonthlySummaryNotificationTask(NotificationTask):
             # emissions" for days without any data. So the numbers differ. Ideally, the app should display the corrected
             # footprint (i.e., containing the filled-in value), but it does not for now.
             # context['carbon_footprint'] = rounded_float(self.footprints[device])
-            footprint_summary = device.get_carbon_footprint_summary(
+            footprint_summary = device.get_trip_summary(
                 self.summary_month_start,
                 self.summary_month_end,
                 time_resolution=TimeResolution.MONTH,

@@ -1,7 +1,8 @@
 from __future__ import annotations
+from typing_extensions import Literal
 
 from django.db.models.query_utils import Q
-from budget.models import DeviceDailyCarbonFootprint, EmissionBudgetLevel
+from budget.models import DeviceDailyCarbonFootprint, DeviceDailyHealthImpact, EmissionBudgetLevel
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional
@@ -115,14 +116,16 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             default_emissions = EmissionBudgetLevel.objects.get(identifier='bronze', year=start_time.year)
         start_date = LOCAL_TZ.localize(datetime.combine(start_time, time(0)))
         end_date = LOCAL_TZ.localize(datetime.combine(end_time, time(0)))
-        summary = self.get_carbon_footprint_summary(
+        summary = self.get_trip_summary(
             start_date, end_date, time_resolution=TimeResolution.DAY,
             units=EmissionUnit.KG
         )
         date_summary = {fp['date']: fp for fp in summary}
         with transaction.atomic():
             self.daily_carbon_footprints.filter(date__gte=start_date, date__lte=end_date).delete()
+            self.daily_health_impacts.filter(date__gte=start_date, date__lte=end_date).delete()
             objs = []
+            health_objs = []
             for cur_datetime in pd.date_range(start=start_date.date(), end=end_date.date()).to_pydatetime():
                 cur_date = cur_datetime.date()
                 cur_summary = date_summary.get(cur_date)
@@ -130,7 +133,22 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
                 default_footprint = default_emissions.calculate_for_date(cur_date, TimeResolution.DAY, EmissionUnit.KG)
                 obj = self.create_device_daily_carbon_footprint(cur_date, carbon_footprint, default_footprint)
                 objs.append(obj)
+                if cur_summary:
+                    def get_mode(identifier):
+                        return next(filter(lambda x: x['mode'].identifier == identifier, cur_summary['per_mode']), None)
+
+                    bicycle = get_mode('bicycle')
+                    bicycle_mins = bicycle['duration'] / 60 if bicycle else 0
+                    walk = get_mode('walk')
+                    walk_mins = walk['duration'] / 60 if walk else 0
+                    health_objs.append(DeviceDailyHealthImpact(
+                        device=self, date=cur_date,
+                        bicycle_mins=bicycle_mins,
+                        walk_mins=walk_mins,
+                    ))
+
             DeviceDailyCarbonFootprint.objects.bulk_create(objs)
+            DeviceDailyHealthImpact.objects.bulk_create(health_objs)
 
     def create_device_daily_carbon_footprint(self, date, carbon_footprint, default_footprint):
         average_footprint_used = False
@@ -149,22 +167,59 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             average_footprint_used=average_footprint_used,
         )
 
-    def get_ranking(self, month: date):
-        start_date = month.replace(day=1)
-        last_day = calendar.monthrange(start_date.year, start_date.month)[1]
-        end_date = start_date.replace(day=last_day)
-        date_filter = Q(daily_carbon_footprints__date__gte=start_date, daily_carbon_footprints__date__lte=end_date)
-        active_devs = Device.objects.filter(enabled_at__isnull=False)
-        devs = active_devs.annotate(
-            carbon_sum=Sum('daily_carbon_footprints__carbon_footprint', filter=date_filter)
-        ).filter(carbon_sum__isnull=False).order_by('carbon_sum')
+    def get_rank_data(
+        self, start_date: date, time_resolution: TimeResolution, filter_qs, ascending: bool,
+    ):
+        assert time_resolution in (TimeResolution.WEEK, TimeResolution.MONTH)
+
+        if time_resolution == TimeResolution.MONTH:
+            start_date = start_date.replace(day=1)
+            last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+            end_date = start_date.replace(day=last_day)
+        else:
+            start_date -= timedelta(days=start_date.weekday())
+            end_date = start_date + timedelta(days=6)
+
+        # active_devs = Device.objects.filter(enabled_at__isnull=False)
+        active_devs = Device.objects.all()
+        order_by = ('-' if not ascending else '') + 'rank_value'
+        devs = list(
+            filter_qs(active_devs, start_date, end_date)\
+                .filter(rank_value__isnull=False).order_by(order_by).values('id', 'rank_value')
+        )
         total = len(devs)
-        for rank, dev in Ranking(devs, key=lambda x: x.carbon_sum, reverse=True):
-            if dev == self:
+        all_vals = [dev['rank_value'] for dev in devs]
+        for rank, dev in Ranking(devs, key=lambda x: x['rank_value'], reverse=ascending):
+            if dev['id'] == self.id:
+                rank_value = dev['rank_value']
                 break
         else:
-            rank = 0
-        return dict(ranking=rank, maximum_rank=total)
+            rank = None
+            rank_value = None
+        return dict(ranking=rank, rank_value=rank_value, all_rank_values=all_vals, maximum_rank=total)
+
+    def get_carbon_ranking(self, start_date: date, time_resolution: TimeResolution = TimeResolution.MONTH):
+        assert time_resolution in (TimeResolution.WEEK, TimeResolution.MONTH)
+
+        def filter_qs(qs, start_date, end_date):
+            date_filter = Q(daily_carbon_footprints__date__gte=start_date, daily_carbon_footprints__date__lte=end_date)
+            qs = qs.annotate(
+                rank_value=Sum('daily_carbon_footprints__carbon_footprint', filter=date_filter)
+            )
+            return qs
+
+        return self.get_rank_data(start_date, time_resolution, filter_qs, ascending=True)
+
+    def get_health_ranking(self, start_date: date, time_resolution: TimeResolution = TimeResolution.MONTH):
+        assert time_resolution in (TimeResolution.WEEK, TimeResolution.MONTH)
+
+        def filter_qs(qs, start_date, end_date):
+            date_filter = Q(daily_health_impacts__date__gte=start_date, daily_health_impacts__date__lte=end_date)
+            qs = qs.annotate(
+                rank_value=Sum(models.F('daily_health_impacts__bicycle_mins') + models.F('daily_health_impacts__walk_mins'))
+            )
+            return qs
+        return self.get_rank_data(start_date, time_resolution, filter_qs, ascending=False)
 
     def daily_carbon_footprints_for_month(self, month: date):
         start_date = month.replace(day=1)
@@ -190,10 +245,11 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             self._mode_cache = {mode.id: mode for mode in TransportMode.objects.all()}
         return self._mode_cache
 
-    def get_carbon_footprint_summary(
-        self, start_date: date, end_date: date = None,
+    def get_trip_summary(
+        self, start_date: date, end_date: Optional[date] = None,
         time_resolution: TimeResolution = TimeResolution.DAY,
-        units: EmissionUnit = EmissionUnit.G
+        units: EmissionUnit = EmissionUnit.G,
+        ranking: Literal['carbon', 'health'] = 'carbon',
     ):
         if end_date is not None:
             assert end_date >= start_date
@@ -211,6 +267,11 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
                 last_day = calendar.monthrange(start_date.year, start_date.month)[1]
                 end_date = start_date.replace(day=last_day)
                 start_date = start_date.replace(day=1)
+        elif time_resolution == TimeResolution.WEEK:
+            trunc_kind = 'week'
+            if end_date is None:
+                start_date -= timedelta(days=start_date.weekday())
+                end_date = start_date + timedelta(days=6)
         elif time_resolution == TimeResolution.DAY:
             trunc_kind = 'day'
             if end_date is None:
@@ -223,12 +284,18 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
 
         annotation = {'date': Trunc('start_time', trunc_kind, tzinfo=LOCAL_TZ)}
 
+        duration = models.ExpressionWrapper(
+            models.F('end_time') - models.F('start_time'),
+            output_field=models.DurationField()
+        )
+
         legs = Leg.objects.active().filter(trip__device=self)\
             .filter(start_time__gte=start_time, start_time__lt=end_time)\
             .annotate(**annotation)\
             .values('date', 'mode').annotate(
                 carbon_footprint=Sum('carbon_footprint'),
-                length=Sum('length')
+                length=Sum('length'),
+                duration=Sum(duration)
             ).order_by('date')
 
         out = []
@@ -237,17 +304,33 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             per_mode = [dict(
                 mode=modes[x['mode']],
                 carbon_footprint=x['carbon_footprint'] if not in_kg else x['carbon_footprint'] / 1000,
-                length=x['length']
+                length=x['length'],
+                duration=x['duration'].total_seconds(),
             ) for x in data]
+
             total_length = sum([x['length'] for x in per_mode])
             total_footprint = sum([x['carbon_footprint'] for x in per_mode])
-            if time_resolution == TimeResolution.MONTH:
-                rank_data = self.get_ranking(dt.date())
+            total_duration = sum(x['duration'] for x in per_mode)
+
+            def get_mode(identifier):
+                return next(filter(lambda x: x['mode'].identifier == identifier, per_mode), None)
+
+            bicycle = get_mode('bicycle')
+            bicycle_h = bicycle['duration'] / 3600 if bicycle else 0
+            walk = get_mode('walk')
+            walk_h = walk['duration'] / 3600 if walk else 0
+            mmeth = bicycle_h * 5.8 + walk_h * 3
+
+            if time_resolution in (TimeResolution.MONTH, TimeResolution.WEEK):
+                if ranking == 'health':
+                    rank_data = self.get_health_ranking(dt.date(), time_resolution=time_resolution)
+                else:
+                    rank_data = self.get_carbon_ranking(dt.date(), time_resolution=time_resolution)
             else:
-                rank_data = dict(ranking=0, maximum_rank=0)
+                rank_data = dict(ranking=None, maximum_rank=None)
             out.append(dict(
                 date=dt.date(), per_mode=per_mode, length=total_length, carbon_footprint=total_footprint,
-                **rank_data
+                duration=total_duration, mmeth=mmeth, **rank_data
             ))
 
         return out

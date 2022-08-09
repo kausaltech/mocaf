@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from modeltrans.fields import TranslationField
 from wagtail.admin.edit_handlers import FieldPanel
 
-from .enums import TimeResolution, EmissionUnit
+from .enums import PrizeLevel, TimeResolution, EmissionUnit
 
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
@@ -70,7 +70,7 @@ class DeviceDailyCarbonFootprint(models.Model):
     device = models.ForeignKey(
         'trips.Device', on_delete=models.CASCADE, related_name='daily_carbon_footprints'
     )
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     carbon_footprint = models.FloatField(help_text=_('Carbon footprint in kg CO2e'))
     average_footprint_used = models.BooleanField(default=False)
 
@@ -80,6 +80,31 @@ class DeviceDailyCarbonFootprint(models.Model):
 
     def __str__(self):
         return '%s: %s (%.1f kg)' % (str(self.device), self.date.isoformat(), self.carbon_footprint)
+
+
+class DeviceDailyHealthImpact(models.Model):
+    # How many minutes of activity per week earns a prize level
+    PRIZE_LEVEL_MINS_WEEKLY = {
+        PrizeLevel.BRONZE: 75,
+        PrizeLevel.SILVER: 150,
+        PrizeLevel.GOLD: 300,
+    }
+
+    device = models.ForeignKey(
+        'trips.Device', on_delete=models.CASCADE, related_name='daily_health_impacts'
+    )
+    date = models.DateField(db_index=True)
+    bicycle_mins = models.FloatField(help_text=_('Minutes spent bicycling'))
+    walk_mins = models.FloatField(help_text=_('Minutes spent walking'))
+
+    class Meta:
+        ordering = ('device', 'date',)
+        unique_together = (('device', 'date'),)
+
+    def __str__(self):
+        return '%s: %s (%.1f mins bicycle, %.1f mins walk)' % (
+            str(self.device), self.date.isoformat(), self.bicycle_mins, self.walk_mins
+        )
 
 
 class Prize(models.Model):
