@@ -212,10 +212,13 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     def get_health_ranking(self, start_date: date, time_resolution: TimeResolution = TimeResolution.MONTH):
         assert time_resolution in (TimeResolution.WEEK, TimeResolution.MONTH)
 
-        def filter_qs(qs, start_date, end_date):
-            date_filter = Q(daily_health_impacts__date__gte=start_date, daily_health_impacts__date__lte=end_date)
+        def filter_qs(qs, start, end):
+            date_filter = Q(daily_health_impacts__date__gte=start, daily_health_impacts__date__lte=end)
             qs = qs.annotate(
-                rank_value=Sum(models.F('daily_health_impacts__bicycle_mins') + models.F('daily_health_impacts__walk_mins'))
+                rank_value=Sum(
+                    models.F('daily_health_impacts__bicycle_mins') + models.F('daily_health_impacts__walk_mins'),
+                    filter=date_filter
+                ),
             )
             return qs
         return self.get_rank_data(start_date, time_resolution, filter_qs, ascending=False)
