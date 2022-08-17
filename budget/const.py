@@ -1,7 +1,8 @@
-from bisect import bisect_left
 from .enums import Disease
 
 
+# Amount of mMETh/wk that is needed to reduce risk with the given percentage
+# RiskChange,Disease.ALL_CAUSE_MORTALITY,Disease.CARDIOVASCULAR,Disease.DEMENTIA
 DISEASE_RISK_RAW = """
 -0%	0	0	0
 -1%	0.141395868	0.218372314	0.156464621
@@ -52,7 +53,8 @@ def process_raw():
     per_disease = {d: list() for d in diseases}
     for line in lines:
         change, *mmeths = line.split('\t')
-        mmeths = [(float(x) if x else None) for x in mmeths]
+        # Convert to daily mmeths
+        mmeths = [(float(x) / 7 if x else None) for x in mmeths]
         change = int(change.strip('%'))
         for idx, d in enumerate(diseases):
             if mmeths[idx] is None:
@@ -61,14 +63,15 @@ def process_raw():
 
     return per_disease
 
+
 per_disease_risk = process_raw()
 
 
-def get_risk_change(disease: Disease, mmeth: float):
+def get_risk_change(disease: Disease, mmeth: float, nr_days: int):
     d = per_disease_risk[disease]
     risk_change = 0
     for val, change in d:
-        if val > mmeth:
+        if val * nr_days > mmeth:
             break
         risk_change = change
     return risk_change

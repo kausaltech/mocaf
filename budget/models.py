@@ -85,9 +85,9 @@ class DeviceDailyCarbonFootprint(models.Model):
 class DeviceDailyHealthImpact(models.Model):
     # How many minutes of activity per week earns a prize level
     PRIZE_LEVEL_MINS_WEEKLY = {
-        PrizeLevel.BRONZE: 75,
-        PrizeLevel.SILVER: 150,
-        PrizeLevel.GOLD: 300,
+        PrizeLevel.BRONZE: 61.0,
+        PrizeLevel.SILVER: 150.0,
+        PrizeLevel.GOLD: 400.0,
     }
 
     device = models.ForeignKey(

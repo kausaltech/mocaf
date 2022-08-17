@@ -134,12 +134,10 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
                 obj = self.create_device_daily_carbon_footprint(cur_date, carbon_footprint, default_footprint)
                 objs.append(obj)
                 if cur_summary:
-                    def get_mode(identifier):
-                        return next(filter(lambda x: x['mode'].identifier == identifier, cur_summary['per_mode']), None)
-
-                    bicycle = get_mode('bicycle')
+                    per_mode = cur_summary['per_mode']
+                    bicycle = per_mode.get('bicycle')
                     bicycle_mins = bicycle['duration'] / 60 if bicycle else 0
-                    walk = get_mode('walk')
+                    walk = per_mode.get('walk')
                     walk_mins = walk['duration'] / 60 if walk else 0
                     health_objs.append(DeviceDailyHealthImpact(
                         device=self, date=cur_date,
@@ -304,23 +302,29 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
         out = []
         in_kg = units == EmissionUnit.KG
         for dt, data in groupby(legs, lambda x: x['date']):
-            per_mode = [dict(
+            if time_resolution == TimeResolution.YEAR:
+                nr_days = 365
+            elif time_resolution == TimeResolution.MONTH:
+                nr_days = calendar.monthrange(dt.year, dt.month)[1]
+            elif time_resolution == TimeResolution.WEEK:
+                nr_days = 7
+            elif time_resolution == TimeResolution.DAY:
+                nr_days = 1
+
+            per_mode = {modes[x['mode']].identifier: dict(
                 mode=modes[x['mode']],
                 carbon_footprint=x['carbon_footprint'] if not in_kg else x['carbon_footprint'] / 1000,
                 length=x['length'],
                 duration=x['duration'].total_seconds(),
-            ) for x in data]
+            ) for x in data}
 
-            total_length = sum([x['length'] for x in per_mode])
-            total_footprint = sum([x['carbon_footprint'] for x in per_mode])
-            total_duration = sum(x['duration'] for x in per_mode)
+            total_length = sum([x['length'] for x in per_mode.values()])
+            total_footprint = sum([x['carbon_footprint'] for x in per_mode.values()])
+            total_duration = sum(x['duration'] for x in per_mode.values())
 
-            def get_mode(identifier):
-                return next(filter(lambda x: x['mode'].identifier == identifier, per_mode), None)
-
-            bicycle = get_mode('bicycle')
+            bicycle = per_mode.get('bicycle')
             bicycle_h = bicycle['duration'] / 3600 if bicycle else 0
-            walk = get_mode('walk')
+            walk = per_mode.get('walk')
             walk_h = walk['duration'] / 3600 if walk else 0
             mmeth = bicycle_h * 5.8 + walk_h * 3
 
@@ -332,7 +336,8 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             else:
                 rank_data = dict(ranking=None, maximum_rank=None)
             out.append(dict(
-                date=dt.date(), per_mode=per_mode, length=total_length, carbon_footprint=total_footprint,
+                date=dt.date(), per_mode=per_mode, length=total_length,
+                carbon_footprint=total_footprint, nr_days=nr_days,
                 duration=total_duration, mmeth=mmeth, **rank_data
             ))
 

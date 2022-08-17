@@ -70,6 +70,7 @@ class CarbonFootprintSummary(graphene.ObjectType):
         return False
 
     def resolve_per_mode(root, info, order_by=None):
+        per_mode = list(root['per_mode'].values())
         if order_by is not None:
             descending = False
             if order_by[0] == '-':
@@ -77,8 +78,8 @@ class CarbonFootprintSummary(graphene.ObjectType):
                 order_by = order_by[1:]
             if order_by != 'length':
                 raise GraphQLError("Invalid order requested", [info])
-            root['per_mode'] = sorted(root['per_mode'], key=lambda x: x['length'], reverse=descending)
-        return root['per_mode']
+            per_mode = sorted(root['per_mode'], key=lambda x: x['length'], reverse=descending)
+        return per_mode
 
     def resolve_current_level(root, info):
         levels = list(EmissionBudgetLevel.objects.filter(year=root['date'].year))
@@ -98,10 +99,6 @@ class DiseaseRiskChange(graphene.ObjectType):
     risk_change = graphene.Float()
 
 
-def get_mode(per_mode, identifier):
-    return next(filter(lambda x: x['mode'].identifier == identifier, per_mode), None)
-
-
 class HealthImpactSummary(graphene.ObjectType):
     bicycle_mins = graphene.Float()
     walk_mins = graphene.Float()
@@ -113,13 +110,13 @@ class HealthImpactSummary(graphene.ObjectType):
         interfaces = (SummaryCommon,)
 
     def resolve_bicycle_mins(root, info):
-        data = get_mode(root['per_mode'], 'bicycle')
+        data = root['per_mode'].get('bicycle')
         if data is None:
             return 0
         return data['duration'] / 60
 
     def resolve_walk_mins(root, info):
-        data = get_mode(root['per_mode'], 'walk')
+        data = root['per_mode'].get('walk')
         if data is None:
             return 0
         return data['duration'] / 60
@@ -128,13 +125,15 @@ class HealthImpactSummary(graphene.ObjectType):
         out = []
         if root['mmeth'] is None:
             return None
+        nr_days = root['nr_days']
         for disease in list(Disease):
-            out.append(dict(disease=disease, risk_change=get_risk_change(disease, root['mmeth'])))
+            out.append(dict(disease=disease, risk_change=get_risk_change(disease, root['mmeth'], nr_days)))
         return out
 
-    def resolve_prize_level(root, info):
-        b = get_mode(root['per_mode'], 'bicycle')
-        w = get_mode(root['per_mode'], 'walk')
+    def resolve_prize_level(root: dict, info) -> typing.Optional[PrizeLevel]:
+        per_mode = root['per_mode']
+        b = per_mode.get('bicycle')
+        w = per_mode.get('walk')
         total_mins = b['duration'] / 60 if b else 0
         total_mins += w['duration'] / 60 if w else 0
         if root['time_resolution'] == TimeResolution.DAY:
@@ -144,6 +143,7 @@ class HealthImpactSummary(graphene.ObjectType):
         elif root['time_resolution'] == TimeResolution.YEAR:
             total_mins /= 52.0
         levels = (PrizeLevel.GOLD, PrizeLevel.SILVER, PrizeLevel.BRONZE)
+        level: typing.Optional[PrizeLevel]
         for level in levels:
             val = DeviceDailyHealthImpact.PRIZE_LEVEL_MINS_WEEKLY[level]
             if total_mins >= val:
@@ -198,6 +198,7 @@ class Query(graphene.ObjectType):
         time_resolution=TimeResolutionEnum(),
         description="Carbon footprint summary per transport mode"
     )
+    health_impact_enabled = graphene.Boolean()
 
     def resolve_health_prize_levels(root, info, time_resolution=None):
         if time_resolution is None:
@@ -288,4 +289,11 @@ class Query(graphene.ObjectType):
             start_date, end_date, time_resolution, ranking='health'
         )
 
-        return [dict(time_resolution=time_resolution, **x) for x in summary]
+        out = [dict(time_resolution=time_resolution, **x) for x in summary]
+        return out
+
+    def resolve_health_impact_enabled(root, info):
+        dev: typing.Optional[Device] = info.context.device
+        if dev is None:
+            raise GraphQLError("Authentication required", [info])
+        return dev.health_impact_enabled
