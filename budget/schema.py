@@ -78,7 +78,7 @@ class CarbonFootprintSummary(graphene.ObjectType):
                 order_by = order_by[1:]
             if order_by != 'length':
                 raise GraphQLError("Invalid order requested", [info])
-            per_mode = sorted(root['per_mode'], key=lambda x: x['length'], reverse=descending)
+            per_mode = sorted(per_mode, key=lambda x: x['length'], reverse=descending)
         return per_mode
 
     def resolve_current_level(root, info):
