@@ -1,8 +1,10 @@
 import pytest
 from wagtail.core.models import Locale
 from wagtail_localize.models import LocaleSynchronization
+from pages.models import BlogPost
 
 from pages.tests.factories import BlogPostFactory
+from trips.models import Device, DeviceGroup
 
 pytestmark = pytest.mark.django_db
 
@@ -72,3 +74,39 @@ def test_blog_posts_without_locale_directive_uses_main_locale(
         }]
     }
     assert data == expected
+
+
+
+def test_blog_posts_groups(graphql_client_query_data, uuid, token, settings):
+    _create_secondary_locales(settings)
+    BlogPostFactory()
+    grp = DeviceGroup.objects.create(name='Group')
+    dev = Device.objects.get(uuid=uuid)
+    for language_code, _ in settings.LANGUAGES:
+        dev.groups.clear()
+        post = BlogPost.objects.get(locale__language_code=language_code)
+        post.device_groups.add(grp)
+        query = '''
+            query($uuid: String!, $token: String!, $lang: String!)
+            @device(uuid: $uuid, token: $token)
+            @locale(lang: $lang)
+            {
+              blogPosts {
+                language
+              }
+            }
+        '''
+        query_params = {'uuid': uuid, 'token': token, 'lang': language_code}
+
+        data = graphql_client_query_data(query, variables=query_params)
+        expected = {
+            'blogPosts': []
+        }
+        assert data == expected
+
+        dev.groups.add(grp)
+        data = graphql_client_query_data(query, variables=query_params)
+        expected = {
+            'blogPosts': [{'language': language_code}]
+        }
+        assert data == expected

@@ -1,6 +1,12 @@
+from typing import Optional, TypeVar
+from django.db.models import QuerySet, Q
+
 import graphene
 from graphene_django import DjangoObjectType
+from wagtail.core.models import Page
 from wagtail.core.rich_text import expand_db_html
+
+from trips.models import Device
 
 from . import models
 
@@ -31,6 +37,19 @@ class InfoPage(DjangoObjectType):
         return expand_db_html(root.body)
 
 
+PageModel = TypeVar('PageModel', bound=Page)
+
+
+def pages_for_device(base_qs: QuerySet[PageModel], device: Optional[Device]) -> QuerySet[PageModel]:
+    qs = base_qs.live().public().specific()
+    if device is None:
+        qs = qs.filter(device_groups__isnull=True)
+    else:
+        q = Q(device_groups__isnull=True) | Q(device_groups__in=device.groups.all())
+        qs = qs.filter(q)
+    return qs
+
+
 class Query(graphene.ObjectType):
     blog_post = graphene.Field(BlogPost, id=graphene.ID(required=True))
     blog_posts = graphene.List(BlogPost)
@@ -38,30 +57,20 @@ class Query(graphene.ObjectType):
     info_pages = graphene.List(InfoPage)
 
     def resolve_blog_post(root, info, id, **kwargs):
-        return (models.BlogPost.objects
-                .live()
-                .public()
-                .specific()
-                .get(id=id))
+        return pages_for_device(models.BlogPost.objects, info.context.device).get(id=id)
 
     def resolve_blog_posts(root, info, **kwargs):
-        return (models.BlogPost.objects
-                .live()
-                .public()
-                .filter(locale__language_code=info.context.language)
-                .specific()
-                .order_by('-first_published_at'))
+        return (
+            pages_for_device(models.BlogPost.objects, info.context.device)
+            .filter(locale__language_code=info.context.language)
+            .order_by('-first_published_at')
+        )
 
     def resolve_info_page(root, info, id, **kwargs):
-        return (models.InfoPage.objects
-                .live()
-                .public()
-                .specific()
-                .get(id=id))
+        return pages_for_device(models.InfoPage.objects, info.context.device).get(id=id)
 
     def resolve_info_pages(root, info, **kwargs):
-        return (models.InfoPage.objects
-                .live()
-                .public()
-                .filter(locale__language_code=info.context.language)
-                .specific())
+        return (
+            pages_for_device(models.InfoPage.objects, info.context.device)
+            .filter(locale__language_code=info.context.language)
+        )
