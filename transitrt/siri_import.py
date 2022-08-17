@@ -30,7 +30,7 @@ class SiriImporter(TransitRTImporter):
 
         route = self.get_route(d['LineRef']['value'])
         if route is None:
-            self.logger.warn('Route not found')
+            self.logger.warn('Route not found: %s' % d['LineRef']['value'])
             route_type = self.ROUTE_TYPE_BUS  # assume bus if no route is found
         else:
             route_type = route.type_id
