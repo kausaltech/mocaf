@@ -42,7 +42,7 @@ class MigrationRequired(Exception):
         super().__init__("Device with given account key exists -- need permission to migrate")
 
 
-class DeviceQuerySet(models.QuerySet):
+class DeviceQuerySet(models.QuerySet['Device']):
     def by_name(self, name):
         return self.filter(friendly_name__iexact=name)
 
@@ -67,6 +67,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     custom_config = models.JSONField(null=True)
 
     account_key = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    health_impact_enabled = models.BooleanField(default=False)
 
     enabled_at = models.DateTimeField(null=True)
     disabled_at = models.DateTimeField(null=True)
@@ -675,3 +676,11 @@ class BackgroundInfoQuestion(models.Model):
 
     def __str__(self):
         return '%s: %s' % (str(self.device), self.question)
+
+
+class DeviceGroup(models.Model):
+    name = models.CharField(max_length=100)
+    devices = models.ManyToManyField(Device, blank=True, related_name='groups')
+
+    def __str__(self):
+        return self.name
