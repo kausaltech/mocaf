@@ -226,16 +226,18 @@ class DeviceDailyAPIActivity(models.Model):
     def record_api_hit(cls: Type[DeviceDailyAPIActivity], device: Device):
         today = date.today()
         with transaction.atomic():
+            device = Device.objects.select_for_update(skip_locked=True).filter(id=device.id).first()
+            if device is None:
+                return
+
             kwargs = dict(device=device, date=today)
-            obj = cls.objects.filter(**kwargs).select_related('device').select_for_update().first()
-            if obj is None:
-                try:
-                    DeviceDailyAPIActivity.objects.create(**kwargs)
-                except IntegrityError:
-                    pass
-            else:
-                obj.nr_queries = obj.nr_queries + 1
-                obj.save()
+            nr_rows = cls.objects.filter(**kwargs).update(nr_queries=F('nr_queries') + 1)
+            if not nr_rows:
+                DeviceDailyAPIActivity.objects.create(**kwargs)
+
+    def __str__(self):
+        return '%s | %s [%d hits]' % (str(self.device), self.date, self.nr_queries)
 
     class Meta:
         unique_together = (('device', 'date'),)
+        ordering = ('device', '-date')
