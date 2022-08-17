@@ -120,6 +120,9 @@ def test_award_prizes_calls_api(api_settings, zero_emission_budget_level):
     budget_level_leg(budget_level, device, date=datetime.datetime(2020, 3, 1))
     responses.add(responses.POST, PRIZE_API_URL, status=200)
     award_prizes(budget_level.identifier, now=now, default_emissions=zero_emission_budget_level)
+    assert len(responses.calls) == 0
+    return
+    # Prize award disabled
     assert len(responses.calls) == 1
     assert responses.calls[0].request.url == PRIZE_API_URL
     expected_body = [{
