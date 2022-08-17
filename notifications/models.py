@@ -68,6 +68,8 @@ class BodyPanel(FieldPanel):
 class NotificationTemplate(models.Model):
     event_type = models.CharField(max_length=26, choices=EventTypeChoices.choices)
     title = models.CharField(max_length=255)
+    send_on = models.DateField(blank=True, null=True, help_text="Date on which the timed notification will be sent")
+    groups = models.ManyToManyField('trips.DeviceGroup', blank=True)
     body = models.TextField()
 
     i18n = TranslationField(fields=('title', 'body',))
@@ -75,6 +77,8 @@ class NotificationTemplate(models.Model):
     panels = [
         FieldPanel('event_type'),
         HelpPanel(heading=_("Available variables by event type"), content=variable_help_text),
+        FieldPanel('send_on'),
+        FieldPanel('groups'),
     ] + [
         FieldPanel(f'title_{language}') for language, _ in settings.LANGUAGES
     ] + [
@@ -139,6 +143,10 @@ class NotificationTemplate(models.Model):
 
     def body_sv_preview(self):
         return self.body_preview('sv')
+
+    def groups_text(self) -> str:
+        return ', '.join([grp.name for grp in self.groups.all()])
+    groups_text.short_description = 'Groups'
 
 
 class NotificationLogEntry(models.Model):

@@ -7,6 +7,7 @@ from wagtail.core.models import Page
 class BlogPost(Page):
     tagline = models.CharField(max_length=255)
     body = RichTextField()
+    device_groups = models.ManyToManyField('trips.DeviceGroup', blank=True)
 
     content_panels = Page.content_panels + [
         FieldPanel('tagline'),
@@ -19,6 +20,7 @@ class BlogPost(Page):
 
 class InfoPage(Page):
     body = RichTextField()
+    device_groups = models.ManyToManyField('trips.DeviceGroup', blank=True)
 
     content_panels = Page.content_panels + [
         FieldPanel('body'),
