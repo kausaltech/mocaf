@@ -7,9 +7,11 @@ from django.conf import settings
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
+    dependencies = [
+        ('gtfs', '0001_initial')
+    ]
     operations = [
         migrations.RunSQL("""
             CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
