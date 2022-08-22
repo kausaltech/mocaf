@@ -1,6 +1,9 @@
 import calendar
-import pytz
+import typing
 from datetime import date
+
+import pytz
+
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -119,3 +122,24 @@ class Prize(models.Model):
         year = self.prize_month_start.year
         month = str(self.prize_month_start.month).zfill(2)
         return f'{self.device} [{year}-{month}]: {self.budget_level}'
+
+
+def determine_health_prize_level(
+    time_resolution: TimeResolution, bicycle_mins: float, walk_mins: float
+) -> typing.Optional[PrizeLevel]:
+    total_mins = bicycle_mins + walk_mins
+    if time_resolution == TimeResolution.DAY:
+        total_mins *= 7
+    elif time_resolution == TimeResolution.MONTH:
+        total_mins = total_mins / 30.0 * 7
+    elif time_resolution == TimeResolution.YEAR:
+        total_mins /= 52.0
+    levels = (PrizeLevel.GOLD, PrizeLevel.SILVER, PrizeLevel.BRONZE)
+    level: typing.Optional[PrizeLevel]
+    for level in levels:
+        val = DeviceDailyHealthImpact.PRIZE_LEVEL_MINS_WEEKLY[level]
+        if total_mins >= val:
+            break
+    else:
+        level = None
+    return level

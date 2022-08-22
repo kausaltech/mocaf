@@ -134,23 +134,7 @@ class HealthImpactSummary(graphene.ObjectType):
         per_mode = root['per_mode']
         b = per_mode.get('bicycle')
         w = per_mode.get('walk')
-        total_mins = b['duration'] / 60 if b else 0
-        total_mins += w['duration'] / 60 if w else 0
-        if root['time_resolution'] == TimeResolution.DAY:
-            total_mins *= 7
-        elif root['time_resolution'] == TimeResolution.MONTH:
-            total_mins = total_mins / 30.0 * 7
-        elif root['time_resolution'] == TimeResolution.YEAR:
-            total_mins /= 52.0
-        levels = (PrizeLevel.GOLD, PrizeLevel.SILVER, PrizeLevel.BRONZE)
-        level: typing.Optional[PrizeLevel]
-        for level in levels:
-            val = DeviceDailyHealthImpact.PRIZE_LEVEL_MINS_WEEKLY[level]
-            if total_mins >= val:
-                break
-        else:
-            level = None
-        return level
+        return root['health_prize_level']
 
 
 class HealthPrizeLevel(graphene.ObjectType):

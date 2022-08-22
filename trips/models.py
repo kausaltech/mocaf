@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.db.models.query_utils import Q
-from budget.models import DeviceDailyCarbonFootprint, DeviceDailyHealthImpact, EmissionBudgetLevel
+from budget.models import DeviceDailyCarbonFootprint, DeviceDailyHealthImpact, EmissionBudgetLevel, determine_health_prize_level
 from datetime import date, datetime, time, timedelta
 from itertools import groupby
 from typing import List, Optional, Literal
@@ -323,10 +323,13 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             total_duration = sum(x['duration'] for x in per_mode.values())
 
             bicycle = per_mode.get('bicycle')
-            bicycle_h = bicycle['duration'] / 3600 if bicycle else 0
+            bicycle_mins = bicycle['duration'] / 60 if bicycle else 0
             walk = per_mode.get('walk')
-            walk_h = walk['duration'] / 3600 if walk else 0
-            mmeth = bicycle_h * 5.8 + walk_h * 3
+            walk_mins = walk['duration'] / 60 if walk else 0
+            mmeth = bicycle_mins / 60 * 5.8 + walk_mins / 60 * 3
+            health_prize_level = determine_health_prize_level(
+                time_resolution=time_resolution, bicycle_mins=bicycle_mins, walk_mins=walk_mins
+            )
 
             if time_resolution in (TimeResolution.MONTH, TimeResolution.WEEK):
                 if ranking == 'health':
@@ -338,6 +341,8 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
             out.append(dict(
                 date=dt.date(), per_mode=per_mode, length=total_length,
                 carbon_footprint=total_footprint, nr_days=nr_days,
+                bicycle_mins=bicycle_mins, walk_mins=walk_mins,
+                health_prize_level=health_prize_level,
                 duration=total_duration, mmeth=mmeth, **rank_data
             ))
 
