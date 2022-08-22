@@ -2,20 +2,21 @@ import datetime
 import logging
 import random
 import statistics
+from typing import List, Optional
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
-from pprint import pprint
 
-from budget.enums import TimeResolution, EmissionUnit
+from budget.enums import PrizeLevel, TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
 from budget.tasks import MonthlyPrizeTask
-from trips.models import Device
+from trips.models import Device, DeviceQuerySet
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
 
@@ -55,46 +56,56 @@ class NotificationTask:
         """Return the recipient devices for the notifications to be sent at `self.now`."""
         return self.devices.filter(enabled_at__isnull=False)
 
-    def contexts(self, device):
+    def contexts(self, device: Device):
         """Return a dict mapping languages to a context for rendering notification templates for the given device."""
         return {language: {} for language, _ in settings.LANGUAGES}
 
-    def random_template(self):
+    def get_available_templates(self) -> List[NotificationTemplate]:
         templates = NotificationTemplate.objects.filter(event_type=self.event_type)
+        return list(templates)
+
+    def choose_template(self, device: Device, available_templates: List[NotificationTemplate]) -> Optional[NotificationTemplate]:
+        """Choose a template to send"""
         try:
-            return random.choice(templates)
+            return random.choice(available_templates)
         except IndexError:
             raise Exception(f"There is no notification template of type {self.event_type}.")
 
     def send_notifications(self):
         """Send notifications using a randomly chosen template of the proper event type."""
+        available_templates = self.get_available_templates()
+        if not available_templates:
+            return
+
         if self.force:
             recipients = self.devices
         else:
             recipients = self.recipients()
         logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(recipients)} devices")
-        template = self.random_template()
         for device in recipients:
             with transaction.atomic():
+                template = self.choose_template(device, available_templates=available_templates)
+                if template is None:
+                    continue
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)
                 content = template.render_all_languages('body', contexts)
                 if self.dry_run:
                     print(f"Sending notification to {device.uuid}")
                     print("Title:")
-                    pprint(title)
+                    print(title)
                     print("Content:")
-                    pprint(content)
+                    print(content)
                     print()
                 else:
                     logger.info(f"Sending notification to {device.uuid}")
-                    NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
                     # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
                     # devices as first argument of engine.send_notification()
                     response = self.engine.send_notification([device], title, content).json()
                     if not response['ok'] or response['message'] != 'success':
                         raise Exception("Sending notifications failed")
+                    NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
 
 
 @register_for_management_command
@@ -113,6 +124,30 @@ class WelcomeNotificationTask(NotificationTask):
         return (super().recipients()
                 .filter(created_at__date__gte=yesterday)
                 .exclude(id__in=excluded_devices))
+
+
+@register_for_management_command
+class TimedNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+        super().__init__(EventTypeChoices.TIMED_MESSAGE, now, engine, dry_run, devices, force)
+        self.today_templates = list(NotificationTemplate.objects.filter(
+            event_type=self.event_type,
+            send_on=self.now.date()
+        ).prefetch_related('groups'))
+
+    def choose_template(self, device: Device):
+        for template in self.today_templates:
+            tmp_groups = template.groups.all()
+            if not tmp_groups:
+                return template
+            dev_groups = device.groups.all()
+            for grp in tmp_groups:
+                if grp in dev_groups:
+                    return template
+        return None
+
+    def recipients(self):
+        return super().recipients().prefetch_related('groups')
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
@@ -362,6 +397,122 @@ class MonthlySummaryNoLevelNotificationTask(MonthlySummaryNotificationTask):
     def footprint_eligible(self, footprint):
         # Anything worse than silver gets a notification even if not within bronze level
         return footprint > self.bronze_threshold
+
+@register_for_management_command
+class HealthSummaryNotificationTask(NotificationTask):
+    time_period = TimeResolution.WEEK
+    event_types = (
+        EventTypeChoices.HEALTH_SUMMARY_GOLD,
+        EventTypeChoices.HEALTH_SUMMARY_SILVER,
+        EventTypeChoices.HEALTH_SUMMARY_BRONZE,
+        EventTypeChoices.HEALTH_SUMMARY_NO_LEVEL_REACHED,
+        EventTypeChoices.HEALTH_SUMMARY_NO_DATA,
+    )
+
+    def __init__(
+        self, now=None, engine=None, dry_run=False, devices: Optional[QuerySet[Device]] = None,
+        force=False, **kwargs
+    ):
+        super().__init__(EventTypeChoices.HEALTH_SUMMARY_GOLD, now, engine, dry_run, devices, force)
+
+        last_week = self.now - datetime.timedelta(days=7)
+        # Start on first day of the week
+        start_date = last_week.date()
+
+        assert self.time_period == TimeResolution.WEEK
+        start_date -= datetime.timedelta(days=start_date.weekday())
+        end_date = start_date + datetime.timedelta(days=6)
+        self.summary_start = start_date
+        self.summary_end = end_date
+
+        templates = self.get_available_templates()
+        if len(templates) == 0:
+            logger.info('No templates for health summaries for today')
+            return
+
+        if devices is None:
+            devices = Device.objects.filter(enabled_at__isnull=False)
+
+        device_universe: DeviceQuerySet = devices.has_trips_during(start_date, end_date).filter()
+
+        logger.info('Calculating trip summaries for %d devices', len(device_universe))
+        self.summaries = {
+            device: device.get_trip_summary(
+                start_date, end_date, time_resolution=self.time_period, ranking='health'
+            ) for device in device_universe
+        }
+        total_devices = len(device_universe) or 1
+        walk = 0
+        bicycle = 0
+        for s in self.summaries.values():
+            walk += s['walk_mins']
+            bicycle += s['bicycle_mins']
+        self.average_walk_mins = walk / total_devices
+        self.average_bicycle_mins = bicycle / total_devices
+        logger.info('Average of %d walk, %d bicycle mins', walk, bicycle)
+        self.devices = device_universe
+
+    def get_available_templates(self) -> List[NotificationTemplate]:
+        return list(NotificationTemplate.objects.filter(
+            event_type__in=self.event_types, send_on=self.now.date()
+        ))
+
+    def choose_template(self, device: Device, available_templates: List[NotificationTemplate]) -> Optional[NotificationTemplate]:
+        PRIZE_LEVEL_EVENTS = {
+            PrizeLevel.GOLD: EventTypeChoices.HEALTH_SUMMARY_GOLD,
+            PrizeLevel.SILVER: EventTypeChoices.HEALTH_SUMMARY_SILVER,
+            PrizeLevel.BRONZE: EventTypeChoices.HEALTH_SUMMARY_BRONZE,
+        }
+        summary = self.summaries[device]
+        prize_level = summary['health_prize_level']
+        if not prize_level:
+            if not summary['walk_mins'] and not summary['bicycle_mins']:
+                event_type = EventTypeChoices.HEALTH_SUMMARY_NO_DATA
+            else:
+                event_type = EventTypeChoices.HEALTH_SUMMARY_NO_LEVEL_REACHED
+        else:
+            event_type = PRIZE_LEVEL_EVENTS[prize_level]
+
+        tlist = [t for t in available_templates if t.event_type == event_type]
+        if not tlist:
+            return None
+        return random.choice(tlist)
+
+    def recipients(self):
+        """Return devices that should receive the summary."""
+        today = self.now.date()
+        devices = self.devices.filter(health_impact_enabled=True)
+        earlier_recipients = (
+            NotificationLogEntry.objects.filter(template__event_type=self.event_type)
+            .filter(sent_at__date__gte=today)
+            .values('device')
+        )
+        return devices.exclude(id__in=earlier_recipients)
+
+    def contexts(self, device: Device):
+        """
+            ('bicycle_walk_mins', _("Biking and walking trip minutes"), 123.45),
+            ('bicycle_mins', _("Biking trip minutes"), 123.45),
+            ('walk_mins', _("Walking trip minutes"), 123.45),
+            ('average_bicycle_walk_mins', _("Average biking and walking trip minutes (for all active devices)"), 123.45),
+            ('average_bicycle_mins', _("Average biking trip minutes (for all active devices)"), 123.45),
+            ('average_walk_mins', _("Average walking trip minutes (for all active devices)"), 123.45),
+        """
+        contexts = super().contexts(device)
+
+        def format_float(f: float) -> str:
+            return '%.0f' % f
+
+        summary = self.summaries[device][0]
+        for language, context in contexts.items():
+            assert summary['date'] == self.summary_start
+            with override(language):
+                context['bicycle_mins'] = format_float(summary['bicycle_mins'])
+                context['walk_mins'] = format_float(summary['walk_mins'])
+                context['bicycle_walk_mins'] = format_float(summary['walk_mins'] + summary['bicycle_mins'])
+                context['average_bicycle_mins'] = format_float(self.average_bicycle_mins)
+                context['average_walk_mins'] = format_float(self.average_walk_mins)
+        return contexts
 
 
 @register_for_management_command

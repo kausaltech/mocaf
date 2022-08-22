@@ -19,6 +19,12 @@ class EventTypeChoices(models.TextChoices):
     MONTHLY_SUMMARY_NO_LEVEL_REACHED = 'monthly_summary_no_level', _("Monthly summary (worse than bronze budget)")
     WELCOME_MESSAGE = 'welcome_message', _("Welcome message")
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
+    HEALTH_SUMMARY_GOLD = 'health_summary_gold', _("Health summary (gold-level budget)")
+    HEALTH_SUMMARY_SILVER = 'health_summary_silver', _("Health summary (silver-level budget)")
+    HEALTH_SUMMARY_BRONZE = 'health_summary_bronze', _("Health summary (bronze-level budget)")
+    HEALTH_SUMMARY_NO_LEVEL_REACHED = 'health_summary_no_level', _("Health summary (worse than bronze budget)")
+    HEALTH_SUMMARY_NO_DATA = 'health_summary_no_data', _("Health summary (no physical activity trips)")
+    TIMED_MESSAGE = 'timed_message', _("Timed message")
 
 
 def example_month(language):
@@ -40,10 +46,28 @@ available_variables = {
         ]
         for choice in (EventTypeChoices.MONTHLY_SUMMARY_GOLD,
                        EventTypeChoices.MONTHLY_SUMMARY_SILVER,
-                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE)
+                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE_OR_WORSE,
+                       EventTypeChoices.MONTHLY_SUMMARY_BRONZE,
+                       EventTypeChoices.MONTHLY_SUMMARY_NO_LEVEL_REACHED,)
+    },
+    **{
+        choice: [
+            ('bicycle_walk_mins', _("Biking and walking trip minutes"), 123.45),
+            ('bicycle_mins', _("Biking trip minutes"), 123.45),
+            ('walk_mins', _("Walking trip minutes"), 123.45),
+            ('average_bicycle_walk_mins', _("Average biking and walking trip minutes (for all active devices)"), 123.45),
+            ('average_bicycle_mins', _("Average biking trip minutes (for all active devices)"), 123.45),
+            ('average_walk_mins', _("Average walking trip minutes (for all active devices)"), 123.45),
+        ]
+        for choice in (EventTypeChoices.HEALTH_SUMMARY_GOLD,
+                       EventTypeChoices.HEALTH_SUMMARY_SILVER,
+                       EventTypeChoices.HEALTH_SUMMARY_BRONZE,
+                       EventTypeChoices.HEALTH_SUMMARY_NO_DATA,
+                       EventTypeChoices.HEALTH_SUMMARY_NO_LEVEL_REACHED)
     },
     EventTypeChoices.WELCOME_MESSAGE: [],
     EventTypeChoices.NO_RECENT_TRIPS: [],
+    EventTypeChoices.TIMED_MESSAGE: [],
 }
 
 variable_help_text = '<ul style="margin-left: 1em">'
