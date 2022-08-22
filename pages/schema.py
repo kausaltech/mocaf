@@ -29,7 +29,7 @@ class BlogPost(DjangoObjectType):
 class InfoPage(DjangoObjectType):
     class Meta:
         model = models.InfoPage
-        fields = ['id', 'title', 'body']
+        fields = ['id', 'title', 'body', 'static_identifier']
 
     body = graphene.String()
 
@@ -55,6 +55,7 @@ class Query(graphene.ObjectType):
     blog_posts = graphene.List(BlogPost)
     info_page = graphene.Field(InfoPage, id=graphene.ID(required=True))
     info_pages = graphene.List(InfoPage)
+    static_info_page = graphene.Field(InfoPage, static_identifier=graphene.ID(required=True))
 
     def resolve_blog_post(root, info, id, **kwargs):
         return pages_for_device(models.BlogPost.objects, info.context.device).get(id=id)
@@ -72,5 +73,14 @@ class Query(graphene.ObjectType):
     def resolve_info_pages(root, info, **kwargs):
         return (
             pages_for_device(models.InfoPage.objects, info.context.device)
+            .filter(hidden_from_index=False)
             .filter(locale__language_code=info.context.language)
+        )
+
+    def resolve_static_info_page(root, info, static_identifier):
+        return (
+            pages_for_device(models.InfoPage.objects, info.context.device)
+            .filter(static_identifier=static_identifier)
+            .filter(locale__language_code=info.context.language)
+            .first()
         )
