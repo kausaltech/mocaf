@@ -8,7 +8,7 @@ django-cors-headers
 patchy
 graphene<3.0
 graphene-django<3.0
-graphene-django-optimizer
+graphene-django-optimizer<0.9
 sentry_sdk
 djangorestframework
 django-extensions
