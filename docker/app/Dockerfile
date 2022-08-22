@@ -18,7 +18,7 @@ RUN apt-get install -y gnupg wget lsb-release software-properties-common
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key add -
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" > /etc/apt/sources.list.d/postgres.list
 RUN apt-get update
-RUN apt-get install -y python3.9 python3-pip libpython3.9-dev \
+RUN apt-get install -y python3.10 python3-pip libpython3.10-dev \
 	postgresql-client-common postgresql-client libpq-dev \
 	gettext git-core
 
