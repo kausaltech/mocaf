@@ -6,8 +6,8 @@ class GeniemApi:
         self.api_url = api_url
         self.api_token = api_token
 
-    def is_enabled(self):
-        return self.api_url and self.api_token
+    def is_enabled(self) -> bool:
+        return bool(self.api_url and self.api_token)
 
     def post(self, data):
         assert self.is_enabled()

@@ -2,7 +2,7 @@ import datetime
 import logging
 import random
 import statistics
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -12,6 +12,8 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
+
+import sentry_sdk
 
 from budget.enums import PrizeLevel, TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
@@ -71,6 +73,9 @@ class NotificationTask:
         except IndexError:
             raise Exception(f"There is no notification template of type {self.event_type}.")
 
+    def get_extra_data(self, device: Device, template: NotificationTemplate) -> Optional[Dict[str, Any]]:
+        return None
+
     def send_notifications(self):
         """Send notifications using a randomly chosen template of the proper event type."""
         available_templates = self.get_available_templates()
@@ -83,29 +88,56 @@ class NotificationTask:
             recipients = self.recipients()
         logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(recipients)} devices")
+
+        fail_count = 0
+
         for device in recipients:
-            with transaction.atomic():
-                template = self.choose_template(device, available_templates=available_templates)
-                if template is None:
-                    continue
+            template = self.choose_template(device, available_templates=available_templates)
+            if template is None:
+                continue
+
+            with transaction.atomic() as _, sentry_sdk.push_scope() as scope:
+                scope.set_tag('device', str(device.uuid))
+                scope.set_tag('event_type', str(self.event_type))
+                scope.set_tag('template_id', template.id)
+
                 contexts = self.contexts(device)
                 title = template.render_all_languages('title', contexts)
                 content = template.render_all_languages('body', contexts)
+                extra_data = self.get_extra_data(device, template)
                 if self.dry_run:
                     print(f"Sending notification to {device.uuid}")
                     print("Title:")
                     print(title)
                     print("Content:")
                     print(content)
+                    print("Extra data:")
+                    print(extra_data)
                     print()
-                else:
-                    logger.info(f"Sending notification to {device.uuid}")
-                    # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
-                    # devices as first argument of engine.send_notification()
-                    response = self.engine.send_notification([device], title, content).json()
-                    if not response['ok'] or response['message'] != 'success':
-                        raise Exception("Sending notifications failed")
-                    NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
+                    continue
+
+                logger.info(f"Sending notification to {device.uuid}")
+                # TODO: Send to multiple devices at once (unless context is device-specific) by using a list of all
+                # devices as first argument of engine.send_notification()
+                send_exception = None
+                try:
+                    response = self.engine.send_notification([device], title, content, extra_data=extra_data).json()
+                except Exception as e:
+                    send_exception = e
+
+                if send_exception is not None or not response['ok'] or response['message'] != 'success':
+                    fail_count += 1
+                    scope.set_context(response)
+                    if send_exception is None:
+                        send_exception = Exception("Sending notification failed")
+                    sentry_sdk.capture_exception(send_exception)
+                    if fail_count > 5:
+                        raise Exception("Too many failures in a row, bailing out")
+                    continue
+
+                # Success, reset failure count
+                fail_count = 0
+                NotificationLogEntry.objects.create(device=device, template=template, sent_at=self.now)
 
 
 @register_for_management_command
@@ -398,6 +430,7 @@ class MonthlySummaryNoLevelNotificationTask(MonthlySummaryNotificationTask):
         # Anything worse than silver gets a notification even if not within bronze level
         return footprint > self.bronze_threshold
 
+
 @register_for_management_command
 class HealthSummaryNotificationTask(NotificationTask):
     time_period = TimeResolution.WEEK
@@ -473,9 +506,6 @@ class HealthSummaryNotificationTask(NotificationTask):
         summary = self.summaries[device]
         s = summary[0]
         prize_level = s['health_prize_level']
-        print(device, prize_level)
-        print(available_templates)
-        print(s)
         if not prize_level:
             if not s['walk_mins'] and not s['bicycle_mins']:
                 event_type = EventTypeChoices.HEALTH_SUMMARY_NO_DATA
@@ -485,7 +515,6 @@ class HealthSummaryNotificationTask(NotificationTask):
             event_type = PRIZE_LEVEL_EVENTS[prize_level]
 
         tlist = [t for t in available_templates if t.event_type == event_type]
-        print(event_type, tlist)
         if not tlist:
             return None
         return random.choice(tlist)
@@ -519,6 +548,9 @@ class HealthSummaryNotificationTask(NotificationTask):
                 context['average_bicycle_walk_mins'] = format_float(self.average_bicycle_mins) + format_float(self.average_walk_mins)
         return contexts
 
+    def get_extra_data(self, device: Device, template: NotificationTemplate) -> Optional[Dict[str, Any]]:
+        return dict(actionType='health_impact_previous_week')
+
 
 @register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
@@ -545,13 +577,17 @@ class NoRecentTripsNotificationTask(NotificationTask):
 @shared_task
 def send_notifications(task_class, devices=None, **kwargs):
     if isinstance(task_class, str):
-        task_class = import_module(task_class)
         parts = task_class.split('.')
         class_name = parts.pop(-1)
         module = import_module('.'.join(parts))
         task_class = getattr(module, class_name)
     task = task_class(devices=devices, **kwargs)
     task.send_notifications()
+
+
+@shared_task
+def send_health_summary_notifications(devices=None, **kwargs):
+    HealthSummaryNotificationTask(devices=devices, **kwargs).send_notifications()
 
 
 @shared_task
