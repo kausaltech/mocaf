@@ -435,7 +435,9 @@ class HealthSummaryNotificationTask(NotificationTask):
 
         device_universe: DeviceQuerySet = devices.has_trips_during(start_date, end_date).filter()
 
-        logger.info('Calculating trip summaries for %d devices', len(device_universe))
+        logger.info('Calculating trip summaries for %d devices between %s and %s',
+            len(device_universe), start_date.isoformat(), end_date.isoformat()
+        )
         self.summaries = {
             device: device.get_trip_summary(
                 start_date, end_date, time_resolution=self.time_period, ranking='health'
@@ -444,12 +446,17 @@ class HealthSummaryNotificationTask(NotificationTask):
         total_devices = len(device_universe) or 1
         walk = 0
         bicycle = 0
-        for s in self.summaries.values():
+        for dev_summary in self.summaries.values():
+            assert len(dev_summary) == 1
+            s = dev_summary[0]
+            assert s['date'] == start_date
             walk += s['walk_mins']
             bicycle += s['bicycle_mins']
         self.average_walk_mins = walk / total_devices
         self.average_bicycle_mins = bicycle / total_devices
-        logger.info('Average of %d walk, %d bicycle mins', walk, bicycle)
+        logger.info('Average of %.1f mins walking, %.1f mins bicycling',
+            self.average_walk_mins, self.average_bicycle_mins
+        )
         self.devices = device_universe
 
     def get_available_templates(self) -> List[NotificationTemplate]:
@@ -464,9 +471,13 @@ class HealthSummaryNotificationTask(NotificationTask):
             PrizeLevel.BRONZE: EventTypeChoices.HEALTH_SUMMARY_BRONZE,
         }
         summary = self.summaries[device]
-        prize_level = summary['health_prize_level']
+        s = summary[0]
+        prize_level = s['health_prize_level']
+        print(device, prize_level)
+        print(available_templates)
+        print(s)
         if not prize_level:
-            if not summary['walk_mins'] and not summary['bicycle_mins']:
+            if not s['walk_mins'] and not s['bicycle_mins']:
                 event_type = EventTypeChoices.HEALTH_SUMMARY_NO_DATA
             else:
                 event_type = EventTypeChoices.HEALTH_SUMMARY_NO_LEVEL_REACHED
@@ -474,6 +485,7 @@ class HealthSummaryNotificationTask(NotificationTask):
             event_type = PRIZE_LEVEL_EVENTS[prize_level]
 
         tlist = [t for t in available_templates if t.event_type == event_type]
+        print(event_type, tlist)
         if not tlist:
             return None
         return random.choice(tlist)
@@ -490,14 +502,6 @@ class HealthSummaryNotificationTask(NotificationTask):
         return devices.exclude(id__in=earlier_recipients)
 
     def contexts(self, device: Device):
-        """
-            ('bicycle_walk_mins', _("Biking and walking trip minutes"), 123.45),
-            ('bicycle_mins', _("Biking trip minutes"), 123.45),
-            ('walk_mins', _("Walking trip minutes"), 123.45),
-            ('average_bicycle_walk_mins', _("Average biking and walking trip minutes (for all active devices)"), 123.45),
-            ('average_bicycle_mins', _("Average biking trip minutes (for all active devices)"), 123.45),
-            ('average_walk_mins', _("Average walking trip minutes (for all active devices)"), 123.45),
-        """
         contexts = super().contexts(device)
 
         def format_float(f: float) -> str:
@@ -512,6 +516,7 @@ class HealthSummaryNotificationTask(NotificationTask):
                 context['bicycle_walk_mins'] = format_float(summary['walk_mins'] + summary['bicycle_mins'])
                 context['average_bicycle_mins'] = format_float(self.average_bicycle_mins)
                 context['average_walk_mins'] = format_float(self.average_walk_mins)
+                context['average_bicycle_walk_mins'] = format_float(self.average_bicycle_mins) + format_float(self.average_walk_mins)
         return contexts
 
 
