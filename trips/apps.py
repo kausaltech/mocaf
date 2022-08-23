@@ -22,8 +22,7 @@ class TripsConfig(AppConfig):
         is_manage_py = any(arg.endswith("manage.py") for arg in sys.argv)
         is_runserver = any(arg == "runserver" for arg in sys.argv)
         is_pytest = 'pytest' in sys.modules
-
-        if not is_pytest and (is_manage_py and is_runserver) or (not is_manage_py):
+        if not is_pytest and ((is_manage_py and is_runserver) or (not is_manage_py)):
             from trips.models import TransportMode
             gauge = Gauge('trips_length_meters_total', "Total meters by mode of transportation", ['mode'])
             for mode in TransportMode.objects.all():
