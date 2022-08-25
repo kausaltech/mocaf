@@ -45,7 +45,7 @@ class NotificationTask:
         if engine is None:
             engine = NotificationEngine()
         if devices is None:
-            devices = Device.objects.all()
+            devices = Device.objects.filter(enabled_at__isnull=False)
 
         self.event_type = event_type
         self.now = now
@@ -56,7 +56,7 @@ class NotificationTask:
 
     def recipients(self):
         """Return the recipient devices for the notifications to be sent at `self.now`."""
-        return self.devices.filter(enabled_at__isnull=False)
+        return self.devices
 
     def contexts(self, device: Device):
         """Return a dict mapping languages to a context for rendering notification templates for the given device."""
@@ -78,15 +78,17 @@ class NotificationTask:
 
     def send_notifications(self):
         """Send notifications using a randomly chosen template of the proper event type."""
+        logger.info(f"Sending {self.event_type} notifications")
+
         available_templates = self.get_available_templates()
         if not available_templates:
+            logger.info("No templates found")
             return
 
         if self.force:
             recipients = self.devices
         else:
             recipients = self.recipients()
-        logger.info(f"Sending {self.event_type} notifications")
         logger.debug(f"Sending notification to {len(recipients)} devices")
 
         fail_count = 0
@@ -160,15 +162,18 @@ class WelcomeNotificationTask(NotificationTask):
 
 @register_for_management_command
 class TimedNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, **kwargs):
         super().__init__(EventTypeChoices.TIMED_MESSAGE, now, engine, dry_run, devices, force)
-        self.today_templates = list(NotificationTemplate.objects.filter(
+
+    def get_available_templates(self) -> List[NotificationTemplate]:
+        available_templates = list(NotificationTemplate.objects.filter(
             event_type=self.event_type,
             send_on=self.now.date()
         ).prefetch_related('groups'))
+        return available_templates
 
-    def choose_template(self, device: Device):
-        for template in self.today_templates:
+    def choose_template(self, device: Device, available_templates: List[NotificationTemplate]) -> Optional[NotificationTemplate]:
+        for template in available_templates:
             tmp_groups = template.groups.all()
             if not tmp_groups:
                 return template
@@ -179,7 +184,15 @@ class TimedNotificationTask(NotificationTask):
         return None
 
     def recipients(self):
-        return super().recipients().prefetch_related('groups')
+        devices = super().recipients()
+        if not self.force:
+            earlier_recipients = (
+                NotificationLogEntry.objects.filter(template__event_type__in=self.event_types)
+                .filter(sent_at__date__gte=self.now.date())
+                .values('device')
+            )
+            devices = devices.exclude(id__in=earlier_recipients)
+        return devices
 
 
 class MonthlySummaryNotificationTask(NotificationTask):
@@ -463,20 +476,16 @@ class HealthSummaryNotificationTask(NotificationTask):
             logger.info('No templates for health summaries for today')
             return
 
-        if devices is None:
-            devices = Device.objects.filter(enabled_at__isnull=False)
-
-        device_universe: DeviceQuerySet = devices.has_trips_during(start_date, end_date).filter()
-
+        active_devices: DeviceQuerySet = Device.objects.has_trips_during(start_date, end_date)
         logger.info('Calculating trip summaries for %d devices between %s and %s',
-            len(device_universe), start_date.isoformat(), end_date.isoformat()
+            len(active_devices), start_date.isoformat(), end_date.isoformat()
         )
         self.summaries = {
             device: device.get_trip_summary(
                 start_date, end_date, time_resolution=self.time_period, ranking='health'
-            ) for device in device_universe
+            ) for device in active_devices
         }
-        total_devices = len(device_universe) or 1
+        total_devices = len(active_devices) or 1
         walk = 0
         bicycle = 0
         for dev_summary in self.summaries.values():
@@ -490,7 +499,6 @@ class HealthSummaryNotificationTask(NotificationTask):
         logger.info('Average of %.1f mins walking, %.1f mins bicycling',
             self.average_walk_mins, self.average_bicycle_mins
         )
-        self.devices = device_universe
 
     def get_available_templates(self) -> List[NotificationTemplate]:
         return list(NotificationTemplate.objects.filter(
@@ -522,9 +530,9 @@ class HealthSummaryNotificationTask(NotificationTask):
     def recipients(self):
         """Return devices that should receive the summary."""
         today = self.now.date()
-        devices = self.devices.filter(health_impact_enabled=True)
+        devices = self.devices.filter(health_impact_enabled=True).has_trips_during(self.summary_start, self.summary_end)
         earlier_recipients = (
-            NotificationLogEntry.objects.filter(template__event_type=self.event_type)
+            NotificationLogEntry.objects.filter(template__event_type__in=self.event_types)
             .filter(sent_at__date__gte=today)
             .values('device')
         )
