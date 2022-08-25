@@ -129,7 +129,7 @@ class NotificationTask:
 
                 if send_exception is not None or not response['ok'] or response['message'] != 'success':
                     fail_count += 1
-                    scope.set_context(response)
+                    scope.set_context('api-response', response)
                     if send_exception is None:
                         send_exception = Exception("Sending notification failed")
                     sentry_sdk.capture_exception(send_exception)
