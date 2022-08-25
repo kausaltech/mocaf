@@ -306,8 +306,8 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
                 FROM analytics_devicedailyapiactivity api
                 INNER JOIN trips_device dev ON (dev.uuid = d.uuid)
                 WHERE
-                    api.date = DATE(%(start_time)s)
-                    AND dev.uuid = d.uuid
+                    api.date = DATE(%(date)s)
+                    AND api.device_id = dev.id
             ) AS nr_queries
         FROM trips_leg leg
         INNER JOIN trips_trip t ON (leg.trip_id = t.id)
@@ -335,7 +335,7 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
         end_time = start_time + timedelta(days=1)
 
         cursor.execute(QUERY, params=dict(
-            start_time=start_time, end_time=end_time, area_type=5,
+            date=start_date, start_time=start_time, end_time=end_time, area_type=5,
         ))
         rows = cursor.fetchall()
 
