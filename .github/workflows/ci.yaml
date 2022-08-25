@@ -7,9 +7,11 @@ on:
 jobs:
   build_and_test:
     name: Build Docker container and run tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       POSTGRES_PASSWORD: test
+      DOCKER_BUILDKIT: 1
+      BUILDKIT_PROGRESS: plain
     # TODO: Do we want a flake8 step? Github Action's python-app.yml template contains some potentially interesting options.
     steps:
       - uses: actions/checkout@v2
