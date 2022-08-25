@@ -118,13 +118,15 @@ def add_statistics_panel(request, panels):
             prize_percentages[column_name] = prize_percentages[column_name].apply(lambda v: f'{v:6.2f} %')
         panels.append(StatisticsPanel(request, _("Awarded prizes per month in percent"), prize_percentages))
 
-    # Calculate histograms of carbon footprints for certain months
-    monthly_footprints = (DeviceDailyCarbonFootprint.objects
-                          .annotate(month=TruncMonth('date'))
-                          .filter(month__gte=one_year_ago)
-                          .values('device', 'month')
-                          .annotate(monthly_footprint=Sum('carbon_footprint'))
-                          .order_by())
+    monthly_footprints = (
+        DeviceDailyCarbonFootprint.objects
+        .annotate(month=TruncMonth('date'))
+        .filter(month__gte=one_year_ago)
+        .filter(average_footprint_used=False)
+        .values('device', 'month')
+        .annotate(monthly_footprint=Sum('carbon_footprint'))
+        .order_by()
+    )
     monthly_footprints = pd.DataFrame(data=monthly_footprints)
     bins = [i for i in range(0, 275, 25)] + [float('inf')]
     histograms = []
