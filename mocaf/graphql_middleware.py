@@ -51,7 +51,7 @@ class APITokenMiddleware:
             raise GraphQLAuthFailedError("Mocaf disabled", [directive])
 
         info.context.device = dev
-        DeviceDailyAPIActivity.record_api_hit(dev)
+        DeviceDailyAPIActivity.record_api_hit(dev, info.context.META.get('HTTP_USER_AGENT'))
 
     def resolve(self, next, root, info, **kwargs):
         context = info.context

@@ -221,9 +221,10 @@ class DeviceDailyAPIActivity(models.Model):
     )
     date = models.DateField()
     nr_queries = models.PositiveIntegerField(default=1)
+    last_user_agent = models.CharField(max_length=200, null=True, blank=True)
 
     @classmethod
-    def record_api_hit(cls: Type[DeviceDailyAPIActivity], device: Device):
+    def record_api_hit(cls: Type[DeviceDailyAPIActivity], device: Device, user_agent: str | None = None):
         today = date.today()
         with transaction.atomic():
             device = Device.objects.select_for_update(skip_locked=True).filter(id=device.id).first()
@@ -231,9 +232,13 @@ class DeviceDailyAPIActivity(models.Model):
                 return
 
             kwargs = dict(device=device, date=today)
-            nr_rows = cls.objects.filter(**kwargs).update(nr_queries=F('nr_queries') + 1)
+            update_kwargs = dict(nr_queries=F('nr_queries') + 1)
+            ua_kwargs = {}
+            if user_agent:
+                ua_kwargs['last_user_agent'] = user_agent
+            nr_rows = cls.objects.filter(**kwargs).update(**update_kwargs, **ua_kwargs)
             if not nr_rows:
-                DeviceDailyAPIActivity.objects.create(**kwargs)
+                DeviceDailyAPIActivity.objects.create(**kwargs, **ua_kwargs)
 
     def __str__(self):
         return '%s | %s [%d hits]' % (str(self.device), self.date, self.nr_queries)
