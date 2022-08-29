@@ -121,14 +121,14 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 2 * 24 * 60 * 60,  # 2 days
         }
     },
-    # 'send-timed-notifications': {
-    #     'task': 'notifications.tasks.send_notifications',
-    #     'args': ('notifications.tasks.TimedNotificationTask',),
-    #     'schedule': crontab(hour=7, minute=0),
-    #     'options': {
-    #         'expires': 18 * 60 * 60,  # 18 hours
-    #     }
-    # },
+    'send-timed-notifications': {
+        'task': 'notifications.tasks.send_notifications',
+        'args': ('notifications.tasks.TimedNotificationTask',),
+        'schedule': crontab(hour=7, minute=0),
+        'options': {
+            'expires': 18 * 60 * 60,  # 18 hours
+        }
+    },
     'send-health-summary-notifications': {
         'task': 'notifications.tasks.send_notifications',
         'args': ('notifications.tasks.HealthSummaryNotificationTask',),

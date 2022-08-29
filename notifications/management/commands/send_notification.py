@@ -63,7 +63,7 @@ class Command(BaseCommand):
                 raise ValueError(f"Device {uuid} does not exist")
 
         if all_devices:
-            devices = Device.objects.all()
+            devices = None
         else:
             devices = Device.objects.filter(uuid__in=uuids)
 

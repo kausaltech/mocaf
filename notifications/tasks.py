@@ -89,7 +89,7 @@ class NotificationTask:
             recipients = self.devices
         else:
             recipients = self.recipients()
-        logger.debug(f"Sending notification to {len(recipients)} devices")
+        logger.info(f"Sending notification to {len(recipients)} devices")
 
         fail_count = 0
 
@@ -185,13 +185,27 @@ class TimedNotificationTask(NotificationTask):
 
     def recipients(self):
         devices = super().recipients()
-        if not self.force:
-            earlier_recipients = (
-                NotificationLogEntry.objects.filter(template__event_type__in=self.event_types)
-                .filter(sent_at__date__gte=self.now.date())
-                .values('device')
-            )
-            devices = devices.exclude(id__in=earlier_recipients)
+        if self.force:
+            return devices
+
+        templates = self.get_available_templates()
+        possible_groups = set()
+        for t in templates:
+            t_grps = t.groups.all()
+            if not t_grps:
+                possible_groups.clear()
+                break
+            possible_groups.update(list(t_grps))
+
+        if possible_groups:
+            devices = devices.filter(groups__in=possible_groups)
+
+        earlier_recipients = (
+            NotificationLogEntry.objects.filter(template__event_type=self.event_type)
+            .filter(sent_at__date__gte=self.now.date())
+            .values('device')
+        )
+        devices = devices.exclude(id__in=earlier_recipients)
         return devices
 
 
