@@ -211,7 +211,6 @@ class TripGenerator:
         if device is None:
             raise GeneratorError('Device %s not found' % uuid)
 
-        sentry_sdk.set_tag('uuid', uuid)
         device._default_variants = {x.mode: x.variant for x in device.default_mode_variants.all()}
 
         pc = PerfCounter('update trips for %s' % uuid, show_time_to_last=True)
@@ -236,7 +235,6 @@ class TripGenerator:
             device.save(update_fields=['last_processed_data_received_at'])
         transaction.commit()
         pc.display('trips generated')
-        sentry_sdk.set_tag('uuid', None)
 
     def find_uuids_with_new_samples(self, min_received_at: Optional[datetime]=None):
         if not min_received_at:
@@ -245,6 +243,7 @@ class TripGenerator:
         uuid_qs = (
             Location.objects
             .filter(deleted_at__isnull=True, time__gte=min_received_at)
+            .filter(uuid__in=Device.objects.values('uuid'))
             .values('uuid').annotate(newest_created_at=Max('created_at')).order_by()
         )
         uuids = uuid_qs.values('uuid')
@@ -300,10 +299,12 @@ class TripGenerator:
                 start_time = None
                 end_time = None
 
-            try:
-                self.generate_trips(uuid, start_time=start_time, end_time=end_time, generation_started_at=now)
-            except GeneratorError as e:
-                sentry_sdk.capture_exception(e)
+            with sentry_sdk.configure_scope() as scope:
+                scope.set_tag('uuid', str(uuid))
+                try:
+                    self.generate_trips(uuid, start_time=start_time, end_time=end_time, generation_started_at=now)
+                except GeneratorError as e:
+                    sentry_sdk.capture_exception(e)
 
     def end(self):
         transaction.commit()
