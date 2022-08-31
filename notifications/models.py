@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.db import models
+from django.forms import ValidationError
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _, override
 from jinja2 import StrictUndefined, Template
+from jinja2.exceptions import UndefinedError
 from modeltrans.fields import TranslationField
 from modeltrans.utils import build_localized_fieldname
 from wagtail.admin.edit_handlers import FieldPanel, HelpPanel
@@ -171,6 +173,18 @@ class NotificationTemplate(models.Model):
     def groups_text(self) -> str:
         return ', '.join([grp.name for grp in self.groups.all()])
     groups_text.short_description = 'Groups'
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        for lang in ('fi', 'en'):
+            for field in ('body', 'title'):
+                try:
+                    self.render_preview(field, lang)
+                except UndefinedError as e:
+                    errors['%s_%s' % (field, lang)] = e.message
+        if errors:
+            raise ValidationError(errors)
 
 
 class NotificationLogEntry(models.Model):
