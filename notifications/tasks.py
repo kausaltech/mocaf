@@ -567,7 +567,7 @@ class HealthSummaryNotificationTask(NotificationTask):
                 context['bicycle_walk_mins'] = format_float(summary['walk_mins'] + summary['bicycle_mins'])
                 context['average_bicycle_mins'] = format_float(self.average_bicycle_mins)
                 context['average_walk_mins'] = format_float(self.average_walk_mins)
-                context['average_bicycle_walk_mins'] = format_float(self.average_bicycle_mins) + format_float(self.average_walk_mins)
+                context['average_bicycle_walk_mins'] = format_float(self.average_bicycle_mins + self.average_walk_mins)
         return contexts
 
     def get_extra_data(self, device: Device, template: NotificationTemplate) -> Optional[Dict[str, Any]]:
