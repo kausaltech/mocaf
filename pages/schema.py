@@ -46,7 +46,7 @@ def pages_for_device(base_qs: QuerySet[PageModel], device: Optional[Device]) -> 
         qs = qs.filter(device_groups__isnull=True)
     else:
         q = Q(device_groups__isnull=True) | Q(device_groups__in=device.groups.all())
-        qs = qs.filter(q)
+        qs = qs.filter(q).distinct()
     return qs
 
 
