@@ -80,7 +80,7 @@ TRANSITRT_IMPORTERS = {
         'frequency': 3,
     },
     'rata': {
-        'feed_publisher_name': 'Traffic Management Finland',
+        'feed_publisher_name': 'Fintraffic',
         'frequency': 5,
         'type': 'rata',
     }
