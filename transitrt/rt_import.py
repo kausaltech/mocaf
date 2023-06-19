@@ -60,7 +60,10 @@ class TransitRTImporter:
         qs = qs.order_by('-feed_start_date')
 
         self.gtfs_feed = qs.first()
-        self.routes_by_ref = {r.short_name: r for r in self.gtfs_feed.routes.all()}
+        if self.gtfs_feed is None:
+            self.routes_by_ref = {}
+        else:
+            self.routes_by_ref = {r.short_name: r for r in self.gtfs_feed.routes.all()}
         self.modes_by_id = {m.identifier: m for m in TransportMode.objects.all()}
         self.cached_journeys = {}
         if url is not None:
@@ -158,7 +161,7 @@ class TransitRTImporter:
             point.transform(gps_to_local)
             obj['x'] = point.x
             obj['y'] = point.y
-            obj['gtfs_feed'] = self.gtfs_feed.pk
+            obj['gtfs_feed'] = self.gtfs_feed.pk if self.gtfs_feed is not None else None
             if 'bearing' not in obj:
                 obj['bearing'] = None
             if 'speed' not in obj:
