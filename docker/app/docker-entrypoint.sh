@@ -2,7 +2,7 @@
 
 set -e
 
-if [ "$1" = 'uwsgi' -o "$1" = 'celery' ]; then
+if [ "$1" = 'uwsgi' ]; then
     /wait-for-it.sh db:5432
     cd /code
     python manage.py migrate --no-input

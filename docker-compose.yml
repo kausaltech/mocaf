@@ -48,10 +48,20 @@ services:
       - db_data:/var/lib/postgresql/data/
     ports:
       - "${DATABASE_PORT:-127.0.0.1:54320}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mocaf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:6-alpine
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     container_name: mocaf
@@ -68,6 +78,11 @@ services:
       - db
       - redis
       - cubeserver
+    healthcheck:
+      test: "wget -O /dev/null -q --tries=1 http://127.0.0.1:8000/v1/health/ || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
     command: uwsgi
 
   celery-trips-worker:
@@ -76,8 +91,8 @@ services:
     restart: always
     environment: *django-environment
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
     command: celery worker trips
 
   celery-transitrt-worker:
@@ -86,8 +101,8 @@ services:
     restart: always
     environment: *django-environment
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
     command: celery worker transitrt
 
   celery-notifications-worker:
@@ -96,8 +111,8 @@ services:
     restart: always
     environment: *django-environment
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
     command: celery worker notifications
 
   celery-beat:
@@ -106,8 +121,8 @@ services:
     restart: always
     environment: *django-environment
     depends_on:
-      - db
-      - redis
+      app:
+        condition: service_healthy
     command: celery beat
 
   celery-exporter:
@@ -132,7 +147,8 @@ services:
       context: ./analytics/cubeserver
       dockerfile: ./Dockerfile
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:

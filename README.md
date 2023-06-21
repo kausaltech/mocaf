@@ -160,7 +160,17 @@ To import area data for GIS manipulations, use the Django manage.py
 command `import_areas`.  Please note the area importing has NPM
 dependencies: before running these commands, run `yarn`.
 
-### TODO
+### Docker Compose
+
+For new deployments with Docker Compose, it should be sufficient to set the PostgreSQL and
+Cubeserver passwords to something random, and place those variables a `.env` file:
+
+```
+POSTGRES_PASSWORD=abcdef
+CUBEJS_DB_PASS=qwerty
+```
+
+## TODO
 
 - Fix viterbi
   - Remove heuristic smoothing
