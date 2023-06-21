@@ -47,8 +47,6 @@ env = environ.Env(
     INTERNAL_IPS=(list, []),
     PROMETHEUS_METRICS_AUTH_TOKEN=(str, None),
     PROMETHEUS_EXPORT_MIGRATIONS=(bool, False),
-    POSTGRES_DB=(str, 'mocaf'),
-    POSTGRES_PASSWORD=(str, 'abcdef'),
 )
 PROMETHEUS_EXPORT_MIGRATIONS = env('PROMETHEUS_EXPORT_MIGRATIONS')
 
@@ -418,16 +416,3 @@ if 'DATABASES' in locals():
         DATABASES['default']['CONN_MAX_AGE'] = 600
 
 PROMETHEUS_METRICS_AUTH_TOKEN = env('PROMETHEUS_METRICS_AUTH_TOKEN')
-
-DATABASES = {
-    'default': {
-        'ATOMIC_REQUESTS': True,
-        'CONN_MAX_AGE': 600,
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'HOST': 'db',
-        'NAME': env('POSTGRES_DB'),
-        'PASSWORD': env('POSTGRES_PASSWORD'),
-        'PORT': '',
-        'USER': 'mocaf'
-    }
-}
