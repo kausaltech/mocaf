@@ -1,0 +1,35 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Liikkumisen hiilijalanjälkilaskurin analytiikkatyökalu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="{% static 'analytics/main.css' %}" rel="stylesheet">
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+    <style>
+      body {margin: 0; font-family: sans-serif; width: 100vw; height: 100vh; overflow: hidden;}
+      #help-modal-body img {
+          width: 200px;
+          height: auto;
+          padding-right: 10px;
+          float: left;
+      }
+      .hoverlayer {display: none; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="text/javascript" src="{% static 'analytics/main.js' %}"></script>
+    <script type="text/javascript">
+      const config = {
+        graphqlUrl: '{% url "graphql" %}',
+        cubeUrl: '{% url "cubejs-api" %}',
+        sentryDSN: '{{ SENTRY_DSN }}',
+      };
+      initializeApp(document.getElementById('app'), config);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,140 @@
+version: '3.8'
+x-django-environment: &django-environment
+  - POSTGRES_PASSWORD
+  - POSTGRES_DB=mocaf
+  - DATABASE_URL=postgis://mocaf:${POSTGRES_PASSWORD}@db/mocaf
+  - CELERY_BROKER_URL=redis://redis:6379
+  - CELERY_RESULT_BACKEND=redis://redis:6379
+  - GENIEM_NOTIFICATION_API_BASE
+  - GENIEM_NOTIFICATION_API_TOKEN
+  - GENIEM_PRIZE_API_BASE
+  - GENIEM_PRIZE_API_TOKEN
+  - STATIC_ROOT=/srv/static
+  - MEDIA_ROOT=/srv/media
+  - MEDIA_URL
+  - LC_CTYPE=C.UTF-8
+  - DEBUG
+  - ALLOWED_HOSTS
+  - COOKIE_PREFIX
+  - INTERNAL_IPS
+  - SENTRY_DSN
+  - SECRET_KEY
+  - OIDC_ISSUER_URL
+  - OIDC_CLIENT_ID
+  - OIDC_CLIENT_SECRET
+  - PROMETHEUS_METRICS_AUTH_TOKEN
+  - CUBEJS_URL=http://cubeserver:4000
+  - CUBEJS_DB_PASS
+
+x-django-build: &django-build
+  context: .
+  dockerfile: docker/app/Dockerfile
+  args:
+    - STATIC_ROOT=/srv/static
+    - MEDIA_ROOT=/srv/media
+
+services:
+  db:
+    container_name: mocaf-db
+    build:
+      context: ./docker/db
+      dockerfile: ./Dockerfile
+    restart: always
+    environment:
+      - POSTGRES_USER=mocaf
+      - POSTGRES_PASSWORD
+      - CUBEJS_DB_PASS
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    ports:
+      - "${DATABASE_PORT:-127.0.0.1:54320}:5432"
+
+  redis:
+    image: redis:6-alpine
+    restart: always
+
+  app:
+    container_name: mocaf
+    build: *django-build
+    restart: always
+    volumes:
+      - mocaf_media:/srv/media
+      - mocaf_build_cache:/root/.cache
+    environment: *django-environment
+    ports:
+      - "${HOST_PORT:-127.0.0.1:8000}:8000"
+      - "${UWSGI_SOCKET_PORT:-127.0.0.1:8001}:8001"
+    depends_on:
+      - db
+      - redis
+      - cubeserver
+    command: uwsgi
+
+  celery-trips-worker:
+    container_name: mocaf_celery_trips_worker
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery worker trips
+
+  celery-transitrt-worker:
+    container_name: mocaf_celery_transitrt_worker
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery worker transitrt
+
+  celery-notifications-worker:
+    container_name: mocaf_celery_notifications_worker
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery worker notifications
+
+  celery-beat:
+    container_name: mocaf_celery_beat
+    build: *django-build
+    restart: always
+    environment: *django-environment
+    depends_on:
+      - db
+      - redis
+    command: celery beat
+
+  celery-exporter:
+    image: ovalmoney/celery-exporter
+    restart: always
+    depends_on:
+      - redis
+    ports:
+      - "${CELERY_EXPORTER_PORT:-127.0.0.1:9540}:9540"
+    command: --enable-events
+
+  cubeserver:
+    container_name: mocaf_cubeserver
+    restart: always
+    environment:
+      - CUBEJS_DB_USER=mocafcube
+      - CUBEJS_DB_PASS=${CUBEJS_DB_PASS}
+      - CUBEJS_DB_NAME=mocaf
+      - CUBEJS_DB_HOST=db
+      - CUBEJS_CACHE_AND_QUEUE_DRIVER=memory
+    build:
+      context: ./analytics/cubeserver
+      dockerfile: ./Dockerfile
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+  mocaf_media:
+  mocaf_build_cache:

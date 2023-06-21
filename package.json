@@ -1,0 +1,23 @@
+{
+  "name": "mocaf",
+  "version": "1.0.0",
+  "description": "## GraphQL API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kausaltech/mocaf.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kausaltech/mocaf/issues"
+  },
+  "homepage": "https://github.com/kausaltech/mocaf#readme",
+  "dependencies": {
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3"
+  }
+}
