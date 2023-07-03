@@ -64,6 +64,9 @@ function preprocessLengthsOld(resultSet) {
 
 function preprocessLengths(resultSet, transportModes) {
   const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+  if (resultSet.rawData().length === 0 ) {
+    return;
+  }
 
   let availableModes = primaryModes.map(m => m.identifier)
   let table = aq.from(resultSet.rawData())
@@ -95,6 +98,9 @@ function preprocessLengths(resultSet, transportModes) {
 
 function preprocessTrips(resultSet, selectedArea, transportModes) {
   const [syntheticModes, primaryModes] = lodash.partition(transportModes, m => m.synthetic);
+  if (resultSet.rawData().length === 0 ) {
+    return;
+  }
   let availableModes = primaryModes.map(m => m.identifier)
   let table = aq.from(resultSet.rawData())
     .derive({
@@ -133,6 +139,9 @@ function preprocessTrips(resultSet, selectedArea, transportModes) {
 }
 
 function preprocessPoiTrips(resultSet) {
+  if (resultSet.rawData().length === 0 ) {
+    return;
+  }
   let table = aq.from(resultSet.rawData())
     .impute({ 'TransportModes.identifier': () => 'combined' })
     .derive({
@@ -290,12 +299,13 @@ export function useAreaTopo(areaType) {
   const [areaData, setAreaData] = useState(null);
 
   useEffect(() => {
-    if (areaType.id in topoCache) {
+    if (areaType?.id in topoCache) {
       setAreaData(topoCache[areaType.id]);
       return;
     }
     const fetchData = async () => {
-      const response = await fetch(areaType.topojsonUrl);
+      const response = await fetch(areaType?.topojsonUrl);
+      console.log('qw', response)
       const topoJson = await response.json();
       const data = processTopo(areaType, topoJson);
       if (areaType.propertyValuesUrl != null) {
@@ -308,7 +318,7 @@ export function useAreaTopo(areaType) {
     fetchData().catch(error => {
       console.error(error);
     });
-  }, [areaType.id]);
+  }, [areaType?.id]);
   return areaData;
 }
 
@@ -318,12 +328,12 @@ export function usePoiGeojson(poiType) {
   const [poiAreaData, setPoiAreaData] = useState(null);
 
   useEffect(() => {
-    if (poiType.id in poiCache) {
+    if (poiType?.id in poiCache) {
       setPoiAreaData(poiCache[poiType.id]);
       return;
     }
 
-    fetch(poiType.geojsonUrl)
+    fetch(poiType?.geojsonUrl)
       .then(res => res.json())
       .then(
         (res) => {
@@ -334,6 +344,6 @@ export function usePoiGeojson(poiType) {
           console.error(error);
         }
       )
-  }, [poiType.id]);
+  }, [poiType?.id]);
   return poiAreaData;
 }

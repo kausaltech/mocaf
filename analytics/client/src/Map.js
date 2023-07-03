@@ -114,7 +114,7 @@ function StatsPropertySelector ({ properties, selectedProperty, setSelectedPrope
       labelKey='description'
       valueKey='id'
       type={TYPE.search}
-      value={selectedProperty.id != null ? [selectedProperty]: null}
+      value={selectedProperty?.id != null ? [selectedProperty]: null}
       placeholder={t('choose-property')}
       onChange={params => setSelectedProperty(params.value[0]?.id)}
       options={properties}
@@ -136,6 +136,11 @@ export function TransportModeShareMap({ areaType,
                                         setStatisticsKey
                                       }) {
   const geoData = useAreaTopo(areaType);
+  console.log('XXX', MAPBOX_ACCESS_TOKEN)
+  console.log('ZZZ', geoData)
+  console.log('VVV', areaType)
+  console.log('AA', areaData)
+  console.log('S', selectedTransportMode)
   if (!geoData) return <Spinner />;
   const modeId = selectedTransportMode.identifier;
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));

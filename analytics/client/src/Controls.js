@@ -10,6 +10,9 @@ import { el } from 'date-fns/locale';
 
 const t = (s) => s;  // Helper for IDE i18n extension to recognize translations
 
+const defaultDateBounds = [
+  new Date(2023, 6, 1), new Date(2023, 10, 1)]
+
 const selectionValues = {
   weekSubset: [
     {value: true, label: t('weekends')},
@@ -58,9 +61,13 @@ function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dis
 
 function SelectControl (
   {userChoices: [userChoiceState, dispatch], values, lookup}) {
+  console.log('A', lookup)
+  console.log('B', userChoiceState)
+  console.log('C', values)
   let value = null;
   if (values) {
     value = [values?.find((d) => d.identifier === userChoiceState[lookup])];
+    console.log('D', value)
   }
   return <Select clearable={false}
                  options={values || []}
@@ -79,10 +86,11 @@ function monthFormat(date) {
 
 function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
   const { range, bounds } = dateRange;
+  const ifBounds = bounds || defaultDateBounds
   const currentRange = [
-    differenceInCalendarMonths(range[0], bounds[0]),
-    differenceInCalendarMonths(range[1], bounds[0])];
-  const boundsDigest = `${monthFormat(bounds[0])}-${monthFormat(bounds[1])}`;
+    differenceInCalendarMonths(range[0], ifBounds[0]),
+    differenceInCalendarMonths(range[1], ifBounds[0])];
+  const boundsDigest = `${monthFormat(ifBounds[0])}-${monthFormat(ifBounds[1])}`;
 
   const [value, setValue] = useState({
     sliderValue: currentRange,
@@ -96,7 +104,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
   }
 
   function valueToLabel (value) {
-    return monthFormat(addMonths(bounds[0], value));
+    return monthFormat(addMonths(ifBounds[0], value));
   }
   function onChange ({value}) {
     value && setValue({sliderValue: value, boundsDigest});
@@ -105,9 +113,9 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
     if (!value) {
       return;
     }
-    const start = setDate(addMonths(bounds[0], value[0]), 1);
-    const end = lastDayOfMonth(addMonths(bounds[0], value[1]));
-    dispatch(userChoiceSetAction('dateRange', { bounds, range: [start, end] }));
+    const start = setDate(addMonths(ifBounds[0], value[0]), 1);
+    const end = lastDayOfMonth(addMonths(ifBounds[0], value[1]));
+    dispatch(userChoiceSetAction('dateRange', { bounds: ifBounds, range: [start, end] }));
   }
   return (
     <div style={{gridColumn: '1/4', padding: '0px 10px'}} >
@@ -118,7 +126,7 @@ function DateRangeSlider ({label, userChoices: [{dateRange}, dispatch]}) {
               label={label}
               min={0}
               persistentThumb={true}
-              max={differenceInCalendarMonths(bounds[1], bounds[0])}
+              max={differenceInCalendarMonths(ifBounds[1], ifBounds[0])}
               valueToLabel={valueToLabel}
               step={1}
               overrides={{
