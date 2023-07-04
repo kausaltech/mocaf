@@ -20,7 +20,7 @@ class questions(models.Model):
     question_data = models.JSONField(null=True)
     question_type = models.CharField(
         max_length=3,
-        default=question_type_choice.backgroud,
+        default=question_type_choice('backgroud').value,
         choices=[(tag, tag.value) for tag in question_type_choice] 
     )
     is_used = models.BooleanField(default=True)
@@ -35,19 +35,22 @@ class partisipants(models.Model):
 
     partisipant_approved = models.CharField(
         max_length=3,
-        default=approved_choice.No,
+        default=approved_choice('No').value,
         choices=[(tag, tag.value) for tag in approved_choice] 
     )
 
-    back_question = models.ForeignKey(
-        'poll.questions', on_delete=models.PROTECT, null=True, limit_choices_to={'question_type': 'backgroud'}, related_name='+'
-    )
 
+#    back_question = models.ForeignKey(
+#        'poll.questions', on_delete=models.PROTECT, null=True, limit_choices_to={'question_type': 'backgroud'}, related_name='+'
+#    )
+
+    
     back_question_answers = models.JSONField(null=True)
 
-    feeling_question = models.ForeignKey(
-        'poll.questions', on_delete=models.PROTECT, null=True, limit_choices_to={'question_type': 'feeling'}, related_name='+'
-    )
+
+#    feeling_question = models.ForeignKey(
+#        'poll.questions', on_delete=models.PROTECT, null=True, limit_choices_to={'question_type': 'feeling'}, related_name='+'
+#    )
 
     feeling_question_answers = models.JSONField(null=True)
 
