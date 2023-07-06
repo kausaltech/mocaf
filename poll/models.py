@@ -2,41 +2,58 @@ from django.db import models
 from enum import Enum
 from django.db import transaction
 from django.contrib.gis.db import models
+from datetime import datetime, timedelta
+import random
 
-class approved_choice(Enum):
+class Approved_choice(Enum):
     No = "No"
     Yes = "Yes"
 
-class question_type_choice(Enum):
+class Question_type_choice(Enum):
     backgroud = "backgroud"
     feeling = "feeling"
     somethingelse = "somethingelse"
 
-class settings(models.Model):
+class SurveyInfo(models.Model):
+    start_day = models.DateField(null=False)
+    end_day = models.DateField(null=False)
     days = models.IntegerField(null=False, default=3)
     max_back_question = models.IntegerField(null=False, default=3)
+    description = models.TextField(null=True)
 
-class questions(models.Model):
+    def get_random_startDate(self):
+        delta = timedelta(days=-self.days)
+        lastCalcDay = self.end_day + delta
+        randomDate = self.start_day + (self.end_day - lastCalcDay) * random.random()
+        return randomDate
+
+
+class Questions(models.Model):
     question_data = models.JSONField(null=True)
     question_type = models.CharField(
         max_length=3,
-        default=question_type_choice('backgroud').value,
-        choices=[(tag, tag.value) for tag in question_type_choice] 
+        default=Question_type_choice('backgroud').value,
+        choices=[(tag, tag.value) for tag in Question_type_choice] 
     )
     is_used = models.BooleanField(default=True)
 
-class partisipants(models.Model):
+class Partisipants(models.Model):
     device = models.ForeignKey(
         'trips.Device', on_delete=models.CASCADE, null=True
     )
+    
+    survey_info = models.ForeignKey(
+        'poll.SurveyInfo', on_delete=models.CASCADE, null=True
+    )
+
     start_date = models.DateField(null=False)
     end_date = models.DateField(null=True)
 
 
     partisipant_approved = models.CharField(
         max_length=3,
-        default=approved_choice('No').value,
-        choices=[(tag, tag.value) for tag in approved_choice] 
+        default=Approved_choice('No').value,
+        choices=[(tag, tag.value) for tag in Approved_choice] 
     )
 
 
@@ -55,31 +72,35 @@ class partisipants(models.Model):
     feeling_question_answers = models.JSONField(null=True)
 
 
-class days(models.Model):
+class DayInfo(models.Model):
     partisipants = models.ForeignKey(
-        'poll.partisipants', on_delete=models.CASCADE, null=True
+        'poll.Partisipants', on_delete=models.CASCADE, null=True
     )
 
-    start_date = models.DateField(null=False)
+    date = models.DateField(null=False)
 
     poll_approved = models.CharField(
         max_length=3,
-        default=approved_choice.No,
-        choices=[(tag, tag.value) for tag in approved_choice] 
+        default=Approved_choice('No').value,
+        choices=[(tag, tag.value) for tag in Approved_choice] 
     )
 
-class lottery(models.Model):
+class Lottery(models.Model):
     user_name = models.TextField()
     user_email = models.EmailField()
 
-
-class trips(models.Model):
+class Trips(models.Model):
     partisipants = models.ForeignKey(
-        'poll.partisipants', on_delete=models.CASCADE, null=True
+        'poll.Partisipants', on_delete=models.CASCADE, null=True
     )
 
-    orig_trip_id = models.BigIntegerField()
-    orig_leg_id = models.BigIntegerField()
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+
+class Legs(models.Model):
+    trip_id = models.ForeignKey(
+        'poll.Trips', on_delete=models.CASCADE, null=True
+    )
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
