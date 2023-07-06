@@ -66,43 +66,13 @@ const GET_AREAS = gql`
   }
 `;
 
-const defaultAreaTypes = [{
-    name:'Tampereen tilastoalueet',
-    nameEn:'Tampere statistical areas',
-    layer:'hallinnolliset_yksikot:KH_TILASTO',
-    identifier:'tre:tilastoalue',
-    areas: [{
-      name: 'Tampereen tilastoalueet',
-      identifier: 'tre:tilastoalue'
-    }]
-  }
-,
-{   
-    name:'Tampereen suunnittelualueet',
-    nameEn:'Tampere planning areas',
-    layer:'hallinnolliset_yksikot:KH_SUUNNITTELUALUE',
-    identifier:'tre:suunnittelualue'
-},
-{   
-    name:'Tampereen palvelualueet',
-    nameEn:'Tampere service areas',
-    layer:'hallinnolliset_yksikot:KH_PALVELUALUE',
-    identifier:'tre:palvelualue'
-}
-]
-
-
 export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideContents }) {
-  const areas = areaTypes.length > 0 ? areaTypes : defaultAreaTypes
-  const administrativeAreaTypes = areas.filter(areaType => !areaType.isPoi);
+  const administrativeAreaTypes = areaTypes.filter(areaType => !areaType.isPoi);
   const [userChoiceState, dispatch] = useReducer(
-    userChoiceReducer, ['tre:tilastoalue', areas], initializeUserChoiceState);
-  console.log('WW', areas)
-  console.log('QQ', userChoiceState)
+    userChoiceReducer, ['tre:tilastoalue', areaTypes], initializeUserChoiceState);
   const poiAreaTypes = areaTypes.filter(areaType => areaType.isPoi);
   const poiType = poiAreaTypes[0];
   const areaType = administrativeAreaTypes.filter((areaType) => areaType.identifier == userChoiceState.areaType)[0];
-  console.log('EEE', areaType)
   const selectedTransportMode = transportModes.filter((mode) => mode.identifier === userChoiceState.transportMode)[0];
   const start = userChoiceState.dateRange.range[0];
   const end = addDays(userChoiceState.dateRange.range[1], 1)
@@ -117,7 +87,7 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
     endDate: format(end, 'yyyy-MM-dd'),
     transportModes,
   });
-  console.log('SS', areaData)
+
   const selectedArea = userChoiceState.visualisationState.trips.selectedArea;
   const setSelectedArea = (area) => {
     dispatch({
@@ -231,7 +201,6 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
 export function App() {
   const { t, i18n } = useTranslation();
   const { loading, error, data } = useQuery(GET_AREAS, {variables: {language: i18n.language}});
-  console.log('CCC', data)
 
   let mainComponent;
   if (error) {

@@ -136,11 +136,6 @@ export function TransportModeShareMap({ areaType,
                                         setStatisticsKey
                                       }) {
   const geoData = useAreaTopo(areaType);
-  console.log('XXX', MAPBOX_ACCESS_TOKEN)
-  console.log('ZZZ', geoData)
-  console.log('VVV', areaType)
-  console.log('AA', areaData)
-  console.log('S', selectedTransportMode)
   if (!geoData) return <Spinner />;
   const modeId = selectedTransportMode.identifier;
   const modeById = new Map(transportModes.map(m => [m.identifier, m]));

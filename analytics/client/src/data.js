@@ -305,7 +305,6 @@ export function useAreaTopo(areaType) {
     }
     const fetchData = async () => {
       const response = await fetch(areaType?.topojsonUrl);
-      console.log('qw', response)
       const topoJson = await response.json();
       const data = processTopo(areaType, topoJson);
       if (areaType.propertyValuesUrl != null) {

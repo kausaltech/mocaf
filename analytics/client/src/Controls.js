@@ -61,13 +61,9 @@ function StaticSelectControl ({lookup, label, userChoices: [userChoiceState, dis
 
 function SelectControl (
   {userChoices: [userChoiceState, dispatch], values, lookup}) {
-  console.log('A', lookup)
-  console.log('B', userChoiceState)
-  console.log('C', values)
   let value = null;
   if (values) {
     value = [values?.find((d) => d.identifier === userChoiceState[lookup])];
-    console.log('D', value)
   }
   return <Select clearable={false}
                  options={values || []}
