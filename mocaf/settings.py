@@ -421,7 +421,7 @@ if 'DATABASES' in locals():
         DATABASES['default']['CONN_MAX_AGE'] = 600
 
 PROMETHEUS_METRICS_AUTH_TOKEN = env('PROMETHEUS_METRICS_AUTH_TOKEN')
-''' commented out to run local_settings file for dev purpose
+#to run local db change values to match your db or can use local_settings with said values
 DATABASES = {
     'default': {
         'ATOMIC_REQUESTS': True,
@@ -433,7 +433,7 @@ DATABASES = {
         'PORT': '',
         'USER': 'mocaf'
     }
-}'''
+}
 
-GDAL_LIBRARY_PATH=os.getenv('GDAL_LIB_PATH')
-GEOS_LIBRARY_PATH=os.getenv('GEOS_LIB_PATH')
+#GDAL_LIBRARY_PATH=os.getenv('GDAL_LIB_PATH') needed to run locally
+#GEOS_LIBRARY_PATH=os.getenv('GEOS_LIB_PATH') needed to run locally

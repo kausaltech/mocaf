@@ -8,6 +8,6 @@
     "@cubejs-backend/server": "^0.28.65"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "NODE_ENV=production node index.js"
   }
 }
