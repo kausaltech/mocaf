@@ -4,6 +4,8 @@ from django.db import transaction
 from django.contrib.gis.db import models
 from datetime import datetime, timedelta
 import random
+import logging
+
 
 class Approved_choice(Enum):
     No = "No"
@@ -24,7 +26,8 @@ class SurveyInfo(models.Model):
     def get_random_startDate(self):
         delta = timedelta(days=-self.days)
         lastCalcDay = self.end_day + delta
-        randomDate = self.start_day + (self.end_day - lastCalcDay) * random.random()
+        multiply = (self.end_day - lastCalcDay) * random.random()
+        randomDate = self.start_day + multiply
         return randomDate
 
 

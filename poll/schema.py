@@ -72,7 +72,7 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
 
         surveyStartDate = obj.survey_info.get_random_startDate()
 
-        for x in range(0, obj.survey_info.max_back_question):
+        for x in range(0, obj.survey_info.days):
             dayInfoObj = DayInfo()
             dayInfoObj.partisipants = obj
             dayInfoObj.date = surveyStartDate
