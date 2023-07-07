@@ -79,8 +79,8 @@ export function MocafAnalytics({ transportModes, areaTypes, visualisationGuideCo
   const rangeLength = differenceInDays(end, start);
   const areaData = useAnalyticsData({
     type: userChoiceState.analyticsQuantity,
-    areaTypeId: areaType.id,
-    poiTypeId: poiType.id,
+    areaTypeId: areaType?.id,
+    poiTypeId: poiType?.id,
     selectedArea: userChoiceState.visualisationState.trips.selectedArea,
     weekend: userChoiceState.weekSubset,
     startDate: format(start, 'yyyy-MM-dd'),

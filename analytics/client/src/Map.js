@@ -114,7 +114,7 @@ function StatsPropertySelector ({ properties, selectedProperty, setSelectedPrope
       labelKey='description'
       valueKey='id'
       type={TYPE.search}
-      value={selectedProperty.id != null ? [selectedProperty]: null}
+      value={selectedProperty?.id != null ? [selectedProperty]: null}
       placeholder={t('choose-property')}
       onChange={params => setSelectedProperty(params.value[0]?.id)}
       options={properties}

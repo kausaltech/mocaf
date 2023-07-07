@@ -19,12 +19,15 @@ from corsheaders.defaults import default_headers as default_cors_headers  # noqa
 from django.utils.translation import gettext_lazy as _
 
 from .sentry_handler import before_send_sentry_handler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 root = environ.Path(__file__) - 2  # two folders back
 
 env = environ.Env(
-    DEBUG=(bool, False),
+    DEBUG=(bool, True), # changed to True for dev purposes normally False
     SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, ['*']),
     DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
@@ -418,7 +421,7 @@ if 'DATABASES' in locals():
         DATABASES['default']['CONN_MAX_AGE'] = 600
 
 PROMETHEUS_METRICS_AUTH_TOKEN = env('PROMETHEUS_METRICS_AUTH_TOKEN')
-
+#to run local db change values to match your db or can use local_settings with said values
 DATABASES = {
     'default': {
         'ATOMIC_REQUESTS': True,
@@ -431,3 +434,6 @@ DATABASES = {
         'USER': 'mocaf'
     }
 }
+
+#GDAL_LIBRARY_PATH=os.getenv('GDAL_LIB_PATH') needed to run locally
+#GEOS_LIBRARY_PATH=os.getenv('GEOS_LIB_PATH') needed to run locally
