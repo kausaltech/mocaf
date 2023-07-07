@@ -34,11 +34,20 @@ class SurveyInfo(models.Model):
 class Questions(models.Model):
     question_data = models.JSONField(null=True)
     question_type = models.CharField(
-        max_length=3,
+        max_length=15,
         default=Question_type_choice('backgroud').value,
         choices=[(tag, tag.value) for tag in Question_type_choice] 
     )
-    is_used = models.BooleanField(default=True)
+    is_use = models.BooleanField(default=True)
+    description = models.TextField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="question_type",
+                check=models.Q(question_type__in=Question_type_choice._member_map_),
+            )
+        ]
 
 class Partisipants(models.Model):
     device = models.ForeignKey(
@@ -74,6 +83,15 @@ class Partisipants(models.Model):
 
     feeling_question_answers = models.JSONField(null=True)
 
+    class Meta:
+        unique_together = ('device', 'survey_info')
+        constraints = [
+            models.CheckConstraint(
+                name="partisipant_approved",
+                check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
+            )
+        ]
+
 
 class DayInfo(models.Model):
     partisipants = models.ForeignKey(
@@ -87,6 +105,14 @@ class DayInfo(models.Model):
         default=Approved_choice('No').value,
         choices=[(tag, tag.value) for tag in Approved_choice] 
     )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="poll_approved",
+                check=models.Q(poll_approved__in=Approved_choice._member_map_),
+            )
+        ]
 
 class Lottery(models.Model):
     user_name = models.TextField()

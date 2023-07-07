@@ -81,11 +81,48 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
 
         return dict(ok=True)
 
-        
+class AddUserAnswerToQuestions(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        surveyId = graphene.ID(required=False)
+        back_question_answers = graphene.String(required=False)
+        feeling_question_answers = graphene.String(required=False)
+    
+    ok = graphene.Boolean()
 
+    @classmethod
+    def mutate(cls, root, info, surveyId, back_question_answers, feeling_question_answers):
+        device = info.context.device
+        obj = Partisipants.objects.get(pk=surveyId,device=device)
+        obj.back_question_answers = back_question_answers
+        obj.feeling_question_answers = feeling_question_answers
+
+        obj.save()
+
+        return dict(ok=True)
+
+class AddQuestion(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        question = graphene.String(required=True)
+        questionType = graphene.String(required=True)
+        description = graphene.String(required=True)
+    
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, question, questionType, description):
+        obj = Questions()
+        obj.question_data = question
+        obj.question_type = questionType
+        obj.description = description
+
+        obj.save()
+
+        return dict(ok=True)
 
 class Mutations(graphene.ObjectType):
     enrollToSurvey = EnrollToSurvey.Field()
     enrollLottery = EnrollLottery.Field()
     addSurvey = AddSurvey.Field()
+    addUserAnswerToQuestions = AddUserAnswerToQuestions.Field()
+    addQuestion = AddQuestion.Field()
     
