@@ -4,7 +4,6 @@ from django.db import transaction
 from django.contrib.gis.db import models
 from datetime import datetime, timedelta
 import random
-import logging
 
 
 class Approved_choice(Enum):
@@ -83,6 +82,10 @@ class Partisipants(models.Model):
 
     feeling_question_answers = models.JSONField(null=True)
 
+    def getParpartisipantApprovedVal(self):
+        return self.get_partisipant_approved_display()
+
+
     class Meta:
         unique_together = ('device', 'survey_info')
         constraints = [
@@ -91,6 +94,7 @@ class Partisipants(models.Model):
                 check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
             )
         ]
+
 
 
 class DayInfo(models.Model):

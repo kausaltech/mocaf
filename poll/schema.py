@@ -3,8 +3,10 @@ import graphene
 
 
 from mocaf.graphql_types import AuthenticatedDeviceNode
+from graphene_django import DjangoObjectType
 from .models import *
 from datetime import date, timedelta
+from graphql.error import GraphQLError
 
 
 class AddSurvey(graphene.Mutation, AuthenticatedDeviceNode):
@@ -119,10 +121,91 @@ class AddQuestion(graphene.Mutation, AuthenticatedDeviceNode):
 
         return dict(ok=True)
 
+class MarkUserDayReady(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        selectedDate = graphene.Date(required=True)
+        surveyId = graphene.ID(required=False)
+    
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, selectedDate,surveyId):
+        device = info.context.device
+
+        PartisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+        dayInfoObj = DayInfo.objects.get(date=selectedDate,partisipants=PartisipantObj)
+        dayInfoObj.poll_approved = "Yes"
+
+        dayInfoObj.save()
+
+        return dict(ok=True)
+
 class Mutations(graphene.ObjectType):
     enrollToSurvey = EnrollToSurvey.Field()
     enrollLottery = EnrollLottery.Field()
     addSurvey = AddSurvey.Field()
     addUserAnswerToQuestions = AddUserAnswerToQuestions.Field()
     addQuestion = AddQuestion.Field()
+    markUserDayReady = MarkUserDayReady.Field()
+
+
+class Survey(DjangoObjectType):
+    class Meta:
+        model = SurveyInfo
+        field = ("start_day", "end_day", "days", "max_back_question", "description")
+
+class UserSurvey(DjangoObjectType):
+    class Meta:
+        model = Partisipants
+        field = ("start_date", "end_date", "back_question_answers", "feeling_question_answers")
+        exclude = ("partisipant_approved",)
+
+    user_approved = graphene.String()
+
+    def resolve_user_approved(self, info):
+        return Partisipants.getParpartisipantApprovedVal(self)
+
+class surveyQuestions(DjangoObjectType):
+    class Meta:
+        model = Questions
+        field = ("pk", "question_data", "question_type", "description")
+
+class surveyQuestion(DjangoObjectType):
+    class Meta:
+        model = Questions
+        field = ("pk", "question_data", "question_type", "description")
+
+class Query(graphene.ObjectType):
+    surveyInfo = graphene.List(Survey)
+    userSurvey = graphene.List(UserSurvey)
+    surveyQuestions = graphene.List(surveyQuestions, question_type=graphene.String())
+    surveyQuestion = graphene.List(surveyQuestion, question_type=graphene.String(), id=graphene.Int())
+
+    def resolve_surveyInfo(root, info):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        
+        return SurveyInfo.objects.all()
     
+    def resolve_userSurvey(root, info):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+
+        return Partisipants.objects.filter(device=dev)
+    
+    def resolve_surveyQuestions(root, info, question_type):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        
+        return Questions.objects.filter(is_use=True, question_type = question_type)
+    
+    def resolve_surveyQuestion(root, info, question_type, id):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+
+        return Questions.objects.filter(is_use=True, question_type = question_type, pk=id)
