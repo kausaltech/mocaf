@@ -6,8 +6,8 @@ TABLES = stop_times trips routes \
 	transfers frequencies \
 	fare_attributes fare_rules agency feed_info
 
-PGUSER ?= postgres
-PGDATABASE ?= mocaf
+PGUSER ?= $(USER)
+PGDATABASE ?= $(PGUSER)
 SCHEMA = gtfs
 psql = $(strip psql -v schema=$(SCHEMA) $(PSQLFLAGS))
 
