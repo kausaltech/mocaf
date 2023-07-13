@@ -62,24 +62,26 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
 
     @classmethod
     def mutate(cls, root, info, surveyId, back_question_answers, feeling_question_answers):
-        obj = Partisipants()
-        obj.device = info.context.device
-        obj.survey_info = SurveyInfo.objects.get(pk=surveyId)
-        obj.back_question_answers = back_question_answers
-        obj.feeling_question_answers = feeling_question_answers
 
-        obj.start_date = date.today()
+        with transaction.atomic():
+            obj = Partisipants()
+            obj.device = info.context.device
+            obj.survey_info = SurveyInfo.objects.get(pk=surveyId)
+            obj.back_question_answers = back_question_answers
+            obj.feeling_question_answers = feeling_question_answers
 
-        obj.save()
+            obj.start_date = date.today()
 
-        surveyStartDate = obj.survey_info.get_random_startDate()
+            obj.save()
 
-        for x in range(0, obj.survey_info.days):
-            dayInfoObj = DayInfo()
-            dayInfoObj.partisipants = obj
-            dayInfoObj.date = surveyStartDate
-            dayInfoObj.save()
-            surveyStartDate = surveyStartDate + timedelta(days=1)
+            surveyStartDate = obj.survey_info.get_random_startDate()
+
+            for x in range(0, obj.survey_info.days):
+                dayInfoObj = DayInfo()
+                dayInfoObj.partisipants = obj
+                dayInfoObj.date = surveyStartDate
+                dayInfoObj.save()
+                surveyStartDate = surveyStartDate + timedelta(days=1)
 
         return dict(ok=True)
 
@@ -132,14 +134,192 @@ class MarkUserDayReady(graphene.Mutation, AuthenticatedDeviceNode):
     def mutate(cls, root, info, selectedDate,surveyId):
         device = info.context.device
 
-        PartisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
 
-        dayInfoObj = DayInfo.objects.get(date=selectedDate,partisipants=PartisipantObj)
+        dayInfoObj = DayInfo.objects.get(date=selectedDate,partisipants=partisipantObj)
         dayInfoObj.poll_approved = "Yes"
 
         dayInfoObj.save()
 
         return dict(ok=True)
+
+class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        start_time = graphene.DateTime(required=True)
+        end_time = graphene.DateTime(required=True)
+        surveyId = graphene.ID(required=False)
+
+    ok = graphene.ID()
+
+    @classmethod
+    def mutate(cls, root, info, start_time,end_time,surveyId):
+        device = info.context.device
+
+        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+        tripObj = Trips()
+        tripObj.partisipant = partisipantObj
+        tripObj.start_time = start_time
+        tripObj.end_time = end_time
+        tripObj.original_trip = False
+
+        tripObj.save()
+
+        return dict(ok=tripObj.pk)
+
+class AddLeg(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        trip_id = graphene.ID(required=True)
+        start_time = graphene.DateTime(required=True)
+        end_time = graphene.DateTime(required=True)
+        trip_length = graphene.Float(required=False)
+        transport_mode = graphene.String(required=False)
+   #     carbon_footprint = graphene.Float(required=False)
+   #     transport_mode = graphene.String(required=False)
+        #start_loc = graphene.String(required=False)
+     #   start_loc = graphene.Field(LegLocationNode)
+     #   end_loc = graphene.String(required=False)
+   #     end_loc = graphene.Field(LegLocationNode,required=False)
+    #    nr_passengers = graphene.Int(required=False)
+    
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, trip_id, start_time, end_time, trip_length, transport_mode):
+    #def mutate(cls, root, info, trip_id, start_time, end_time, trip_length, carbon_footprint, transport_mode, start_loc, end_loc, nr_passengers):
+    #def mutate(cls, root, info, trip_id, start_time, end_time, trip_length, carbon_footprint, transport_mode, nr_passengers):
+    
+
+        tripObj = Trips.objects.get(pk=trip_id)
+
+        legsObj = Legs()
+        legsObj.trip = tripObj
+        legsObj.start_time = start_time
+        legsObj.end_time = end_time
+        legsObj.trip_length = trip_length
+   #     legsObj.carbon_footprint = carbon_footprint
+        legsObj.transport_mode = transport_mode
+        legsObj.original_leg = False
+ #       legsObj.start_loc = start_loc
+ #       legsObj.end_loc = end_loc
+     #   legsObj.nr_passengers = nr_passengers
+
+        legsObj.save()
+
+        return dict(ok=True)
+
+class DelTrip(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        trip_id = graphene.ID(required=True)
+        surveyId = graphene.ID(required=False)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, trip_id, surveyId):
+        device = info.context.device
+
+        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+        tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
+
+        tripObj.deleteTrip()
+
+        return dict(ok=True)
+
+class DelLeg(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        trip_id = graphene.ID(required=True)
+        leg_id = graphene.ID(required=True)
+        surveyId = graphene.ID(required=False)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, trip_id, surveyId, leg_id):
+        device = info.context.device
+
+        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+        tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
+
+        legObj = Legs.objects.get(trip=tripObj,pk=leg_id)
+
+        legObj.deleteLeg()
+
+        return dict(ok=True)
+
+class JoinTrip(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        trip_id = graphene.ID(required=True)
+        trip2_id = graphene.ID(required=True)
+        surveyId = graphene.ID(required=False)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, trip_id, trip2_id, surveyId):
+        device = info.context.device
+
+        with transaction.atomic():
+            partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+            tripKeepObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
+            tripRemoveObj = Trips.objects.get(partisipant=partisipantObj,pk=trip2_id)
+
+            legsObj = Legs.objects.filter(trip=trip2_id)
+
+            legsObj.update(trip = tripKeepObj)
+
+            tripRemoveObj.deleteTrip()
+
+
+        return dict(ok=True)
+
+class SplitTrip(graphene.Mutation, AuthenticatedDeviceNode):
+    class Arguments:
+        trip_id = graphene.ID(required=True)
+        leg_id = graphene.ID(required=True)
+        surveyId = graphene.ID(required=False)
+
+    ok = graphene.Boolean()
+
+    @classmethod
+    def mutate(cls, root, info, trip_id, leg_id, surveyId):
+        device = info.context.device
+
+        with transaction.atomic():
+            partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+
+            lastLeg = Legs.objects.get(pk=leg_id)
+
+            legsObj = Legs.objects.filter(trip=trip_id, start_time__gt=lastLeg.start_time).order_by("start_time")
+            first = True
+            newStartTime = lastLeg.start_time
+            newEndTime = lastLeg.end_time
+            
+
+            for legs in legsObj:
+                if first == True:
+                    first = False
+                    newStartTime = legs.start_time
+                
+                newEndTime = legs.end_time
+
+
+            tripObj = Trips()
+            tripObj.partisipant = partisipantObj
+            tripObj.start_time = newStartTime
+            tripObj.end_time = newEndTime
+            tripObj.original_trip = False
+
+            tripObj.save()
+
+            legsObj.update(trip = tripObj)
+
+
+        return dict(ok=True)
+
 
 class Mutations(graphene.ObjectType):
     enrollToSurvey = EnrollToSurvey.Field()
@@ -148,6 +328,12 @@ class Mutations(graphene.ObjectType):
     addUserAnswerToQuestions = AddUserAnswerToQuestions.Field()
     addQuestion = AddQuestion.Field()
     markUserDayReady = MarkUserDayReady.Field()
+    addTrip = AddTrip.Field()
+    addLeg = AddLeg.Field()
+    delTrip = DelTrip.Field()
+    delLeg = DelLeg.Field()
+    joinTrip = JoinTrip.Field()
+    splitTrip = SplitTrip.Field()
 
 
 class Survey(DjangoObjectType):
@@ -176,11 +362,23 @@ class surveyQuestion(DjangoObjectType):
         model = Questions
         field = ("pk", "question_data", "question_type", "description")
 
+class dayTrips(DjangoObjectType):
+    class Meta:
+        model = Trips
+        field = ("pk", "start_time", "end_time", "original_trip")
+
+class tripsLegs(DjangoObjectType):
+    class Meta:
+        model = Legs
+        field = ("pk", "start_time", "end_time", "original_leg", "trip_length", "transport_mode")
+
 class Query(graphene.ObjectType):
     surveyInfo = graphene.List(Survey)
     userSurvey = graphene.List(UserSurvey)
     surveyQuestions = graphene.List(surveyQuestions, question_type=graphene.String())
     surveyQuestion = graphene.List(surveyQuestion, question_type=graphene.String(), id=graphene.Int())
+    dayTrips = graphene.List(dayTrips, day=graphene.Date())
+    tripsLegs = graphene.List(tripsLegs, tripId=graphene.Int())
 
     def resolve_surveyInfo(root, info):
         dev = info.context.device
@@ -209,3 +407,19 @@ class Query(graphene.ObjectType):
             raise GraphQLError("Authentication required", [info])
 
         return Questions.objects.filter(is_use=True, question_type = question_type, pk=id)
+    
+    def resolve_dayTrips(root, info, day):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        
+        partisipantObj = Partisipants.objects.get(device=dev)
+
+        return Trips.objects.filter(partisipant=partisipantObj, start_time__date=day, deleted=False)
+    
+    def resolve_tripsLegs(root, info, tripId):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+
+        return Legs.objects.filter(deleted=False, trip = tripId)

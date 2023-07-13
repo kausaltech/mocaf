@@ -123,15 +123,24 @@ class Lottery(models.Model):
     user_email = models.EmailField()
 
 class Trips(models.Model):
-    partisipants = models.ForeignKey(
+    partisipant = models.ForeignKey(
         'poll.Partisipants', on_delete=models.CASCADE, null=True
     )
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    original_trip = models.BooleanField(null=True, default=True)
+    deleted = models.BooleanField(null=True, default=False)
+
+    def deleteTrip(self):
+        if self.original_trip == True:
+            self.deleted = True
+            self.save()
+        else:
+            self.delete()
 
 class Legs(models.Model):
-    trip_id = models.ForeignKey(
+    trip = models.ForeignKey(
         'poll.Trips', on_delete=models.CASCADE, null=True
     )
 
@@ -142,11 +151,24 @@ class Legs(models.Model):
 
     carbon_footprint = models.FloatField(null=True)
 
-    start_loc = models.PointField(null=False, srid=4326)
-    end_loc = models.PointField(null=False, srid=4326)
+    start_loc = models.PointField(null=True, srid=4326)
+    end_loc = models.PointField(null=True, srid=4326)
 
     nr_passengers = models.IntegerField(null=True)
 
     transport_mode = models.CharField(
         max_length=20,
+        null=True
     )
+
+    original_leg = models.BooleanField(null=True,default=True)
+    deleted = models.BooleanField(null=True, default=False)
+
+    def deleteLeg(self):
+        if self.original_leg == True:
+            self.deleted = True
+            self.save()
+        else:
+            self.delete()
+
+        return True
