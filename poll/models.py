@@ -5,8 +5,11 @@ from django.contrib.gis.db import models
 from datetime import datetime, timedelta
 import random
 import logging
+import pytz
+from django.conf import settings
+from django.utils import timezone
 
-
+LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 class Approved_choice(Enum):
     No = "No"
     Yes = "Yes"
@@ -120,3 +123,32 @@ class Legs(models.Model):
     transport_mode = models.CharField(
         max_length=20,
     )
+
+class LegsLocationQuerySet(models.QuerySet):
+    def _get_expired_query(self):
+        now = timezone.now()
+        expiry_time = now - timedelta(hours=settings.ALLOWED_TRIP_UPDATE_HOURS)
+        qs = Q(leg__start_time__lte=expiry_time)
+        return qs
+
+    def expired(self):
+        return self.filter(self._get_expired_query())
+
+    def active(self):
+        return self.exclude(self._get_expired_query())
+
+
+class LegsLocation(models.Model):
+    leg = models.ForeignKey(Legs, on_delete=models.CASCADE, related_name='locations')
+    loc = models.PointField(null=False, srid=4326)
+    time = models.DateTimeField()
+    speed = models.FloatField()
+
+    objects = LegsLocationQuerySet.as_manager()
+
+    class Meta:
+        ordering = ('leg', 'time')
+
+    def __str__(self):
+        time = self.time.astimezone(LOCAL_TZ)
+        return '%s: %s (%.1f km/h)' % (time, self.loc, self.speed * 3.6)
