@@ -60,6 +60,7 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     system_version = models.CharField(max_length=20, null=True)
     brand = models.CharField(max_length=20, null=True)
     model = models.CharField(max_length=40, null=True)
+    survey_enabled = models.BooleanField(False, null=True)
 
     friendly_name = models.CharField(max_length=40, null=True)
     debug_log_level = models.PositiveIntegerField(null=True)

@@ -160,7 +160,20 @@ class EnableMocafMutation(graphene.Mutation):
 
         return dict(ok=True, token=token)
 
+class EnableSurveyMutation(graphene.Mutation):
+    class Arguments: 
+        uuid = graphene.String(required=False)
+    ok = graphene.Boolean()
+    def mutate(root, info, uuid):
+        dev = Device.objects.get(uuid=uuid)
+        if (dev.survey_enabled == True):
+            dev.survey_enabled = False
+        else:
+            dev.survey_enabled = True
+        dev.save()
+        return dict(ok=True)
 
+    
 class DisableMocafMutation(graphene.Mutation, AuthenticatedDeviceNode):
     ok = graphene.Boolean()
 
@@ -450,3 +463,4 @@ class Mutations(graphene.ObjectType):
     register_device = RegisterDeviceMutation.Field()
     set_default_transport_mode_variant = SetDefaultTransportModeVariant.Field()
     update_leg = UpdateLeg.Field()
+    enable_survey = EnableSurveyMutation.Field()
