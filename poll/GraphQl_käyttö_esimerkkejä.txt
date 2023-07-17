@@ -1,0 +1,175 @@
+mutation {
+  enableMocaf(uuid:"4922d7d7-956f-40d0-803f-7d06a0c75d45") {
+    ok
+    token
+  }
+}
+
+{
+  "data": {
+    "enableMocaf": {
+      "ok": true,
+      "token": "05d66a02-8b21-427b-9950-c4d4cb6a844e"
+    }
+  }
+}
+
+graphql
+mutation {
+  enableMocaf(uuid:"4922d7d7-956f-40d0-803f-7d06a0c75d40") {
+    ok
+    token
+  }
+}
+
+{
+  "data": {
+    "enableMocaf": {
+      "ok": true,
+      "token": "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"
+    }
+  }
+}
+
+
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  updateLeg(leg: "2", mode: "car", nrPassengers: 2) {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  enrollLottery(name: "Jarkko", email: "jarkko.virtanen@codemen.fi") {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  addSurvey(days: 3, description: "kokeilu", startDay: "2023-07-10", endDay: "2023-07-29", maxBackQuestion: 3)  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  enrollToSurvey(surveyId: 1, backQuestionAnswers: "{\"x\":5,\"y\":6}", feelingQuestionAnswers: "{\"x\":5,\"y\":6}")  {
+    ok
+  }
+}
+
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  addUserAnswerToQuestions(surveyId: 1, backQuestionAnswers: "{\"x\":5,\"y\":6}", feelingQuestionAnswers: "{\"x\":5,\"y\":6}")  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  addQuestion(description: "test2", question: "{\"x\":5,\"y\":6}", questionType: "backgroud")  {
+    ok
+  }
+}
+
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  markUserDayReady(selectedDate: "2023-07-12", surveyId: 1)  {
+    ok
+  }
+}
+
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	surveyInfo  {
+    		startDay
+    		endDay
+    		days
+    		maxBackQuestion
+    		description
+  }
+}
+
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	userSurvey  {
+    		startDate
+    		endDate
+    		userApproved
+    		backQuestionAnswers
+    		feelingQuestionAnswers
+  }
+}
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	surveyQuestions(questionType: "backgroud")  {
+    		id
+    		questionData
+    		questionType
+    		description
+  }
+}
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	surveyQuestion(questionType: "backgroud", id: 1)  {
+    		id
+    		questionData
+    		questionType
+    		description
+  }
+}
+
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  addTrip(startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 1)  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  addLeg(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", tripLength: 3000, transportMode: "walk")  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  delLeg(tripId: 1, legId: 1, surveyId: 1)  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  delTrip(tripId: 1, surveyId: 1)  {
+    ok
+  }
+}
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	dayTrips(day: "2023-07-10")  {
+    		id
+    		startTime
+    		endTime
+    		originalTrip
+  }
+}
+
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef"){
+	tripsLegs(tripId: 1)  {
+    		id
+    		startTime
+    		endTime
+    		tripLength
+		transportMode
+		originalLeg
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  joinTrip(tripId: 3, trip2Id: 4, surveyId: 1)  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "c0f1f17d-fa2c-444b-b6d0-cf951bd276ef") {
+  splitTrip(tripId: 3, legId: 7, surveyId: 1)  {
+    ok
+  }
+}
