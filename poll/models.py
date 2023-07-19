@@ -37,11 +37,20 @@ class SurveyInfo(models.Model):
 class Questions(models.Model):
     question_data = models.JSONField(null=True)
     question_type = models.CharField(
-        max_length=3,
+        max_length=15,
         default=Question_type_choice('backgroud').value,
         choices=[(tag, tag.value) for tag in Question_type_choice] 
     )
-    is_used = models.BooleanField(default=True)
+    is_use = models.BooleanField(default=True)
+    description = models.TextField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="question_type",
+                check=models.Q(question_type__in=Question_type_choice._member_map_),
+            )
+        ]
 
 class Partisipants(models.Model):
     device = models.ForeignKey(
@@ -77,6 +86,20 @@ class Partisipants(models.Model):
 
     feeling_question_answers = models.JSONField(null=True)
 
+    def getParpartisipantApprovedVal(self):
+        return self.get_partisipant_approved_display()
+
+
+    class Meta:
+        unique_together = ('device', 'survey_info')
+        constraints = [
+            models.CheckConstraint(
+                name="partisipant_approved",
+                check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
+            )
+        ]
+
+
 
 class DayInfo(models.Model):
     partisipants = models.ForeignKey(
@@ -91,20 +114,37 @@ class DayInfo(models.Model):
         choices=[(tag, tag.value) for tag in Approved_choice] 
     )
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="poll_approved",
+                check=models.Q(poll_approved__in=Approved_choice._member_map_),
+            )
+        ]
+
 class Lottery(models.Model):
     user_name = models.TextField()
     user_email = models.EmailField()
 
 class Trips(models.Model):
-    partisipants = models.ForeignKey(
+    partisipant = models.ForeignKey(
         'poll.Partisipants', on_delete=models.CASCADE, null=True
     )
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    original_trip = models.BooleanField(null=True, default=True)
+    deleted = models.BooleanField(null=True, default=False)
+
+    def deleteTrip(self):
+        if self.original_trip == True:
+            self.deleted = True
+            self.save()
+        else:
+            self.delete()
 
 class Legs(models.Model):
-    trip_id = models.ForeignKey(
+    trip = models.ForeignKey(
         'poll.Trips', on_delete=models.CASCADE, null=True
     )
 
@@ -115,14 +155,28 @@ class Legs(models.Model):
 
     carbon_footprint = models.FloatField(null=True)
 
-    start_loc = models.PointField(null=False, srid=4326)
-    end_loc = models.PointField(null=False, srid=4326)
+    start_loc = models.PointField(null=True, srid=4326)
+    end_loc = models.PointField(null=True, srid=4326)
 
     nr_passengers = models.IntegerField(null=True)
 
     transport_mode = models.CharField(
         max_length=20,
+         null=True
     )
+       
+
+    original_leg = models.BooleanField(null=True,default=True)
+    deleted = models.BooleanField(null=True, default=False)
+
+    def deleteLeg(self):
+        if self.original_leg == True:
+            self.deleted = True
+            self.save()
+        else:
+            self.delete()
+
+        return True
 
 class LegsLocationQuerySet(models.QuerySet):
     def _get_expired_query(self):
