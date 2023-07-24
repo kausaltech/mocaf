@@ -184,7 +184,7 @@ export default function POIMap({ poiType, areaType, areaData, transportModes,
   const { t } = useTranslation();
   const poiGeoData = usePoiGeojson(poiType);
   const geoData = useAreaTopo(areaType);
-  const poiById = new Map(poiType.areas.map(a => [Number(a.id), {name: a.name, identifier: a.identifier}]));
+  const poiById = new Map(poiType?.areas.map(a => [Number(a.id), {name: a.name, identifier: a.identifier}]));
   if (!poiGeoData || !geoData || !areaData) return <Spinner />;
 
   const title = t('transport-modes');

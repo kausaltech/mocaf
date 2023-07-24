@@ -13,13 +13,13 @@ let cubejsApi;
 function initializeApp(container, { graphqlUrl, cubeUrl, sentryDSN }) {
   if (!apolloClient) {
     apolloClient = new ApolloClient({
-      uri: graphqlUrl || 'https://api.mocaf.kausal.tech/v1/graphql',
+      uri: graphqlUrl,
       cache: new InMemoryCache()
     });
   }
   if (!cubejsApi) {
     cubejsApi = cubejs('', {
-      apiUrl: cubeUrl || 'https://api.mocaf.kausal.tech/cubejs-api/v1',
+      apiUrl: cubeUrl,
     });
   }
   if (sentryDSN) {

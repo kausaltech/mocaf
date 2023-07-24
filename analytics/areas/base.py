@@ -28,14 +28,14 @@ class AreaImporter:
         print('Computing topology')
         g2t = Popen(
             [os.path.join(settings.BASE_DIR, 'node_modules/.bin/geo2topo')],
-            stdin=PIPE, stdout=PIPE, encoding='utf8',
+            stdin=PIPE, stdout=PIPE, encoding='utf8', shell=True
         )
         outs, errs = g2t.communicate(json.dumps(fc))
         assert not errs
         print('Simplifying')
         ts = Popen(
             [os.path.join(settings.BASE_DIR, 'node_modules/.bin/toposimplify'), '-P', '10.0'],
-            stdin=PIPE, stdout=PIPE, encoding='utf8'
+            stdin=PIPE, stdout=PIPE, encoding='utf8', shell=True
         )
         outs, errs = ts.communicate(outs)
         assert not errs
@@ -43,15 +43,15 @@ class AreaImporter:
 
     def clean_and_simplify(self, area_type: AreaType):
         cursor = connection.cursor()
-
         print('Cleaning up geometries')
         query = """
             UPDATE analytics_area SET
                 geometry = ST_Multi(ST_SimplifyPreserveTopology(geometry, 0.1))
             WHERE NOT ST_IsValid(geometry) AND type_id = %(area_type)s;
+            DELETE FROM analytics_area
+            WHERE (NOT ST_IsValid(geometry) OR NOT ST_IsValid(ST_Transform(geometry, 4326)))
         """
         cursor.execute(query, params=dict(area_type=area_type.id))
-
         query = """
             SELECT COUNT(*) FROM analytics_area
                 WHERE type_id = %(area_type)s AND

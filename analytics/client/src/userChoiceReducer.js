@@ -4,7 +4,7 @@ import { syntheticModes } from './transportModes';
 const syntheticModeNames = syntheticModes.map(m => m.identifier);
 
 const defaultDateBounds = [
-  new Date(2021, 6, 1), new Date(2021, 10, 1)]
+  new Date(2023, 6, 1), new Date(2023, 10, 1)]
 
 const DEFAULT_TRANSPORTMODE = 'walk';
 
@@ -29,11 +29,12 @@ export function initializeUserChoiceState ([initialAreaType, areaTypes]) {
 }
 
 function restrictDateRange({range, bounds}) {
+  const ifBounds = bounds || defaultDateBounds;
   if (range === null) {
-    range = [...bounds]
+    range = [...ifBounds]
   }
-  range[0] = max([range[0], bounds[0]]);
-  range[1] = min([range[1], bounds[1]]);
+  range[0] = max([range[0], ifBounds[0]]);
+  range[1] = min([range[1], ifBounds[1]]);
   return { bounds, range };
 }
 
@@ -41,24 +42,24 @@ function areaTypeDateRange(analyticsQuantity, areaTypeIdentifier, areaTypes, dat
   if (analyticsQuantity === 'poi_trips') {
     areaTypeIdentifier = 'tre:poi';
   }
-  const { dailyLengthsDateRange, dailyTripsDateRange, dailyPoiTripsDateRange } = areaTypes.find(
+  areaTypes.find(
     a => a.identifier === areaTypeIdentifier);
   let rangeStrings;
   if (analyticsQuantity === 'lengths') {
-    rangeStrings = dailyLengthsDateRange;
+    rangeStrings = areaTypes?.dailyLengthsDateRange;
   }
   if (analyticsQuantity === 'trips') {
-    rangeStrings = dailyTripsDateRange;
+    rangeStrings = areaTypes?.dailyTripsDateRange;
   }
   if (analyticsQuantity === 'poi_trips') {
-    rangeStrings = dailyPoiTripsDateRange;
+    rangeStrings = areaTypes?.dailyPoiTripsDateRange;
   }
   let bounds;
   if (rangeStrings === null) {
     bounds = defaultDateBounds;
   }
   else {
-    bounds = rangeStrings.map(parseISO);
+    bounds = rangeStrings?.map(parseISO);
   }
   return restrictDateRange(Object.assign({}, dateRange, {bounds}));
 
