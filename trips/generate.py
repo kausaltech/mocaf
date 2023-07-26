@@ -66,7 +66,7 @@ class TripGenerator:
             'train': transport_modes['train'],
         }
 
-    def insert_leg_locations(self, rows, uuid):
+    def insert_leg_locations(self, rows):
         # Having "None" as the speed column is a periodically recurring
         # issue. Raise error to continue with other uuids if None found
         # in speed column
@@ -76,12 +76,7 @@ class TripGenerator:
         except StopIteration:
             pass
         pc = PerfCounter('save_locations', show_time_to_last=True)
-        survey_enabled = Device.objects.get(uuid=uuid).survey_enabled
-        if (survey_enabled == True):
-            table = LEGS_LOCATION_TABLE
-        else:
-            table = LEG_LOCATION_TABLE
-        query = f'''INSERT INTO {table} (
+        query = f'''INSERT INTO {LEG_LOCATION_TABLE} (
             leg_id, loc, time, speed
         ) VALUES %s'''
 
@@ -99,7 +94,35 @@ class TripGenerator:
 
         pc.display('after insert')
 
-    def save_leg(self, trip, df, last_ts, default_variants, pc, uuid):
+    def insert_survey_leg_locations(self, rows):
+        # Having "None" as the speed column is a periodically recurring
+        # issue. Raise error to continue with other uuids if None found
+        # in speed column
+        try:
+            next(x for x in rows if x[4] is None)
+            raise GeneratorError('Encountered invalid value None as speed for leg')
+        except StopIteration:
+            pass
+        pc = PerfCounter('save_locations', show_time_to_last=True)
+        query = f'''INSERT INTO {LEGS_LOCATION_TABLE} (
+            leg_id, loc, time, speed
+        ) VALUES %s'''
+
+        with connection.cursor() as cursor:
+            pc.display('after cursor')
+            value_template = """(
+                    %s,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                    %s :: timestamptz,
+                    %s
+            )"""
+            execute_values(
+                cursor, query, rows, template=value_template, page_size=10000
+            )
+
+        pc.display('after insert')
+
+    def save_leg(self, trip, df, last_ts, default_variants, pc):
         start = df.iloc[0][['time', 'x', 'y']]
         end = df.iloc[-1][['time', 'x', 'y']]
         received_at = df.iloc[-1].created_at
@@ -111,38 +134,54 @@ class TripGenerator:
 
         mode = self.atype_to_mode[df.iloc[0].atype]
         variant = default_variants.get(mode)
-        survey_enabled = Device.objects.get(uuid=uuid).survey_enabled
 
-        if (survey_enabled == True):
-            leg = Legs(
-                trip_id=trip,
-                transport_mode=mode,
-                trip_length=leg_length,
-                start_time=start.time,
-                end_time=end.time,
-                start_loc=make_point(start.x, start.y),
-                end_loc=make_point(end.x, end.y),
-            )
-        else:
-            leg = Leg(
-                trip=trip,
-                mode=mode,
-                mode_variant=variant,
-                estimated_mode=mode,
-                length=leg_length,
-                start_time=start.time,
-                end_time=end.time,
-                start_loc=make_point(start.x, start.y),
-                end_loc=make_point(end.x, end.y),
-                received_at=received_at,
-            )
-            leg.update_carbon_footprint()
+       
+        leg = Leg(
+            trip=trip,
+            mode=mode,
+            mode_variant=variant,
+            estimated_mode=mode,
+            length=leg_length,
+            start_time=start.time,
+            end_time=end.time,
+            start_loc=make_point(start.x, start.y),
+            end_loc=make_point(end.x, end.y),
+            received_at=received_at,
+        )
+        leg.update_carbon_footprint()
         leg.save()
         rows = generate_leg_location_rows(leg, df)
         pc.display(str(leg))
 
         return rows, end.time
 
+
+    def save_survey_leg(self, trip, df, last_ts, pc):
+        start = df.iloc[0][['time', 'x', 'y']]
+        end = df.iloc[-1][['time', 'x', 'y']]
+
+        leg_length = df['distance'].sum()
+
+        # Ensure trips are ordered properly
+        assert start.time >= last_ts and end.time >= last_ts
+
+        mode = self.atype_to_mode[df.iloc[0].atype]
+
+
+        leg = Legs(
+            trip_id=trip.id,
+            transport_mode=mode,
+            trip_length=leg_length,
+            start_time=start.time,
+            end_time=end.time,
+            start_loc=make_point(start.x, start.y),
+            end_loc=make_point(end.x, end.y),
+        )
+        leg.save()
+        rows = generate_leg_location_rows(leg, df)
+        pc.display(str(leg))
+
+        return rows, end.time
 
     def save_trip(self, device, df, default_variants, uuid):
         pc = PerfCounter('generate_trips', show_time_to_last=True)
@@ -186,23 +225,47 @@ class TripGenerator:
 
         # Create trips
         all_rows = []
+        all_rows_survey = []
         survey_enabled = Device.objects.get(uuid=uuid).survey_enabled
-        if (survey_enabled == True):
+        mocaf_enabled = Device.objects.get(uuid=uuid).mocaf_enabled
+        if (survey_enabled == True and mocaf_enabled == True):
+            trip = Trip(device=device)
+            survey_trip = Trips(start_time=min_time, end_time=max_time)
+        elif(survey_enabled == True):
             trip = Trips(start_time=min_time, end_time=max_time)
         else:
             trip = Trip(device=device)
+        if (survey_enabled == True and mocaf_enabled == True):
+            survey_trip.save()
         trip.save()
         pc.display('trip %d saved' % trip.id)
 
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
-            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc, uuid)
-            all_rows += leg_rows
+            if(survey_enabled == True and mocaf_enabled == True):
+                leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
+                all_rows += leg_rows
+                last_ts = df.time.min()
+                leg_rows_survey, last_ts = self.save_survey_leg(survey_trip, leg_df, last_ts, pc)
+                all_rows_survey += leg_rows_survey
+            elif(survey_enabled == True):
+                leg_rows, last_ts = self.save_survey_leg(trip, leg_df, last_ts, pc)
+                all_rows += leg_rows
+            else:   
+                leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
+                all_rows += leg_rows
 
         pc.display('generated %d legs' % len(leg_ids))
-        self.insert_leg_locations(all_rows, uuid)
-        if (survey_enabled != True):
+        if(survey_enabled == True and mocaf_enabled == True):
+            self.insert_leg_locations(all_rows)
+            self.insert_survey_leg_locations(all_rows_survey)
+        elif(survey_enabled == True):
+            self.insert_survey_leg_locations(all_rows)
+        else:
+            self.insert_leg_locations(all_rows)
+        
+        if (survey_enabled != True or (survey_enabled == True and mocaf_enabled == True)):
             pc.display('updating carbon footprint')
             trip.update_device_carbon_footprint()
         pc.display('trip %d save done' % trip.id)
