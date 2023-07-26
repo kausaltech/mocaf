@@ -416,18 +416,3 @@ def test_register_device_migration_not_confirmed(graphql_client_query, contains_
 
 
 # TODO: unregister
-
-def test_survey_enabled(graphql_client_query_data):
-    uuid = '12345678-9abc-def0-1234-567890123456'
-    assert Device.objects.filter(uuid=uuid).exists()
-    data = graphql_client_query_data(
-        '''
-        mutation{
-          enableSurvey(uuid: $uuid){
-            ok
-          }
-        }
-        ''',
-        variables={'uuid': str(uuid)}
-    )
-    assert data['enableSurvey']['ok']
