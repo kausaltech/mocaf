@@ -44,6 +44,10 @@ class Questions(models.Model):
     is_use = models.BooleanField(default=True)
     description = models.TextField(null=True)
 
+    survey_info = models.ForeignKey(
+        'poll.SurveyInfo', on_delete=models.CASCADE, null=True
+    )
+
     class Meta:
         constraints = [
             models.CheckConstraint(
@@ -151,12 +155,9 @@ class Legs(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
 
-    trip_length = models.FloatField()
+    trip_length = models.FloatField(null=True)
 
     carbon_footprint = models.FloatField(null=True)
-
-    start_loc = models.PointField(null=True, srid=4326)
-    end_loc = models.PointField(null=True, srid=4326)
 
     nr_passengers = models.IntegerField(null=True)
 
@@ -196,7 +197,7 @@ class LegsLocation(models.Model):
     leg = models.ForeignKey(Legs, on_delete=models.CASCADE, related_name='locations')
     loc = models.PointField(null=False, srid=4326)
     time = models.DateTimeField()
-    speed = models.FloatField()
+    speed = models.FloatField(null=True)
 
     objects = LegsLocationQuerySet.as_manager()
 
