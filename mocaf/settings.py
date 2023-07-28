@@ -224,6 +224,7 @@ INSTALLED_APPS = [
     'pages',
     'notifications',
     'analytics',
+    'poll',
 ]
 
 MIDDLEWARE = [
