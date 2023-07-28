@@ -142,6 +142,14 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 18 * 60 * 60,  # 18 hours
         }
     },
+      'send-no-recent-survey-trips-notifications': {
+        'task': 'notifications.tasks.send_notifications',
+        'args': ('notifications.tasks.NoRecentSurveyTripsNotificationTask',),
+        'schedule': crontab(hour=10, minute=0),
+        'options': {
+            'expires': 2 * 24 * 60 * 60,  #  2 days
+        }
+    },
     # TODO: Update the following.
     # 'send-welcome-notifications': {
     #     'task': 'notifications.tasks.send_notifications',
@@ -422,6 +430,7 @@ if 'DATABASES' in locals():
 
 PROMETHEUS_METRICS_AUTH_TOKEN = env('PROMETHEUS_METRICS_AUTH_TOKEN')
 #to run local db change values to match your db or can use local_settings with said values
+'''
 DATABASES = {
     'default': {
         'ATOMIC_REQUESTS': True,
@@ -433,7 +442,7 @@ DATABASES = {
         'PORT': '',
         'USER': 'mocaf'
     }
-}
+}'''
 
-#GDAL_LIBRARY_PATH=os.getenv('GDAL_LIB_PATH') needed to run locally
-#GEOS_LIBRARY_PATH=os.getenv('GEOS_LIB_PATH') needed to run locally
+GDAL_LIBRARY_PATH=os.getenv('GDAL_LIB_PATH') #needed to run locally
+GEOS_LIBRARY_PATH=os.getenv('GEOS_LIB_PATH') #needed to run locally

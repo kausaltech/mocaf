@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
+from django.db.models import F
 
 import sentry_sdk
 
@@ -595,6 +596,32 @@ class NoRecentTripsNotificationTask(NotificationTask):
                 .exclude(id__in=devices_with_recent_trips)
                 .exclude(id__in=already_notified_devices))
 
+
+@register_for_management_command
+class NoRecentSurveyTripsNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.NO_RECENT_SURVEY_TRIPS, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        """Return devices that have not had any trips in 2 days until `self.now`."""
+        # Don't send anything to devices that already got a no-recent-trips notification in the last 14 days
+        avoid_duplicates_after = self.now - datetime.timedelta(days=7)
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .filter(sent_at__gte=avoid_duplicates_after)
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        devices_with_recent_trips = (Device.objects
+                                     .filter(survey_enabled=True)
+                                     .filter(trips__legs__end_time__gt=F("registered_to_survey_at" + datetime.timedelta(days=2)))
+                                     .filter(trips__legs__end_time__lte=self.now)
+                                     .values('id'))
+        return (super().recipients()
+                .exclude(id__in=devices_with_recent_trips)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=not_in_survey))
 
 @shared_task
 def send_notifications(task_class, devices=None, **kwargs):
