@@ -42,8 +42,8 @@ def day_info(partisipants):
 @pytest.fixture
 def survey_trip(partisipants):
     return Trips.objects.create(partisipant=partisipants,
-                                start_time="2023-07-15T20:59:40",
-                                end_time="2023-07-15T23:59:45",
+                                start_time="2023-07-15T20:59:40+00",
+                                end_time="2023-07-15T23:59:45+00",
                                 original_trip = True,
                                 deleted = False,
                                 id=1)
@@ -51,8 +51,8 @@ def survey_trip(partisipants):
 @pytest.fixture
 def survey_trip2(partisipants):
     return Trips.objects.create(partisipant=partisipants,
-                                start_time="2023-07-15T20:59:40",
-                                end_time="2023-07-15T23:59:45",
+                                start_time="2023-07-15T20:59:40+00",
+                                end_time="2023-07-15T23:59:45+00",
                                 original_trip = True,
                                 deleted = False,
                                 id=2)
@@ -60,12 +60,12 @@ def survey_trip2(partisipants):
 @pytest.fixture
 def survey_leg(survey_trip):
     return Legs.objects.create(trip=survey_trip,
-                               start_time="2023-07-15T20:59:40",
-                               end_time="2023-07-15T21:59:45",
+                               start_time="2023-07-15T20:59:40+00",
+                               end_time="2023-07-15T21:59:45+00",
                                trip_length=1860.702302423133,
                                carbon_footprint=9303.511512115665,
-                               start_loc='0101000020E6100000731074B4AA0738405523168CA5C24E40',
-                               end_loc='0101000020E610000048A5D8D13806384067FA25E2ADC24E40',
+                     #          start_loc='0101000020E6100000731074B4AA0738405523168CA5C24E40',
+                     #          end_loc='0101000020E610000048A5D8D13806384067FA25E2ADC24E40',
                                nr_passengers=1,
                                transport_mode='walking',
                                original_leg=True,
@@ -75,12 +75,12 @@ def survey_leg(survey_trip):
 @pytest.fixture
 def survey_leg2(survey_trip):
     return Legs.objects.create(trip=survey_trip,
-                               start_time="2023-07-15T21:59:40",
-                               end_time="2023-07-15T22:59:45",
+                               start_time="2023-07-15T21:59:40+00",
+                               end_time="2023-07-15T22:59:45+00",
                                trip_length=1860.702302423133,
                                carbon_footprint=9303.511512115665,
-                               start_loc='0101000020E6100000731074B4AA0738405523168CA5C24E40',
-                               end_loc='0101000020E610000048A5D8D13806384067FA25E2ADC24E40',
+                    #           start_loc='0101000020E6100000731074B4AA0738405523168CA5C24E40',
+                    #           end_loc='0101000020E610000048A5D8D13806384067FA25E2ADC24E40',
                                nr_passengers=1,
                                transport_mode='walking',
                                original_leg=True,

@@ -136,7 +136,7 @@ class Trips(models.Model):
     )
 
     start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True)
     original_trip = models.BooleanField(null=True, default=True)
     deleted = models.BooleanField(null=True, default=False)
 
@@ -146,6 +146,14 @@ class Trips(models.Model):
             self.save()
         else:
             self.delete()
+    
+    def addTrip(self, partisipantObj, StartTime, EndTime, original_trip = False):
+    #    tripObj = Trips()
+        self.partisipant = partisipantObj
+        self.start_time = StartTime
+        self.end_time = EndTime
+        self.original_trip = original_trip
+        self.save()
 
 class Legs(models.Model):
     trip = models.ForeignKey(
