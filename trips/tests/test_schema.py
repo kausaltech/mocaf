@@ -737,3 +737,18 @@ def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_l
         variables={'uuid': uuid, 'token': token}
     )
     assert data['pollSplitTrip']['ok'] is True
+
+def test_edit_trip_times(graphql_client_query_data, uuid, token, survey_trip):
+    survey_trip
+    data = graphql_client_query_data(
+        '''
+        mutation($uuid: String!, $token: String!)
+        @device(uuid: $uuid, token: $token) {
+           pollEditTripTimes(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 2) {
+            ok
+            }
+        }
+        ''',
+        variables={'uuid': uuid, 'token': token}
+    )
+    assert data['pollEditTripTimes']['ok'] is True
