@@ -615,8 +615,8 @@ class NoRecentSurveyTripsNotificationTask(NotificationTask):
                          .values('id'))
         devices_with_recent_trips = (Device.objects
                                      .filter(survey_enabled=True)
-                                     .filter(trips__legs__end_time__gt=F("registered_to_survey_at" + datetime.timedelta(days=2)))
-                                     .filter(trips__legs__end_time__lte=self.now)
+                                     .filter(poll_trips__poll_legs__end_time__gt=F("registered_to_survey_at" + datetime.timedelta(days=2)))
+                                     .filter(poll_trips__poll_legs__end_time__lte=self.now)
                                      .values('id'))
         return (super().recipients()
                 .exclude(id__in=devices_with_recent_trips)
