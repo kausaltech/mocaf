@@ -603,8 +603,8 @@ class NoRecentSurveyTripsNotificationTask(NotificationTask):
         super().__init__(EventTypeChoices.NO_RECENT_SURVEY_TRIPS, now, engine, dry_run, devices, force)
 
     def recipients(self):
-        """Return devices that have not had any trips in 2 days until `self.now`."""
-        # Don't send anything to devices that already got a no-recent-trips notification in the last 14 days
+        """Return devices that have not had any trips between 2 days after register and now."""
+        # Don't send anything to devices that already got a no-recent-trips notification in the last 7 days
         avoid_duplicates_after = self.now - datetime.timedelta(days=7)
         already_notified_devices = (NotificationLogEntry.objects
                                     .filter(template__event_type=self.event_type)
@@ -620,6 +620,54 @@ class NoRecentSurveyTripsNotificationTask(NotificationTask):
                                      .values('id'))
         return (super().recipients()
                 .exclude(id__in=devices_with_recent_trips)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=not_in_survey))
+
+@register_for_management_command
+class SurveyNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.PART_OF_SURVEY, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        current_day = datetime.date.today()
+        avoid_duplicates_after = self.now - datetime.timedelta(days=7)
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .filter(sent_at__gte=avoid_duplicates_after)
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        no_start_day = (Device.objects
+                        .filter(survey_enabled=True)
+                        .filter(poll_partisipants__start_date__gt=current_day)
+                        .filter(poll_partisipants__start_date__lt=current_day)
+                        .values('id'))
+        
+        return (super().recipients()
+                .exclude(id__in=no_start_day)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=not_in_survey))
+    
+    
+@register_for_management_command
+class SurveyStartNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.SURVEY_START, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        devices_with_survey_not_starting = (Device.objects
+                                     .filter(survey_enabled=True)
+                                     .filter(poll_partisipants__start_date__gt=self.now)
+                                     .values('id'))
+        return (super().recipients()
+                .exclude(id__in=devices_with_survey_not_starting)
                 .exclude(id__in=already_notified_devices)
                 .exclude(id__in=not_in_survey))
 

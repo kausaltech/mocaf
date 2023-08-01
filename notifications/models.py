@@ -28,6 +28,8 @@ class EventTypeChoices(models.TextChoices):
     HEALTH_SUMMARY_NO_LEVEL_REACHED = 'health_summary_no_level', _("Health summary (worse than bronze budget)")
     HEALTH_SUMMARY_NO_DATA = 'health_summary_no_data', _("Health summary (no physical activity trips)")
     TIMED_MESSAGE = 'timed_message', _("Timed message")
+    PART_OF_SURVEY = 'part_of_survey', _("You are part of survey")
+    SURVEY_START = 'survey_start', _("Survey you have signed up for begins today")
 
 
 def example_month(language):
