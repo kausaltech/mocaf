@@ -472,7 +472,6 @@ class TripQuerySet(models.QuerySet):
 class Trip(ExportModelOperationsMixin('trip'), models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
     deleted_at = models.DateTimeField(null=True)
-
     objects = TripQuerySet.as_manager()
 
     _ordered_legs: List[Leg]
