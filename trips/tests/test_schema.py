@@ -438,7 +438,7 @@ def test_add_survey(graphql_client_query_data, uuid, token):
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-            pollAddSurvey(days: 3, description: "kokeilu", startDay: "2023-07-15", endDay: "2023-07-29", maxBackQuestion: 3) {
+            pollAddSurvey(days: 3, description: "kokeilu", startDay: "2023-07-15", endDay: "2023-07-17", maxBackQuestion: 3) {
             ok
             }
         }
@@ -481,7 +481,7 @@ def test_add_question(graphql_client_query_data, uuid, token):
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-            pollAddQuestion(description:"test2", question: "{'x':5,'y':6}", questionType: "backgroud", surveyId: 2) {
+            pollAddQuestion(description:"test2", question: "{'x':5,'y':6}", questionType: "background", surveyId: 2) {
             ok
             }
         }
@@ -490,20 +490,7 @@ def test_add_question(graphql_client_query_data, uuid, token):
     )
     assert data['pollAddQuestion']['ok'] is True
 
-def test_mark_user_day_ready(graphql_client_query_data, uuid, token, day_info):
-    day_info
-    data = graphql_client_query_data(
-        '''
-        mutation($uuid: String!, $token: String!)
-        @device(uuid: $uuid, token: $token) {
-            pollMarkUserDayReady(selectedDate: "2023-07-15", surveyId: 2) {
-            ok
-            }
-        }
-        ''',
-        variables={'uuid': uuid, 'token': token}
-    )
-    assert data['pollMarkUserDayReady']['ok'] is True
+
 
 def test_survey_info_query(graphql_client_query_data, uuid, token):
     survey = SurveyInfoFactory
@@ -543,7 +530,7 @@ def test_user_survey_query(graphql_client_query_data, uuid, token):
           pollUserSurvey {
               startDate
               endDate
-              userApproved
+              approved
               backQuestionAnswers
               feelingQuestionAnswers
           }
@@ -561,7 +548,7 @@ def test_survey_questions_query(graphql_client_query_data, uuid, token):
         '''
         query($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-          pollSurveyQuestions(questionType: "backgroud", surveyId: 2) {
+          pollSurveyQuestions(questionType: "background", surveyId: 2) {
               id
               questionData
               questionType
@@ -596,13 +583,14 @@ def test_survey_question_query(graphql_client_query_data, uuid, token):
     }
     assert data == expected
 
-def test_add_trip(graphql_client_query_data, uuid, token, partisipants):
+def test_add_trip(graphql_client_query_data, uuid, token, partisipants,day_info):
     partisipants
+    day_info
     data = graphql_client_query_data(
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-           pollAddTrip(startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 2) {
+           pollAddTrip(startTime: "2023-07-15T10:59:40", endTime: "2023-07-15T11:59:45", surveyId: 2) {
             ok
             }
         }
@@ -611,13 +599,15 @@ def test_add_trip(graphql_client_query_data, uuid, token, partisipants):
     )
     assert data['pollAddTrip']['ok'] == '1'
 
-def test_add_leg(graphql_client_query_data, uuid, token, survey_trip):
+def test_add_leg(graphql_client_query_data, uuid, token, survey_trip, day_info, partisipants):
     survey_trip
+    day_info
+    partisipants
     data = graphql_client_query_data(
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-           pollAddLeg(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", tripLength: 3000, transportMode: "walk")  {
+           pollAddLeg(tripId: 1, startTime: "2023-07-15T10:59:40", endTime: "2023-07-15T11:59:45", tripLength: 3000, transportMode: "walk")  {
             ok
             }
         }
@@ -722,9 +712,11 @@ def test_join_trip(graphql_client_query_data, uuid, token, survey_trip, survey_t
     )
     assert data['pollJoinTrip']['ok'] is True
 
-def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_leg2):
+def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_leg2, day_info, partisipants):
     survey_leg
     survey_leg2
+    day_info
+    partisipants
     data = graphql_client_query_data(
         '''
         mutation($uuid: String!, $token: String!)
@@ -738,17 +730,36 @@ def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_l
     )
     assert data['pollSplitTrip']['ok'] is True
 
-def test_edit_trip_times(graphql_client_query_data, uuid, token, survey_trip):
+def test_edit_trip_times(graphql_client_query_data, uuid, token, survey_trip, day_info, partisipants):
     survey_trip
+    day_info
+    partisipants
     data = graphql_client_query_data(
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-           pollEditTripTimes(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 2) {
+           pollEditTrip(tripId: 1, startTime: "2023-07-15T10:59:40", endTime: "2023-07-15T11:59:45", surveyId: 2) {
             ok
             }
         }
         ''',
         variables={'uuid': uuid, 'token': token}
     )
-    assert data['pollEditTripTimes']['ok'] is True
+    assert data['pollEditTrip']['ok'] is True
+
+
+def test_mark_user_day_ready(graphql_client_query_data, uuid, token, day_info, partisipants):
+    day_info
+    partisipants
+    data = graphql_client_query_data(
+        '''
+        mutation($uuid: String!, $token: String!)
+        @device(uuid: $uuid, token: $token) {
+            pollMarkUserDayReady(selectedDate: "2023-07-15", surveyId: 2) {
+            ok
+            }
+        }
+        ''',
+        variables={'uuid': uuid, 'token': token}
+    )
+    assert data['pollMarkUserDayReady']['ok'] is True

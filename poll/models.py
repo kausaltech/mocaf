@@ -10,14 +10,34 @@ from django.conf import settings
 from django.utils import timezone
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
-class Approved_choice(Enum):
-    No = "No"
-    Yes = "Yes"
+#class Approved_choice(Enum):
+#    No = "No"
+#    Yes = "Yes"
 
 class Question_type_choice(Enum):
-    backgroud = "backgroud"
+    background = "background"
     feeling = "feeling"
     somethingelse = "somethingelse"
+
+class Trip_purpose(Enum):
+    tyo = "työ"
+    opiskelu = "opiskelu"
+    tyoasia = "työasia/opiskelu"
+    vapaaaika = "vapaa-aika"
+    ostos = "ostos"
+    muu = "muu asiointi ja kyyditseminen"
+    tyhja = ""
+
+class Municipality_choice(Enum):
+    Tampere = "Tampere"
+    Kangasala = "Kangasala"
+    Lempaala = "Lempäälä"
+    Nokia = "Nokia"
+    Orivesi = "Orivesi"
+    Pirkkala = "Pirkkala"
+    Vesilahti = "Vesilahti"
+    Ylojarvi = "Ylöjärvi"
+    muu = "muu Suomi"
 
 class SurveyInfo(models.Model):
     start_day = models.DateField(null=False)
@@ -38,7 +58,7 @@ class Questions(models.Model):
     question_data = models.JSONField(null=True)
     question_type = models.CharField(
         max_length=15,
-        default=Question_type_choice('backgroud').value,
+        default=Question_type_choice('background').value,
         choices=[(tag, tag.value) for tag in Question_type_choice] 
     )
     is_use = models.BooleanField(default=True)
@@ -69,11 +89,13 @@ class Partisipants(models.Model):
     end_date = models.DateField(null=True)
 
 
-    partisipant_approved = models.CharField(
-        max_length=3,
-        default=Approved_choice('No').value,
-        choices=[(tag, tag.value) for tag in Approved_choice] 
-    )
+    approved = models.BooleanField(null=False, default=False)
+    
+ #   partisipant_approved = models.CharField(
+ #       max_length=3,
+ #       default=Approved_choice('No').value,
+ #       choices=[(tag, tag.value) for tag in Approved_choice] 
+ #   )
 
 
 #    back_question = models.ForeignKey(
@@ -90,41 +112,42 @@ class Partisipants(models.Model):
 
     feeling_question_answers = models.JSONField(null=True)
 
-    def getParpartisipantApprovedVal(self):
-        return self.get_partisipant_approved_display()
+#    def getParpartisipantApprovedVal(self):
+#        return self.get_partisipant_approved_display()
 
 
     class Meta:
         unique_together = ('device', 'survey_info')
-        constraints = [
-            models.CheckConstraint(
-                name="partisipant_approved",
-                check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
-            )
-        ]
+  #      constraints = [
+  #          models.CheckConstraint(
+  #              name="partisipant_approved",
+  #              check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
+  #          )
+  #      ]
 
 
 
 class DayInfo(models.Model):
-    partisipants = models.ForeignKey(
+    partisipant = models.ForeignKey(
         'poll.Partisipants', on_delete=models.CASCADE, null=True
     )
 
     date = models.DateField(null=False)
 
-    poll_approved = models.CharField(
-        max_length=3,
-        default=Approved_choice('No').value,
-        choices=[(tag, tag.value) for tag in Approved_choice] 
-    )
+    approved = models.BooleanField(null=False, default=False)
+#    approved = models.CharField(
+#        max_length=3,
+#        default=Approved_choice('No').value,
+#        choices=[(tag, tag.value) for tag in Approved_choice] 
+#    )
 
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                name="poll_approved",
-                check=models.Q(poll_approved__in=Approved_choice._member_map_),
-            )
-        ]
+#    class Meta:
+#        constraints = [
+#            models.CheckConstraint(
+#                name="dayapproved",
+#                check=models.Q(approved__in=Approved_choice._member_map_),
+#            )
+#        ]
 
 class Lottery(models.Model):
     user_name = models.TextField()
@@ -140,6 +163,32 @@ class Trips(models.Model):
     original_trip = models.BooleanField(null=True, default=True)
     deleted = models.BooleanField(null=True, default=False)
 
+    purpose = models.CharField(
+        max_length=20,
+        default=Trip_purpose('').value,
+        null=False,
+        choices=[(tag, tag.value) for tag in Trip_purpose] 
+    )
+
+    approved = models.BooleanField(null=False, default=False)
+ #   approved = models.CharField(
+ #       max_length=3,
+ #       default=Approved_choice('No').value,
+ #       choices=[(tag, tag.value) for tag in Approved_choice] 
+ #   )
+
+    start_municipality = models.CharField(
+        max_length=20,
+        default=Municipality_choice('Tampere').value,
+        choices=[(tag, tag.value) for tag in Municipality_choice] 
+    )
+
+    end_municipality = models.CharField(
+        max_length=20,
+        default=Municipality_choice('Tampere').value,
+        choices=[(tag, tag.value) for tag in Municipality_choice] 
+    )
+
     def deleteTrip(self):
         if self.original_trip == True:
             self.deleted = True
@@ -147,13 +196,49 @@ class Trips(models.Model):
         else:
             self.delete()
     
-    def addTrip(self, partisipantObj, StartTime, EndTime, original_trip = False):
-    #    tripObj = Trips()
+    def addTrip(self, partisipantObj, StartTime, EndTime, start_municipality, end_municipality, purpose = "tyhja", approved = False, original_trip = False):
         self.partisipant = partisipantObj
         self.start_time = StartTime
         self.end_time = EndTime
         self.original_trip = original_trip
+        self.purpose = purpose
+        self.start_municipality = start_municipality
+        self.end_municipality = end_municipality
+        self.approved = approved
         self.save()
+    
+    def getPurposeVal(self):
+        return self.get_purpose_display()
+    
+    def getstartMunicipalityVal(self):
+        return self.get_start_municipality_display()
+    
+    def getendMunicipalityVal(self):
+        return self.get_end_municipality_display()
+    
+ #   def getApprovedVal(self):
+ #       return self.get_approved_display()
+
+    class Meta:
+        constraints = [
+    #        models.CheckConstraint(
+    #            name="tripapproved",
+    #            check=models.Q(approved__in=Approved_choice._member_map_),
+    #        ),
+            models.CheckConstraint(
+                name="purpose",
+                check=models.Q(purpose__in=Trip_purpose._member_map_),
+            ),
+            models.CheckConstraint(
+                name="startmunicipality",
+                check=models.Q(start_municipality__in=Municipality_choice._member_map_),
+            ),
+            models.CheckConstraint(
+                name="endmunicipality",
+                check=models.Q(end_municipality__in=Municipality_choice._member_map_),
+            )
+        
+        ]
 
 class Legs(models.Model):
     trip = models.ForeignKey(
@@ -173,6 +258,9 @@ class Legs(models.Model):
         max_length=20,
          null=True
     )
+
+    start_loc = models.PointField(null=True, srid=4326)
+    end_loc = models.PointField(null=True, srid=4326)
        
 
     original_leg = models.BooleanField(null=True,default=True)

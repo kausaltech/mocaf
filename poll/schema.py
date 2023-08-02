@@ -32,7 +32,7 @@ class AddSurvey(graphene.Mutation, AuthenticatedDeviceNode):
     @classmethod
     def mutate(cls, root, info, start_day, end_day, days, max_back_question = "", description = ""):
         
-        if start_day > (end_day - timedelta(days=days)):
+        if start_day > (end_day - timedelta(days=(days-1))):
             raise GraphQLError('Times are bad', [info])
         
         obj = SurveyInfo()
@@ -100,12 +100,21 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
 
                 surveyStartDate = obj.survey_info.get_random_startDate()
 
+                obj.start_date = surveyStartDate
+
                 for x in range(0, obj.survey_info.days):
                     dayInfoObj = DayInfo()
-                    dayInfoObj.partisipants = obj
+                    dayInfoObj.partisipant = obj
                     dayInfoObj.date = surveyStartDate
                     dayInfoObj.save()
                     surveyStartDate = surveyStartDate + timedelta(days=1)
+                
+                surveyStartDate = surveyStartDate - timedelta(days=1)
+
+                obj.end_date = surveyStartDate
+
+                obj.save()
+
         except DatabaseError:
             okVal = False
 
@@ -137,7 +146,7 @@ class AddUserAnswerToQuestions(graphene.Mutation, AuthenticatedDeviceNode):
 class AddQuestion(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
         question = graphene.String(required=True)
-        questionType = graphene.String(required=True)
+        questionType = graphene.String(required=True, description='background, feeling, somethingelse')
         description = graphene.String(required=True)
         surveyId = graphene.ID(required=False, default_value = "")
     
@@ -171,8 +180,25 @@ class MarkUserDayReady(graphene.Mutation, AuthenticatedDeviceNode):
 
         partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
 
-        dayInfoObj = DayInfo.objects.get(date=selectedDate,partisipants=partisipantObj)
-        dayInfoObj.poll_approved = "Yes"
+        #tripsObj = Trips.objects.filter(purpose = "tyhja", partisipant=partisipantObj, start_time__date=selectedDate, deleted=False)
+        tripsObj = Trips.objects.filter(partisipant=partisipantObj, start_time__date=selectedDate, deleted=False)
+
+        for trip in tripsObj:
+            if trip.purpose == "tyhja":
+                raise GraphQLError('All date trip needs purpose', [info])
+            
+            if trip.approved == False:
+                legsObj = Legs.objects.filter(trip=trip)
+                if not legsObj:
+                    raise GraphQLError('Trip has no legs', [info])
+                
+                trip.approved = True
+                trip.save()
+        
+ #       legsObj = Legs.objects.filter(trip=trip2_id)
+
+        dayInfoObj = DayInfo.objects.get(date=selectedDate,partisipant=partisipantObj)
+        dayInfoObj.approved = True
 
         dayInfoObj.save()
 
@@ -183,11 +209,15 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
         start_time = graphene.DateTime(required=True)
         end_time = graphene.DateTime(required=True)
         surveyId = graphene.ID(required=True)
+        purpose = graphene.String(required=False, default_value = "", description='tyo, opiskelu, tyoasia, vapaaaika, ostos, muu')
+        start_municipality = graphene.String(required=False, default_value = "Tampere", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
+        end_municipality = graphene.String(required=False, default_value = "Tampere", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
+        approved = graphene.Boolean(required=False, default_value = False)
 
     ok = graphene.ID()
 
     @classmethod
-    def mutate(cls, root, info, start_time,end_time,surveyId):
+    def mutate(cls, root, info, start_time,end_time,surveyId,purpose,start_municipality, end_municipality,approved):
         device = info.context.device
 
         start_time_d = LOCAL_TZ.localize(start_time, is_dst=None)
@@ -198,15 +228,26 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
 
-        LegObjChk = Trips.objects.filter(start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
-        LegObjChk2 = Trips.objects.filter(end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
-        LegObjChk3 = Trips.objects.filter(start_time__lt=fixStartTime, end_time__gt=fixEndTime, deleted=False, partisipant = partisipantObj)
+        tripsObjChk = Trips.objects.filter(start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
+        tripsObjChk2 = Trips.objects.filter(end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
+        tripsObjChk3 = Trips.objects.filter(start_time__lte=fixStartTime, end_time__gte=fixEndTime, deleted=False, partisipant = partisipantObj)
+    #    tripsObjChk4 = Trips.objects.filter(start_time=fixStartTime, end_time=fixEndTime, deleted=False, partisipant = partisipantObj)
 
-        if start_time >= end_time or LegObjChk or LegObjChk2 or LegObjChk3:
+        dayObjChk = DayInfo.objects.filter(date=fixStartTime.date(), approved=False, partisipant = partisipantObj)
+     #   dayObjChk = True
+     #   LegObjChk6 = DayInfo.objects.filter(date=fixEndTime.date(), approved=False, partisipant = partisipantObj)
+        
+
+       # if start_time >= end_time or LegObjChk or LegObjChk2 or LegObjChk3 or LegObjChk4 or not LegObjChk5 or not LegObjChk6:
+     #   if start_time >= end_time or tripsObjChk or tripsObjChk2 or tripsObjChk3 or tripsObjChk4 or not dayObjChk:
+        if start_time >= end_time or tripsObjChk or tripsObjChk2 or tripsObjChk3 or not dayObjChk:
             raise GraphQLError('Times are bad', [info])
 
+        if purpose == "":
+            purpose = "tyhja"
+
         tripObj = Trips()
-        tripObj.addTrip(partisipantObj, fixStartTime, fixEndTime)
+        tripObj.addTrip(partisipantObj, fixStartTime, fixEndTime, start_municipality, end_municipality, purpose, approved)
 
         return dict(ok=tripObj.pk)
 
@@ -229,11 +270,14 @@ class AddLeg(graphene.Mutation, AuthenticatedDeviceNode):
         fixStartTime = start_time_d.astimezone(pytz.utc)
         fixEndTime = end_time_d.astimezone(pytz.utc)
 
-        LegObjChk = Legs.objects.filter(start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, trip = trip_id)
-        LegObjChk2 = Legs.objects.filter(end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, trip = trip_id)
-        LegObjChk3 = Legs.objects.filter(start_time__lt=fixStartTime, end_time__gt=fixEndTime, deleted=False, trip = trip_id)
+        legObjChk = Legs.objects.filter(start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, trip = trip_id)
+        legObjChk2 = Legs.objects.filter(end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, trip = trip_id)
+        legObjChk3 = Legs.objects.filter(start_time__lte=fixStartTime, end_time__gte=fixEndTime, deleted=False, trip = trip_id)
+   #     legObjChk4 = Legs.objects.filter(start_time=fixStartTime, end_time=fixEndTime, deleted=False, trip = trip_id)
 
-        if start_time >= end_time or LegObjChk or LegObjChk2 or LegObjChk3:
+
+    #    if start_time >= end_time or legObjChk or legObjChk2 or legObjChk3 or legObjChk4:
+        if start_time >= end_time or legObjChk or legObjChk2 or legObjChk3:
             raise GraphQLError('Times are bad', [info])
 
         okVal = True
@@ -241,6 +285,15 @@ class AddLeg(graphene.Mutation, AuthenticatedDeviceNode):
         try:
             with transaction.atomic():
                 tripObj = Trips.objects.get(pk=trip_id)
+
+                if tripObj.approved == True:
+                    raise GraphQLError('Trip is allready approved', [info])
+
+                dayChk = DayInfo.objects.filter(date=fixStartTime.date(), approved=False, partisipant = tripObj.partisipant)
+
+                if not dayChk:
+                    raise GraphQLError('Start day is bad', [info])
+
                 legsObj = Legs()
 
                 legsObj.trip = tripObj
@@ -467,47 +520,104 @@ class SplitTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         return dict(ok=okVal)
 
-class EditTripTimes(graphene.Mutation, AuthenticatedDeviceNode):
+class EditTrip(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
         trip_id = graphene.ID(required=True)
-        start_time = graphene.DateTime(required=True)
-        end_time = graphene.DateTime(required=True)
+        start_time = graphene.DateTime(required=False, default_value = "")
+        end_time = graphene.DateTime(required=False, default_value = "")
         surveyId = graphene.ID(required=True)
+        purpose = graphene.String(required=False, default_value = "", description='tyo, opiskelu, tyoasia, vapaaaika, ostos, muu')
+        start_municipality = graphene.String(required=False, default_value = "", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
+        end_municipality = graphene.String(required=False, default_value = "", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
+        approved = graphene.Boolean(required=False, default_value = "")
 
     ok = graphene.Boolean()
 
     @classmethod
-    def mutate(cls, root, info, trip_id, surveyId, start_time = "", end_time = ""):
-        
-        start_time_d = LOCAL_TZ.localize(start_time, is_dst=None)
-        fixStartTime = start_time_d.astimezone(pytz.utc)
-        
-        end_time_d = LOCAL_TZ.localize(end_time, is_dst=None)
-        fixEndTime = end_time_d.astimezone(pytz.utc)
-
+    def mutate(cls, root, info, trip_id, surveyId, start_time, end_time, purpose, start_municipality, end_municipality,approved):
         device = info.context.device
 
         partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
 
-        LegObjChk = Trips.objects.filter(~Q(pk=trip_id), start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
-        LegObjChk2 = Trips.objects.filter(~Q(pk=trip_id), end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
-        LegObjChk3 = Trips.objects.filter(~Q(pk=trip_id), start_time__lt=fixStartTime, end_time__gt=fixEndTime, deleted=False, partisipant = partisipantObj)
+        fixStartTime = ""
+        fixEndTime = ""
 
-        if start_time >= end_time or LegObjChk or LegObjChk2 or LegObjChk3:
-            raise GraphQLError('Times are bad', [info])
+        if (start_time != "" and end_time != ""):
+            start_time_d = LOCAL_TZ.localize(start_time, is_dst=None)
+            fixStartTime = start_time_d.astimezone(pytz.utc)
+            
+            end_time_d = LOCAL_TZ.localize(end_time, is_dst=None)
+            fixEndTime = end_time_d.astimezone(pytz.utc)
 
+            tripsObjChk = Trips.objects.filter(~Q(pk=trip_id), start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
+            tripsObjChk2 = Trips.objects.filter(~Q(pk=trip_id), end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
+            tripsObjChk3 = Trips.objects.filter(~Q(pk=trip_id), start_time__lte=fixStartTime, end_time__gte=fixEndTime, deleted=False, partisipant = partisipantObj)
+        #    tripsObjChk4 = Trips.objects.filter(~Q(pk=trip_id), start_time=fixStartTime, end_time=fixEndTime, deleted=False, partisipant = partisipantObj)
+
+            dayObjChk = DayInfo.objects.filter(date=fixStartTime.date(), approved=False, partisipant = partisipantObj)
+       #     LegObjChk6 = DayInfo.objects.filter(date=fixEndTime.date(), approved=False, partisipant = partisipantObj)
+            
+
+        #    if start_time >= end_time or LegObjChk or LegObjChk2 or LegObjChk3 or LegObjChk4 or not LegObjChk5 or not LegObjChk6:
+         #   if start_time >= end_time or tripsObjChk or tripsObjChk2 or tripsObjChk3 or tripsObjChk4 or not dayObjChk:
+            if start_time >= end_time or tripsObjChk or tripsObjChk2 or tripsObjChk3 or not dayObjChk:
+                raise GraphQLError('Times are bad', [info])
+            
+        elif (end_time != "" or start_time != ""):
+            raise GraphQLError('Both times are needed', [info])
         
         okVal = True
 
         tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-        if tripObj.original_trip == False:
-            tripObj.start_time = fixStartTime
-            tripObj.end_time = fixEndTime
+        if approved != "":
+            legsObj = Legs.objects.filter(trip=trip_id)
+            if not legsObj:
+                raise GraphQLError('Trip has no legs', [info])
+
+        if tripObj.approved == True:
+            raise GraphQLError('Trip has allready approved', [info])
+
+        if tripObj.original_trip == False or (fixStartTime == "" and fixEndTime == ""):
+            if fixStartTime != "":
+                tripObj.start_time = fixStartTime
+            if fixEndTime != "":
+                tripObj.end_time = fixEndTime
+            if purpose != "":
+                tripObj.purpose = purpose
+            if start_municipality != "":
+                tripObj.start_municipality = start_municipality
+            if end_municipality != "":
+                tripObj.end_municipality = end_municipality
+            if approved != "":
+                tripObj.approved = approved
             tripObj.save()
         else:
             newTripObj = Trips()
-            newTripObj.addTrip(partisipantObj, fixStartTime, fixEndTime)
+       #     newTripObj = tripObj
+            newTripObj.original_trip = False
+            newTripObj.partisipant = tripObj.partisipant
+            newTripObj.start_time = tripObj.start_time
+            newTripObj.end_time = tripObj.end_time
+            newTripObj.purpose = tripObj.purpose
+            newTripObj.start_municipality = tripObj.start_municipality
+            newTripObj.end_municipality = tripObj.end_municipality
+
+            if fixStartTime != "":
+                newTripObj.start_time = fixStartTime
+            if fixEndTime != "":
+                newTripObj.end_time = fixEndTime
+            if purpose != "":
+                newTripObj.purpose = purpose
+            if start_municipality != "":
+                newTripObj.start_municipality = start_municipality
+            if end_municipality != "":
+                newTripObj.end_municipality = end_municipality
+            if approved != "":
+                newTripObj.approved = approved
+
+            newTripObj.save()
+       #     newTripObj.addTrip(partisipantObj, fixStartTime, fixEndTime, start_municipality, end_municipality, purpose, approved)
 
             legsObj = Legs.objects.filter(trip=trip_id)
             legsObj.update(trip = newTripObj)
@@ -530,7 +640,7 @@ class Mutations(graphene.ObjectType):
     pollJoinTrip = JoinTrip.Field()
     pollSplitTrip = SplitTrip.Field()
     pollLocationToLeg = LocationToLeg.Field()
-    pollEditTripTimes = EditTripTimes.Field()
+    pollEditTrip = EditTrip.Field()
 
 
 class Survey(DjangoObjectType):
@@ -541,13 +651,13 @@ class Survey(DjangoObjectType):
 class UserSurvey(DjangoObjectType):
     class Meta:
         model = Partisipants
-        field = ("start_date", "end_date", "back_question_answers", "feeling_question_answers")
-        exclude = ("partisipant_approved",)
+        field = ("start_date", "end_date", "back_question_answers", "feeling_question_answers", "approved")
+        #exclude = ("partisipant_approved",)
 
-    user_approved = graphene.String()
+   # user_approved = graphene.String()
 
-    def resolve_user_approved(self, info):
-        return Partisipants.getParpartisipantApprovedVal(self)
+   # def resolve_user_approved(self, info):
+   #     return Partisipants.getParpartisipantApprovedVal(self)
 
 class surveyQuestions(DjangoObjectType):
     class Meta:
@@ -562,7 +672,27 @@ class surveyQuestion(DjangoObjectType):
 class dayTrips(DjangoObjectType):
     class Meta:
         model = Trips
-        field = ("pk", "start_time", "end_time", "original_trip")
+        field = ("pk", "start_time", "end_time", "original_trip", "approved", "start_loc", "end_loc")
+        exclude = ("purpose", )
+        #exclude = ("purpose", "start_municipality", "end_municipality", )
+
+    user_purpose = graphene.String()
+    start_municipality = graphene.String()
+    end_municipality = graphene.String()
+   # user_approved = graphene.String()
+
+    def resolve_user_purpose(self, info):
+        return Trips.getPurposeVal(self)
+
+    def resolve_start_municipality(self, info):
+        return Trips.getstartMunicipalityVal(self)
+
+    def resolve_end_municipality(self, info):
+        return Trips.getendMunicipalityVal(self)
+
+  #  def resolve_user_approved(self, info):
+  #      return Trips.getApprovedVal(self)
+
 
 class tripsLegs(DjangoObjectType):
     class Meta:
@@ -619,7 +749,14 @@ class Query(graphene.ObjectType):
         else:   
             partisipantObj = Partisipants.objects.filter(device=dev)[:1]
 
-        return Trips.objects.filter(partisipant=partisipantObj, start_time__date=day, deleted=False)
+        tripsObj = Trips.objects.filter(partisipant=partisipantObj, start_time__date=day, deleted=False)
+
+        if tripsObj:
+            for tripObj in tripsObj:
+                if tripObj.purpose == "tyhja":
+                    tripObj.purpose = ""
+
+        return tripsObj
     
     def resolve_pollTripsLegs(root, info, tripId):
         dev = info.context.device
