@@ -10,9 +10,7 @@ from django.conf import settings
 from django.utils import timezone
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
-#class Approved_choice(Enum):
-#    No = "No"
-#    Yes = "Yes"
+
 
 class Question_type_choice(Enum):
     background = "background"
@@ -90,12 +88,6 @@ class Partisipants(models.Model):
 
 
     approved = models.BooleanField(null=False, default=False)
-    
- #   partisipant_approved = models.CharField(
- #       max_length=3,
- #       default=Approved_choice('No').value,
- #       choices=[(tag, tag.value) for tag in Approved_choice] 
- #   )
 
 
 #    back_question = models.ForeignKey(
@@ -112,18 +104,9 @@ class Partisipants(models.Model):
 
     feeling_question_answers = models.JSONField(null=True)
 
-#    def getParpartisipantApprovedVal(self):
-#        return self.get_partisipant_approved_display()
-
 
     class Meta:
         unique_together = ('device', 'survey_info')
-  #      constraints = [
-  #          models.CheckConstraint(
-  #              name="partisipant_approved",
-  #              check=models.Q(partisipant_approved__in=Approved_choice._member_map_),
-  #          )
-  #      ]
 
 
 
@@ -135,19 +118,6 @@ class DayInfo(models.Model):
     date = models.DateField(null=False)
 
     approved = models.BooleanField(null=False, default=False)
-#    approved = models.CharField(
-#        max_length=3,
-#        default=Approved_choice('No').value,
-#        choices=[(tag, tag.value) for tag in Approved_choice] 
-#    )
-
-#    class Meta:
-#        constraints = [
-#            models.CheckConstraint(
-#                name="dayapproved",
-#                check=models.Q(approved__in=Approved_choice._member_map_),
-#            )
-#        ]
 
 class Lottery(models.Model):
     user_name = models.TextField()
@@ -171,11 +141,6 @@ class Trips(models.Model):
     )
 
     approved = models.BooleanField(null=False, default=False)
- #   approved = models.CharField(
- #       max_length=3,
- #       default=Approved_choice('No').value,
- #       choices=[(tag, tag.value) for tag in Approved_choice] 
- #   )
 
     start_municipality = models.CharField(
         max_length=20,
@@ -216,15 +181,8 @@ class Trips(models.Model):
     def getendMunicipalityVal(self):
         return self.get_end_municipality_display()
     
- #   def getApprovedVal(self):
- #       return self.get_approved_display()
-
     class Meta:
         constraints = [
-    #        models.CheckConstraint(
-    #            name="tripapproved",
-    #            check=models.Q(approved__in=Approved_choice._member_map_),
-    #        ),
             models.CheckConstraint(
                 name="purpose",
                 check=models.Q(purpose__in=Trip_purpose._member_map_),

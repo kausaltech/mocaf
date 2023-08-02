@@ -9,7 +9,7 @@ mutation {
   "data": {
     "enableMocaf": {
       "ok": true,
-      "token": "d07febb3-7b6c-4b97-b33e-6abe32e67afb"
+      "token": "1ce02a27-e357-4769-9a2e-3bbbc4b33f69"
     }
   }
 }
@@ -26,59 +26,59 @@ mutation {
   "data": {
     "enableMocaf": {
       "ok": true,
-      "token": "36b83436-c7f0-4123-8df9-00d6ad696899"
+      "token": "17fb2034-73a2-4909-8002-d40b419d243e"
     }
   }
 }
 
 
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   updateLeg(leg: "2", mode: "car", nrPassengers: 2) {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollEnrollLottery(name: "Jarkko", email: "jarkko.virtanen@codemen.fi") {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollAddSurvey(days: 3, description: "kokeilu", startDay: "2023-07-10", endDay: "2023-07-29", maxBackQuestion: 3)  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollEnrollToSurvey(surveyId: 1, backQuestionAnswers: "{\"x\":5,\"y\":6}", feelingQuestionAnswers: "{\"x\":5,\"y\":6}")  {
     ok
   }
 }
 
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollAddUserAnswerToQuestions(surveyId: 1, backQuestionAnswers: "{\"x\":5,\"y\":6}", feelingQuestionAnswers: "{\"x\":5,\"y\":6}")  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
-  pollAddQuestion(description: "test2", question: "{\"x\":5,\"y\":6}", questionType: "backgroud", surveyId: 1)  {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollAddQuestion(description: "test2", question: "{\"x\":5,\"y\":6}", questionType: "background", surveyId: 1)  {
     ok
   }
 }
 
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollMarkUserDayReady(selectedDate: "2023-07-12", surveyId: 1)  {
     ok
   }
 }
 
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
 	pollSurveyInfo  {
     		startDay
     		endDay
@@ -89,18 +89,18 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f
 }
 
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
 	pollUserSurvey  {
     		startDate
     		endDate
-    		userApproved
+    		approved
     		backQuestionAnswers
     		feelingQuestionAnswers
   }
 }
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
-	pollSurveyQuestions(questionType: "backgroud", surveyId: 1)  {
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
+	pollSurveyQuestions(questionType: "background", surveyId: 1)  {
     		id
     		questionData
     		questionType
@@ -108,8 +108,8 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f
   }
 }
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
-	pollSurveyQuestion(question_id: 1)  {
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
+	pollSurveyQuestion(questionId: 1)  {
     		id
     		questionData
     		questionType
@@ -118,47 +118,62 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f
 }
 
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
-  pollAddTrip(startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 1)  {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollAddTrip(startTime: "2023-07-12T10:59:40", endTime: "2023-07-12T12:59:45", surveyId: 1, purpose: "tyoasia", startMunicipality: "Lempaala", endMunicipality: "Vesilahti")  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
-  pollEditTripTimes(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", surveyId: 1)  {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollEditTrip(tripId: 4, startTime: "2023-07-13T20:59:40", endTime: "2023-07-13T23:59:45", surveyId: 1, purpose: "opiskelu", approved: true)  {
     ok
   }
 }
 
-
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
-  pollAddLeg(tripId: 1, startTime: "2023-05-31T20:59:40", endTime: "2023-05-31T23:59:45", tripLength: 3000, transportMode: "walk")  {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollEditTrip(tripId: 4, startTime: "2023-07-13T08:59:40", endTime: "2023-07-13T09:59:45", surveyId: 1)  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollEditTrip(tripId: 4, surveyId: 1, approved: true)  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollAddLeg(tripId: 1, startTime: "2023-07-13T20:59:40", endTime: "2023-07-13T23:59:45", tripLength: 3000, transportMode: "walk")  {
+    ok
+  }
+}
+
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollDelLeg(tripId: 1, legId: 1, surveyId: 1)  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollDelTrip(tripId: 1, surveyId: 1)  {
     ok
   }
 }
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
-	pollDayTrips(day: "2023-07-10", surveyId: 1)  {
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
+	pollDayTrips(day: "2023-07-12", surveyId: 1)  {
     		id
     		startTime
     		endTime
     		originalTrip
+		userPurpose
+		startMunicipality
+		endMunicipality
+		approved
   }
 }
 
-query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899"){
+query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e"){
 	pollTripsLegs(tripId: 1)  {
     		id
     		startTime
@@ -169,14 +184,14 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
   pollJoinTrip(tripId: 3, trip2Id: 4, surveyId: 1)  {
     ok
   }
 }
 
-mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "36b83436-c7f0-4123-8df9-00d6ad696899") {
-  pollSplitTrip(tripId: 3, afterLegId: 7, surveyId: 1)  {
+mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "17fb2034-73a2-4909-8002-d40b419d243e") {
+  pollApproveUserSurvey(surveyId: 1)  {
     ok
   }
 }
