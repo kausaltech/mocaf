@@ -25,7 +25,7 @@ class Trip_purpose(Enum):
     vapaaaika = "vapaa-aika"
     ostos = "ostos"
     muu = "muu asiointi ja kyyditseminen"
-    tyhja = ""
+    tyhja = "tyhja"
 
 class Municipality_choice(Enum):
     Tampere = "Tampere"
@@ -136,7 +136,7 @@ class Trips(models.Model):
 
     purpose = models.CharField(
         max_length=20,
-        default=Trip_purpose('').value,
+        default=Trip_purpose('tyhja').value,
         null=False,
         choices=[(tag, tag.value) for tag in Trip_purpose] 
     )
