@@ -233,7 +233,7 @@ class TripGenerator:
         in_range = (Partisipants.objects
                       .filter(device=device_id)
                       .filter(start_date__lte=current_date)
-                      .filter(end_date__isnull=True)
+                      .filter(end_date__gte=current_date)
                       .values('id'))
         if (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0 ):
             trip = Trip(device=device)
