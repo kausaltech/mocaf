@@ -23,7 +23,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         generator = TripGenerator(force=options['force'])
         uuid = options['uuid']
-     #   uuid = "4922d7d7-956f-40d0-803f-7d06a0c75d40"
         start_uuid = options['start_after_uuid']
         start_time = options['start_time']
         end_time = options['end_time']
