@@ -8,6 +8,7 @@ import logging
 import pytz
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
 
 LOCAL_TZ = pytz.timezone(settings.TIME_ZONE)
 
