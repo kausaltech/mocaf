@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import logging
 from typing import Optional
 import sentry_sdk
@@ -17,11 +17,13 @@ from django.utils import timezone
 from psycopg2.extras import execute_values
 from trips.models import Device, TransportMode, Trip, Leg, LegLocation
 from trips_ingest.models import Location
+from poll.models import Trips, Legs, LegsLocation, Partisipants
 
 
 logger = logging.getLogger(__name__)
 
 LEG_LOCATION_TABLE = LegLocation._meta.db_table
+LEGS_LOCATION_TABLE = LegsLocation._meta.db_table
 
 local_crs = SpatialReference(LOCAL_2D_CRS)
 gps_crs = SpatialReference(4326)
@@ -92,6 +94,34 @@ class TripGenerator:
 
         pc.display('after insert')
 
+    def insert_survey_leg_locations(self, rows):
+        # Having "None" as the speed column is a periodically recurring
+        # issue. Raise error to continue with other uuids if None found
+        # in speed column
+        try:
+            next(x for x in rows if x[4] is None)
+            raise GeneratorError('Encountered invalid value None as speed for leg')
+        except StopIteration:
+            pass
+        pc = PerfCounter('save_locations', show_time_to_last=True)
+        query = f'''INSERT INTO {LEGS_LOCATION_TABLE} (
+            leg_id, loc, time, speed
+        ) VALUES %s'''
+
+        with connection.cursor() as cursor:
+            pc.display('after cursor')
+            value_template = """(
+                    %s,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326),
+                    %s :: timestamptz,
+                    %s
+            )"""
+            execute_values(
+                cursor, query, rows, template=value_template, page_size=10000
+            )
+
+        pc.display('after insert')
+
     def save_leg(self, trip, df, last_ts, default_variants, pc):
         start = df.iloc[0][['time', 'x', 'y']]
         end = df.iloc[-1][['time', 'x', 'y']]
@@ -105,6 +135,7 @@ class TripGenerator:
         mode = self.atype_to_mode[df.iloc[0].atype]
         variant = default_variants.get(mode)
 
+       
         leg = Leg(
             trip=trip,
             mode=mode,
@@ -124,7 +155,35 @@ class TripGenerator:
 
         return rows, end.time
 
-    def save_trip(self, device, df, default_variants):
+
+    def save_survey_leg(self, trip, df, last_ts, pc):
+        start = df.iloc[0][['time', 'x', 'y']]
+        end = df.iloc[-1][['time', 'x', 'y']]
+
+        leg_length = df['distance'].sum()
+
+        # Ensure trips are ordered properly
+        assert start.time >= last_ts and end.time >= last_ts
+
+        mode = self.atype_to_mode[df.iloc[0].atype]
+
+
+        leg = Legs(
+            trip_id=trip.id,
+            transport_mode=mode,
+            trip_length=leg_length,
+            start_time=start.time,
+            end_time=end.time,
+            start_loc=make_point(start.x, start.y),
+            end_loc=make_point(end.x, end.y),
+        )
+        leg.save()
+        rows = generate_leg_location_rows(leg, df)
+        pc.display(str(leg))
+
+        return rows, end.time
+
+    def save_trip(self, device, df, default_variants, uuid):
         pc = PerfCounter('generate_trips', show_time_to_last=True)
         if not len(df):
             print('No samples, returning')
@@ -166,27 +225,62 @@ class TripGenerator:
 
         # Create trips
         all_rows = []
-
-        trip = Trip(device=device)
+        all_rows_survey = []
+        survey_enabled = Device.objects.get(uuid=uuid).survey_enabled
+        mocaf_enabled = Device.objects.get(uuid=uuid).mocaf_enabled
+        device_id = Device.objects.get(uuid=uuid).id
+        current_date = date.today()
+        in_range = (Partisipants.objects
+                      .filter(device=device_id)
+                      .filter(start_date__lte=current_date)
+                      .filter(end_date__gte=current_date)
+                      .values('id'))
+        if (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0 ):
+            trip = Trip(device=device)
+            survey_trip = Trips(start_time=min_time, end_time=max_time)
+        elif(survey_enabled == True and len(in_range) > 0):
+            trip = Trips(start_time=min_time, end_time=max_time)
+        else:
+            trip = Trip(device=device)
+        if (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+            survey_trip.save()
         trip.save()
         pc.display('trip %d saved' % trip.id)
 
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
-            leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
-            all_rows += leg_rows
+            if(survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+                leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
+                all_rows += leg_rows
+                last_ts = df.time.min()
+                leg_rows_survey, last_ts = self.save_survey_leg(survey_trip, leg_df, last_ts, pc)
+                all_rows_survey += leg_rows_survey
+            elif(survey_enabled == True and len(in_range) > 0):
+                leg_rows, last_ts = self.save_survey_leg(trip, leg_df, last_ts, pc)
+                all_rows += leg_rows
+            else:   
+                leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
+                all_rows += leg_rows
 
         pc.display('generated %d legs' % len(leg_ids))
-        self.insert_leg_locations(all_rows)
-        pc.display('updating carbon footprint')
-        trip.update_device_carbon_footprint()
+        if(survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+            self.insert_leg_locations(all_rows)
+            self.insert_survey_leg_locations(all_rows_survey)
+        elif(survey_enabled == True and len(in_range) > 0):
+            self.insert_survey_leg_locations(all_rows)
+        else:
+            self.insert_leg_locations(all_rows)
+        
+        if (survey_enabled != True or (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0)):
+            pc.display('updating carbon footprint')
+            trip.update_device_carbon_footprint()
         pc.display('trip %d save done' % trip.id)
 
     def begin(self):
         transaction.set_autocommit(False)
 
-    def process_trip(self, device, df):
+    def process_trip(self, device, df, uuid):
         pc = PerfCounter('process_trip')
         logger.info('%s: %s: trip with %d samples' % (str(device), df.time.min(), len(df)))
         df = filter_trips(df)
@@ -203,7 +297,7 @@ class TripGenerator:
             logger.info('%s: No legs for trip' % str(device))
             return
         with transaction.atomic():
-            self.save_trip(device, df, device._default_variants)
+            self.save_trip(device, df, device._default_variants, uuid)
         pc.display('trip saved')
 
     def generate_trips(self, uuid, start_time, end_time, generation_started_at=None):
@@ -227,7 +321,7 @@ class TripGenerator:
             with sentry_sdk.configure_scope() as scope:
                 scope.set_tag('start_time', trip_df.time.min().isoformat())
                 scope.set_tag('end_time', trip_df.time.max().isoformat())
-                self.process_trip(device, trip_df)
+                self.process_trip(device, trip_df, uuid)
                 scope.clear()
 
         if generation_started_at is not None:
@@ -282,7 +376,6 @@ class TripGenerator:
                     end_time = dev['last_leg_end_time']
 
             uuids_to_process.append([uuid, end_time])
-
         return uuids_to_process
 
     def generate_new_trips(self, only_uuid=None):
@@ -302,7 +395,7 @@ class TripGenerator:
             with sentry_sdk.configure_scope() as scope:
                 scope.set_tag('uuid', str(uuid))
                 try:
-                    self.generate_trips(uuid, start_time=start_time, end_time=end_time, generation_started_at=now)
+                    self.generate_trips(uuid, start_time=start_time, end_time=end_time, generation_started_at=now,)
                 except GeneratorError as e:
                     sentry_sdk.capture_exception(e)
 

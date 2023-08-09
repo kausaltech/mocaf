@@ -60,6 +60,8 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     system_version = models.CharField(max_length=20, null=True)
     brand = models.CharField(max_length=20, null=True)
     model = models.CharField(max_length=40, null=True)
+    survey_enabled = models.BooleanField(False, null=True)
+    mocaf_enabled = models.BooleanField(True, null=True)
 
     friendly_name = models.CharField(max_length=40, null=True)
     debug_log_level = models.PositiveIntegerField(null=True)
@@ -470,7 +472,6 @@ class TripQuerySet(models.QuerySet):
 class Trip(ExportModelOperationsMixin('trip'), models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='trips')
     deleted_at = models.DateTimeField(null=True)
-
     objects = TripQuerySet.as_manager()
 
     _ordered_legs: List[Leg]
