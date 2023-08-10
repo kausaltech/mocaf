@@ -121,7 +121,7 @@ nbformat==5.1.2
     #   nbclient
     #   nbconvert
     #   notebook
-nest-asyncio==1.5.1
+nest-asyncio==1.5.7
     # via nbclient
 notebook==6.2.0
     # via
