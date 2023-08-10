@@ -233,12 +233,11 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
         purpose = graphene.String(required=False, default_value = "", description='tyo, opiskelu, tyoasia, vapaaaika, ostos, muu')
         start_municipality = graphene.String(required=False, default_value = "Tampere", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
         end_municipality = graphene.String(required=False, default_value = "Tampere", description='Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu')
-        approved = graphene.Boolean(required=False, default_value = False)
 
     ok = graphene.ID()
 
     @classmethod
-    def mutate(cls, root, info, start_time,end_time,surveyId,purpose,start_municipality, end_municipality,approved):
+    def mutate(cls, root, info, start_time,end_time,surveyId,purpose,start_municipality, end_municipality):
         device = info.context.device
 
         start_time_d = LOCAL_TZ.localize(start_time, is_dst=None)
@@ -262,7 +261,7 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
             purpose = "tyhja"
 
         tripObj = Trips()
-        tripObj.addTrip(partisipantObj, fixStartTime, fixEndTime, start_municipality, end_municipality, purpose, approved)
+        tripObj.addTrip(partisipantObj, fixStartTime, fixEndTime, start_municipality, end_municipality, purpose)
 
         return dict(ok=tripObj.pk)
 
@@ -612,13 +611,16 @@ class EditTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-        if approved != "":
+        if approved != "" and approved == True:
+            if tripObj.purpose == "tyhja" and purpose == "":
+                raise GraphQLError('Trip needs purpose', [info])
+            
             legsObj = Legs.objects.filter(trip=trip_id)
             if not legsObj:
                 raise GraphQLError('Trip has no legs', [info])
 
-        if tripObj.approved == True:
-            raise GraphQLError('Trip has allready approved', [info])
+        if (approved == "" or approved == True) and tripObj.approved == True:
+            raise GraphQLError('Trip is allready approved', [info])
         elif tripObj.deleted == True:
             raise GraphQLError('Trip is deleted', [info])
 
@@ -736,7 +738,7 @@ class tripsLegs(DjangoObjectType):
 class Query(graphene.ObjectType):
     pollSurveyInfo = graphene.List(Survey)
     pollUserSurvey = graphene.List(UserSurvey, survey_id=graphene.Int())
-    pollSurveyQuestions = graphene.List(surveyQuestions, question_type=graphene.String(), survey_id=graphene.Int())
+    pollSurveyQuestions = graphene.List(surveyQuestions, question_type=graphene.String(description='background, feeling, somethingelse'), survey_id=graphene.Int())
     pollSurveyQuestion = graphene.List(surveyQuestion, question_id=graphene.Int())
     pollDayTrips = graphene.List(dayTrips, day=graphene.Date(), survey_id=graphene.Int())
     pollTripsLegs = graphene.List(tripsLegs, tripId=graphene.Int())
