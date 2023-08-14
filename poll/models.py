@@ -46,9 +46,9 @@ class SurveyInfo(models.Model):
     description = models.TextField(null=True)
 
     def get_random_startDate(self):
-        delta = timedelta(days=-self.days)
+        delta = timedelta(days=(self.days - 1))
         lastCalcDay = self.end_day + delta
-        multiply = (self.end_day - lastCalcDay) * random.random()
+        multiply = (lastCalcDay - self.start_day) * random.random()
         randomDate = self.start_day + multiply
         return randomDate
 
