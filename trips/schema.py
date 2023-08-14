@@ -15,7 +15,7 @@ from budget.enums import EmissionUnit, TimeResolution
 from budget.models import EmissionBudgetLevel
 from mocaf.graphql_gis import LineStringScalar, PointScalar
 from mocaf.graphql_helpers import GraphQLNeedConfirmation, paginate_queryset
-from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode
+from mocaf.graphql_types import AuthenticatedDeviceNode, DjangoNode, DjangoObjectType
 from trips_ingest.models import Location
 
 from .models import (
@@ -394,6 +394,11 @@ def set_emission_budget_levels(info, qs):
     info.context.monthly_budget = levels
 
 
+class DeviceQuery(DjangoObjectType):
+    class Meta:
+        model = Device
+        field = ("uuid", "survey_enabled", "mocaf_enabled", "enabled_at", "disabled_at", "created_at", "last_processed_data_received_at")
+
 class Query(graphene.ObjectType):
     trips = graphene.List(
         TripNode, offset=graphene.Int(), limit=graphene.Int(),
@@ -402,6 +407,13 @@ class Query(graphene.ObjectType):
     trip = graphene.Field(TripNode, id=graphene.ID(required=True))
     transport_modes = graphene.List(TransportModeNode)
     config = graphene.Field(ConfigNode)
+    device_data = graphene.Field(DeviceQuery)
+
+    def resolve_device_data(root, info):
+        dev = info.context.device
+        if not dev:
+            raise GraphQLError("Authentication required", [info])
+        return Device.objects.get(uuid=dev.uuid)
 
     def resolve_config(root, info):
         dev = info.context.device
@@ -441,7 +453,6 @@ class Query(graphene.ObjectType):
                 mode.default_variant = defaults.get(mode.id)
 
         return modes
-
 
 class BackgroundQuestionInput(graphene.InputObjectType):
     question_id = graphene.ID(required=True)
