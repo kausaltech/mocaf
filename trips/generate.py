@@ -230,33 +230,31 @@ class TripGenerator:
         mocaf_enabled = Device.objects.get(uuid=uuid).mocaf_enabled
         device_id = Device.objects.get(uuid=uuid).id
         current_date = date.today()
-        in_range = (Partisipants.objects
-                      .filter(device=device_id)
-                      .filter(start_date__lte=current_date)
-                      .filter(end_date__gte=current_date)
-                      .values('id'))
-        if (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0 ):
+        Partisipant = Partisipants.objects.filter(device=device_id, start_date__lte=current_date, end_date__gte=current_date).first()
+        if (survey_enabled == True and mocaf_enabled == True and Partisipant ):
             trip = Trip(device=device)
-            survey_trip = Trips(start_time=min_time, end_time=max_time)
-        elif(survey_enabled == True and len(in_range) > 0):
-            trip = Trips(start_time=min_time, end_time=max_time)
+            survey_trip = Trips(start_time=min_time, end_time=max_time, partisipant=Partisipant)
+        elif(survey_enabled == True and Partisipant):
+            trip = Trips(start_time=min_time, end_time=max_time, partisipant=Partisipant)
         else:
             trip = Trip(device=device)
-        if (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+        if (survey_enabled == True and mocaf_enabled == True and Partisipant):
             survey_trip.save()
         trip.save()
         pc.display('trip %d saved' % trip.id)
 
+        pc.display('survey enabled ')
+        pc.display(survey_enabled)
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
-            if(survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+            if(survey_enabled == True and mocaf_enabled == True and Partisipant):
                 leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
                 all_rows += leg_rows
                 last_ts = df.time.min()
                 leg_rows_survey, last_ts = self.save_survey_leg(survey_trip, leg_df, last_ts, pc)
                 all_rows_survey += leg_rows_survey
-            elif(survey_enabled == True and len(in_range) > 0):
+            elif(survey_enabled == True and Partisipant):
                 leg_rows, last_ts = self.save_survey_leg(trip, leg_df, last_ts, pc)
                 all_rows += leg_rows
             else:   
@@ -264,15 +262,15 @@ class TripGenerator:
                 all_rows += leg_rows
 
         pc.display('generated %d legs' % len(leg_ids))
-        if(survey_enabled == True and mocaf_enabled == True and len(in_range) > 0):
+        if(survey_enabled == True and mocaf_enabled == True and Partisipant):
             self.insert_leg_locations(all_rows)
             self.insert_survey_leg_locations(all_rows_survey)
-        elif(survey_enabled == True and len(in_range) > 0):
+        elif(survey_enabled == True and Partisipant):
             self.insert_survey_leg_locations(all_rows)
         else:
             self.insert_leg_locations(all_rows)
         
-        if (survey_enabled != True or (survey_enabled == True and mocaf_enabled == True and len(in_range) > 0)):
+        if (survey_enabled != True or (survey_enabled == True and mocaf_enabled == True and Partisipant)):
             pc.display('updating carbon footprint')
             trip.update_device_carbon_footprint()
         pc.display('trip %d save done' % trip.id)
