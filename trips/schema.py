@@ -162,30 +162,28 @@ class EnableMocafMutation(graphene.Mutation):
         return dict(ok=True, token=token)
 
 class EnableSurveyMutation(graphene.Mutation):
-    class Arguments: 
-        uuid = graphene.String(required=False)
     ok = graphene.Boolean()
-    def mutate(root, info, uuid):
-        dev = Device.objects.get(uuid=uuid)
-        if (dev.survey_enabled == True):
-            dev.survey_enabled = False
+    def mutate(root, info):
+        dev = info.context.device
+        device = Device.objects.get(uuid=dev.uuid)
+        if (device.survey_enabled == True):
+            device.survey_enabled = False
         else:
-            dev.survey_enabled = True
-        dev.save()
+            device.survey_enabled = True
+        device.save()
         return dict(ok=True)
 
 
 class EnableCarbonMutation(graphene.Mutation):
-    class Arguments: 
-        uuid = graphene.String(required=False)
     ok = graphene.Boolean()
-    def mutate(root, info, uuid):
-        dev = Device.objects.get(uuid=uuid)
-        if (dev.mocaf_enabled == True):
-            dev.mocaf_enabled = False
+    def mutate(root, info):
+        dev = info.context.device
+        device = Device.objects.get(uuid=dev.uuid)
+        if (device.mocaf_enabled == True):
+            device.mocaf_enabled = False
         else:
-            dev.mocaf_enabled = True
-        dev.save()
+            device.mocaf_enabled = True
+        device.save()
         return dict(ok=True)
 
 
