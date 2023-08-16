@@ -45,7 +45,7 @@ backQuestionAnswers: String = "" //User answers to back question on JSON form.
 feelingQuestionAnswers: String = "" //User answer to feeling questions on JSON form.
 surveyId: ID //Id of question survey.
 
-### Add trip to user. User trip times needs to be unigue. Returns trip Id.
+### Add trip to user. User trip times needs to be unique. Returns trip Id.
 pollAddTrip
 
 #### Arguments
@@ -56,7 +56,7 @@ startMunicipality: String //Trip start municiability (Tampere, Kangasala, Lempaa
 startTime: DateTime! //Trip start time.
 surveyId: ID! //Survey Id.
 
-### Add leg of the trip. Leg times need to be unigue. Trip needs to be unapproved.
+### Add leg of the trip. Leg times need to be unique. Trip needs to be unapproved.
 pollAddLeg
 
 #### Arguments
@@ -70,7 +70,7 @@ transportMode: String = "" //Transport mode of the trip.
 tripId: ID! //Trip Id.
 tripLength: Float //Lengt of the trip.
 
-### Update given information to trip. Trip times needs to be unigue. Its not possible to approve unpurpose or empty trip.
+### Update given information to trip. Trip times needs to be unique. Its not possible to approve unpurpose or empty trip.
 pollEditTrip
 
 #### Arguments
