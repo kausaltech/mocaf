@@ -135,7 +135,7 @@ legId: ID! //Leg Id.
 surveyId: ID! //Survey Id.
 tripId: ID! //Trip Id.
 
-### Compine two trip to one. Only unapproved trip can be compine.
+### Combine two trip to one. Only unapproved trip can be combine.
 pollJoinTrip
 
 #### Arguments
