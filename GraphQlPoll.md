@@ -45,7 +45,7 @@ backQuestionAnswers: String = "" //User answers to back question on JSON form.
 feelingQuestionAnswers: String = "" //User answer to feeling questions on JSON form.
 surveyId: ID //Id of question survey.
 
-### Add trip to user. User trip times needs to be unique. Returns trip Id.
+### Add trip to user. User trip times needs to be unigue. Returns trip Id.
 pollAddTrip
 
 #### Arguments
@@ -56,7 +56,7 @@ startMunicipality: String //Trip start municiability (Tampere, Kangasala, Lempaa
 startTime: DateTime! //Trip start time.
 surveyId: ID! //Survey Id.
 
-### Add leg of the trip. Leg times need to be unique. Trip needs to be unapproved.
+### Add leg of the trip. Leg times need to be unigue. Trip needs to be unapproved.
 pollAddLeg
 
 #### Arguments
@@ -135,7 +135,7 @@ legId: ID! //Leg Id.
 surveyId: ID! //Survey Id.
 tripId: ID! //Trip Id.
 
-### Combine two trip to one. Only unapproved trip can be combine.
+### Compine two trip to one. Only unapproved trip can be compine.
 pollJoinTrip
 
 #### Arguments
@@ -200,11 +200,32 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "469443b1-692
 ### Return surveys.
 pollSurveyInfo
 
+#### Fields
+id: ID!
+startDay: Date!
+endDay: Date!
+days: Int!
+maxBackQuestion: Int!
+description: String
+questionsSet: [surveyQuestion!]!
+partisipantsSet: [UserSurvey!]!
+
 ### Return user survey info.
 pollUserSurvey
 
 #### Arguments
 surveyId: Int //Survey Id.
+
+#### Fields
+id: ID!
+device: DeviceQuery
+surveyInfo: Survey
+startDate: Date!
+endDate: Date
+approved: Boolean!
+backQuestionAnswers: JSONString
+feelingQuestionAnswers: JSONString
+tripsSet: [dayTrips!]!
 
 ### Returns empty base questions.
 pollSurveyQuestions
@@ -213,11 +234,29 @@ pollSurveyQuestions
 questionType: String //Question type(background, feeling, somethingelse).
 surveyId: Int //Selected survey Id.
 
+#### Fields
+id: ID!
+startDay: Date!
+endDay: Date!
+days: Int!
+maxBackQuestion: Int!
+description: String
+questionsSet: [surveyQuestion!]!
+partisipantsSet: [UserSurvey!]!
+
 ### Return selected base question.
 pollSurveyQuestion.
 
 #### Arguments
 questionId: Int //Selected question Id.
+
+#### Fields
+id: ID!
+questionData: JSONString
+questionType: QuestionsQuestionType!
+isUse: Boolean!
+description: String
+surveyInfo: Survey
 
 ### Return user trips form selected day.
 pollDayTrips
@@ -226,16 +265,43 @@ pollDayTrips
 day: Date //Selected day.
 surveyId: Int //Selected survey Id.
 
+#### Fields
+id: ID!
+partisipant: UserSurvey
+startTime: DateTime!
+endTime: DateTime
+originalTrip: Boolean
+deleted: Boolean
+approved: Boolean!
+startMunicipality: String
+endMunicipality: String
+legsSet: [tripsLegs!]!
+userPurpose: String
+
 ### Return trip legs.
 pollTripsLegs
 
 #### Arguments
 tripId: Int // Selected trip Id.
 
+#### Fields
+id: ID!
+trip: dayTrips
+startTime: DateTime!
+endTime: DateTime!
+tripLength: Float
+carbonFootprint: Float
+nrPassengers: Int
+transportMode: String
+startLoc: PointScalar
+endLoc: PointScalar
+originalLeg: Boolean
+deleted: Boolean
+
 ### Device information.
 deviceData
 
-#### Arguments
+#### Fields
 id: ID!
 uuid: UUID!
 token: String
