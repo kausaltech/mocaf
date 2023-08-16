@@ -21,36 +21,49 @@ mutation @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "500a6615-
 }
 ```
 
-### Enable/disable survey on machine
+### Enable/disable survey on machine.
 enableSurvey
 
-### Enable/disable survey on machine
+### Enable/disable survey on machine.
 enableCarbon
 
 ### Add survey. Chk timeline.
+pollAddSurvey
+
+#### Parameters
 //days: User survey days
 //startDay: Survey start day
 //endDay: Survey end day
 ///description: Survey description
 ///maxBackQuestion: Amount of different survey questions, default 3
-pollAddSurvey
 
-### Add user to survey. Select randomly survey days to user
+
+### Add user to survey. Select randomly survey days to user.
+
+pollEnrollToSurvey
+
+#### Parameters
 //surveyId: Id of survey, where to take part.
 ///backQuestionAnswers: User answers to back question on JSON form
 ///feelingQuestionAnswers: User answer to feeling questions on JSON form
-pollEnrollToSurvey
 
 ### Add trip to user. User trip times needs to be unigue. Returns trip Id.
+
+pollAddTrip
+
+#### Parameters
 //startTime: Trip start time
 //endTime: Trip end time
 //surveyId: Survey Id
 ///purpose: Trip purpose (tyo, opiskelu, tyoasia, vapaaaika, ostos, muu) Default empty
 ///startMunicipality: Trip start municiability (Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu) Default Tampere
 ///endMunicipality: Trip end municiability (Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu) Default Tampere
-pollAddTrip
 
 ### Add leg of the trip. Leg times need to be unigue. Trip needs to be unapproved.
+
+pollAddLeg
+
+#### Parameters
 //tripId: Trip Id
 //startTime: Leg start time
 //endTime: Leg end time
@@ -60,9 +73,12 @@ pollAddTrip
 ///startLoc: Leg start location
 ///endLoc: Leg end location
 ///carbonFootprint: Leg carbon footprint
-pollAddLeg
 
 ### Update given information to trip. Trip times needs to be unigue. Its not possible to approve unpurpose or empty trip.
+
+pollEditTrip
+
+#### Parameters
 //tripId: Trip Id
 //surveyId: Survey Id
 ///startTime: Trip start time
@@ -71,63 +87,92 @@ pollAddLeg
 ///startMunicipality: Trip start municiability (Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu)
 ///endMunicipality: Trip start municiability (Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu)
 ///approved: Approved (True/False)
-pollEditTrip
 
 ### Mark user day ready. Chk that all day trip has purpose and leg.
-//selectedDate: Selected day
-//surveyId: Survey Id
+
 pollMarkUserDayReady
 
-### Mark user survey ready. Chk that all day has been approved.
+#### Parameters
+//selectedDate: Selected day
 //surveyId: Survey Id
+
+### Mark user survey ready. Chk that all day has been approved.
+
 pollApproveUserSurvey
 
+#### Parameters
+//surveyId: Survey Id
+
 ### Register user to lottery.
-//name: Name
-//email: Email
+
 pollEnrollLottery
 
-### Add empty question set in JSON form to database
+#### Parameters
+//name: Name
+//email: Email
+
+### Add empty question set in JSON form to database.
+
+pollAddQuestion
+
+#### Parameters
 //description: Description
 //question: Question in JSON form
 //questionType: Question type (background, feeling, somethingelse)
 ///surveyId: Survey Id, where Question belongs
-pollAddQuestion
 
 ### Add locations to leg. Chk time of the leg.
+
+pollLocationToLeg
+
+#### Parameters
 //loc: Loc point
 //legId: Leg Id
 //time: Point time
-pollLocationToLeg
 
 ### Delete trip. Only unapproved trip can be deleted.
-//tripId: Trip Id
-//surveyId: Survey Id
+
 pollDelTrip
 
+#### Parameters
+//tripId: Trip Id
+//surveyId: Survey Id
+
 ### Delete leg from the trip. Only leg from unapproved trip can be deleted.
+
+pollDelLeg
+
+#### Parameters
 //tripId: Trip Id
 //legId: Leg Id
 //surveyId: Survey Id
-pollDelLeg
 
 ### Compine two trip to one. Only unapproved trip can be compine.
+
+pollJoinTrip
+
+#### Parameters
 //tripId: First trip Id
 //trip2Id: Second trip Id
 //surveyId: Survey Id
-pollJoinTrip
 
 ### Split one trip to two. Only unapproved trip can be split.
+
+pollSplitTrip
+
+#### Parameters
 //tripId: Trip Id
 //afterLegId: Last leg of first trip.
 //surveyId: Survey Id
-pollSplitTrip
 
 ### Saves user answers to question.
+
+pollAddUserAnswerToQuestions
+
+#### Parameters
 //surveyId: Survey Id
 ///backQuestionAnswers: User answers to back question on JSON form
 ///feelingQuestionAnswers: User answer to feeling questions on JSON form
-pollAddUserAnswerToQuestions
 
 ## Queryt
 
@@ -168,31 +213,51 @@ query @device(uuid: "4922d7d7-956f-40d0-803f-7d06a0c75d40", token: "469443b1-692
 ```
 
 ### Return surveys.
+
 pollSurveyInfo
 
 ### Return user survey info.
-///surveyId: Survey Id
+
 pollUserSurvey
 
-### Returns empty base questions.
-//questionType: Question type(background, feeling, somethingelse)
+#### Parameters
 ///surveyId: Survey Id
+
+### Returns empty base questions.
+
 pollSurveyQuestions
 
+#### Parameters
+//questionType: Question type(background, feeling, somethingelse)
+///surveyId: Survey Id
+
 ### Return selected base question.
-//questionId
+
 pollSurveyQuestion.
 
+#### Parameters
+//questionId
+
 ### Return user trips form selected day.
-//day: Selected day
-///surveyId: Survey Id
+
 pollDayTrips
 
+#### Parameters
+//day: Selected day
+///surveyId: Survey Id
+
 ### Return trip legs.
-//tripId: Trip Id
+
 pollTripsLegs
 
-### Device information
+#### Parameters
+//tripId: Trip Id
+
+### Device information.
+
+deviceData
+
+#### Parameters
 ///id
 ///uuid
 ///token
@@ -214,4 +279,4 @@ pollTripsLegs
 ///lastProcessedDataReceivedAt
 ///trips
 ///partisipantsSet
-deviceData
+
