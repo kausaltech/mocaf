@@ -1,6 +1,6 @@
 # Poll GraphQl
 
-## Mutaatiot
+## Mutations
 
 ### Example mutation
 ```graphql
@@ -129,7 +129,7 @@ pollSplitTrip
 ///feelingQuestionAnswers: User answer to feeling questions on JSON form
 pollAddUserAnswerToQuestions
 
-## Queryt
+## Querys
 
 ### Example query
 ```graphql
