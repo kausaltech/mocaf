@@ -25,6 +25,7 @@ x-django-environment: &django-environment
   - PROMETHEUS_METRICS_AUTH_TOKEN
   - CUBEJS_URL=http://cubeserver:4000
   - CUBEJS_DB_PASS
+  - MAPBOX_ACCESS_TOKEN
 
 x-django-build: &django-build
   context: .

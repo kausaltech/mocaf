@@ -167,6 +167,8 @@ class TripGenerator:
 
         mode = self.atype_to_mode[df.iloc[0].atype]
 
+        #curl "https://api.mapbox.com/search/searchbox/v1/reverse?longitude=-118.471383&latitude=34.023653&language=de&access_token=YOUR_MAPBOX_ACCESS_TOKEN"
+        #https://docs.mapbox.com/api/search/search-box/
 
         leg = Legs(
             trip_id=trip.id,
