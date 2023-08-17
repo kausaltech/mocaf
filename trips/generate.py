@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 import sentry_sdk
 import geopandas as gpd
+import requests
 
 from calc.trips import (
     LOCAL_2D_CRS, read_locations, read_uuids, split_trip_legs, filter_trips
@@ -167,8 +168,20 @@ class TripGenerator:
 
         mode = self.atype_to_mode[df.iloc[0].atype]
 
-        #curl "https://api.mapbox.com/search/searchbox/v1/reverse?longitude=-118.471383&latitude=34.023653&language=de&access_token=YOUR_MAPBOX_ACCESS_TOKEN"
-        #https://docs.mapbox.com/api/search/search-box/
+
+ #       mycoord = SpatialReference(4326)
+ #       gcoord = SpatialReference(LOCAL_2D_CRS)
+ #       trans = CoordTransform(gcoord, mycoord)
+
+#        pnt = Point(start.x, start.y, srid=LOCAL_2D_CRS)
+#        pnt.transform(trans)
+#        lat = pnt.y
+ #       lon = pnt.x
+ #       coord_link = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" +  str(lat) + "&lon=" +  str(lon) + "&zoom=10&addressdetails=10"
+ #       request_json = requests.get(coord_link).json()
+ #       print(request_json.get("address").get("town"))
+
+  #      start_town = request_json.get("address").get("town")
 
         leg = Legs(
             trip_id=trip.id,
@@ -184,6 +197,43 @@ class TripGenerator:
         pc.display(str(leg))
 
         return rows, end.time
+
+    def save_survey_trip_town(self, tripObj, df, starttown):
+        if starttown:
+            time_loc = df.iloc[0][['time', 'x', 'y']]
+        else:
+            time_loc = df.iloc[-1][['time', 'x', 'y']]
+        mycoord = SpatialReference(4326)
+        gcoord = SpatialReference(LOCAL_2D_CRS)
+        trans = CoordTransform(gcoord, mycoord)
+
+        pnt = Point(time_loc.x, time_loc.y, srid=LOCAL_2D_CRS)
+        pnt.transform(trans)
+        lat = pnt.y
+        lon = pnt.x
+        coord_link = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" +  str(lat) + "&lon=" +  str(lon) + "&zoom=10&addressdetails=10"
+        request_json = requests.get(coord_link).json()
+
+        towndict = {"Tampere": "Tampere", "Kangasala": "Kangasala", "Pirkkala": "Pirkkala", 
+                    "Nokia": "Nokia", "Ylöjärvi": "Ylojarvi", "Lempäälä": "Lempaala", 
+                    "Vesilahti": "Vesilahti", "Orivesi": "Orivesi"}
+
+        start_town = request_json.get("address").get("town")
+
+        town = "muu"
+
+        if towndict.get(start_town):
+            town = towndict.get(start_town)
+
+        if starttown:
+            tripObj.start_municipality = town
+        else:
+            tripObj.end_municipality = town
+        
+        tripObj.save()
+
+        return
+    
 
     def save_trip(self, device, df, default_variants, uuid):
         pc = PerfCounter('generate_trips', show_time_to_last=True)
@@ -245,11 +295,15 @@ class TripGenerator:
         trip.save()
         pc.display('trip %d saved' % trip.id)
 
-        pc.display('survey enabled ')
-        pc.display(survey_enabled)
+        firstLeg = True
         leg_ids = df.leg_id.unique()
         for leg_id in leg_ids:
             leg_df = df[df.leg_id == leg_id]
+
+            if survey_enabled == True and Partisipant and firstLeg:
+                firstLeg = False
+                self.save_survey_trip_town(trip, leg_df, True)
+
             if(survey_enabled == True and mocaf_enabled == True and Partisipant):
                 leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
                 all_rows += leg_rows
@@ -262,6 +316,10 @@ class TripGenerator:
             else:   
                 leg_rows, last_ts = self.save_leg(trip, leg_df, last_ts, default_variants, pc)
                 all_rows += leg_rows
+
+        if survey_enabled == True and Partisipant and not firstLeg:
+            firstLeg = False
+            self.save_survey_trip_town(trip, leg_df, False)
 
         pc.display('generated %d legs' % len(leg_ids))
         if(survey_enabled == True and mocaf_enabled == True and Partisipant):

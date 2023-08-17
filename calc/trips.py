@@ -53,9 +53,9 @@ def read_locations(conn, uid, start_time=None, end_time=None, include_all=False)
 
     if start_time is None:
         if isinstance(end_time, datetime):
-            start_time = end_time - timedelta(days=14)
+            start_time = end_time - timedelta(days=140)
         else:
-            start_time = (date.today() - timedelta(days=14)).isoformat()
+            start_time = (date.today() - timedelta(days=140)).isoformat()
 
     params = dict(uuid=uid, start_time=start_time, end_time=end_time)
     query = 'EXECUTE read_locations(%(uuid)s, %(start_time)s, %(end_time)s)'
