@@ -358,7 +358,7 @@ class AddLeg(graphene.Mutation, AuthenticatedDeviceNode):
 
 class LocationToLeg(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
-        loc = location=graphene.Argument(PointScalar)
+        loc = graphene.Argument(PointScalar)
         leg_id = graphene.ID(required=True)
         time = graphene.DateTime(required=False, default_value = "")
     
