@@ -27,8 +27,11 @@ enableSurvey
 ### Enable/disable survey on machine.
 enableCarbon
 
-### Add survey. Chk timeline.
+### Add survey.
 pollAddSurvey
+
+#### Conditions
+Timeline.
 
 #### Arguments
 days: Int!  //User survey days.
@@ -45,8 +48,11 @@ backQuestionAnswers: String = "" //User answers to back question on JSON form.
 feelingQuestionAnswers: String = "" //User answer to feeling questions on JSON form.
 surveyId: ID //Id of question survey.
 
-### Add trip to user. User trip times needs to be unigue. Returns trip Id.
+### Add trip to user. Returns trip Id.
 pollAddTrip
+
+#### Conditions
+User trip times needs to be unigue.
 
 #### Arguments
 endMunicipality: String //Trip end municiability (Tampere, Kangasala, Lempaala, Nokia, Orivesi, Pirkkala, Vesilahti, Ylojarvi, muu) Default Tampere.
@@ -56,8 +62,12 @@ startMunicipality: String //Trip start municiability (Tampere, Kangasala, Lempaa
 startTime: DateTime! //Trip start time.
 surveyId: ID! //Survey Id.
 
-### Add leg of the trip. Leg times need to be unigue. Trip needs to be unapproved.
+### Add leg of the trip.
 pollAddLeg
+
+#### Conditions
+Leg times need to be unigue.
+Trip needs to be unapproved.
 
 #### Arguments
 carbonFootprint: String = "" //Leg carbon footprint.
@@ -70,8 +80,12 @@ transportMode: String = "" //Transport mode of the trip.
 tripId: ID! //Trip Id.
 tripLength: Float //Lengt of the trip.
 
-### Update given information to trip. Trip times needs to be unique. Its not possible to approve unpurpose or empty trip.
+### Update given information to trip.
 pollEditTrip
+
+#### Conditions
+Trip times needs to be unique. 
+Its not possible to approve unpurpose or empty trip.
 
 #### Arguments
 approved: Boolean //Approved (True/False).
@@ -83,15 +97,21 @@ startTime: DateTime = "" //Trip start time.
 surveyId: ID! //Survey Id.
 tripId: ID! //Trip Id.
 
-### Mark user day ready. Chk that all day trip has purpose and leg.
+### Mark user day ready.
 pollMarkUserDayReady
+
+#### Conditions
+All day trip needs to be purpose and leg.
 
 #### Arguments
 selectedDate: Date! //Selected day.
 surveyId: ID! //Survey Id.
 
-### Mark user survey ready. Chk that all day has been approved.
+### Mark user survey ready.
 pollApproveUserSurvey
+
+#### Conditions
+Every day needs to be approved.
 
 #### Arguments
 surveyId: ID //surveyId: Survey Id.
@@ -112,39 +132,54 @@ question: String! //Question in JSON form.
 questionType: String! //Question type (background, feeling, somethingelse).
 surveyId: ID = "" //Question survey.
 
-### Add locations to leg. Chk time of the leg.
+### Add locations to leg.
 pollLocationToLeg
+
+#### Conditions
+Time of the location needs to be inside leg times.
 
 #### Arguments
 legId: ID! //Leg Id.
 loc: PointScalar //Loc point.
 time: DateTime = "" //Point time.
 
-### Delete trip. Only unapproved trip can be deleted.
+### Delete trip.
 pollDelTrip
+
+#### Conditions
+Only unapproved trip can be deleted.
 
 #### Arguments
 surveyId: ID! //Survey Id.
 tripId: ID! //Trip Id.
 
-### Delete leg from the trip. Only leg from unapproved trip can be deleted.
+### Delete leg from the trip.
 pollDelLeg
+
+#### Conditions
+Only leg from unapproved trip can be deleted.
 
 #### Arguments
 legId: ID! //Leg Id.
 surveyId: ID! //Survey Id.
 tripId: ID! //Trip Id.
 
-### Compine two trip to one. Only unapproved trip can be compine.
+### Compine two trip to one.
 pollJoinTrip
+
+#### Conditions
+Only unapproved trips can be compine.
 
 #### Arguments
 surveyId: ID! //Survey Id.
 trip2Id: ID! //Second trip Id.
 tripId: ID! //First trip Id.
 
-### Split one trip to two. Only unapproved trip can be split.
+### Split one trip to two.
 pollSplitTrip
+
+#### Conditions
+Only unapproved trip can be split.
 
 #### Arguments
 afterLegId: ID! //Last leg of first trip.
