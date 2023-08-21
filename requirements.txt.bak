@@ -86,7 +86,6 @@ django-modeltrans==0.6.0
     # via -r requirements.in
 django-prometheus==2.1.0
     # via -r requirements.in
-django-queryset-csv==1.1.0
 django-taggit==1.4.0
     # via wagtail
 django-treebeard==4.5.1
