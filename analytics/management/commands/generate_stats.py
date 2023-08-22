@@ -12,7 +12,7 @@ from django.db.models.query_utils import Q
 from analytics.models import Area, DailyModeSummary, DailyPoiTripSummary, DailyTripSummary
 from django.conf import settings
 
-from trips.models import Trip, Leg, TransportMode, LOCAL_TZ
+from trips.models import BackgroundInfoQuestion, Trip, Leg, TransportMode, LOCAL_TZ
 from analytics.models import TripSummary, AreaType
 
 
@@ -253,7 +253,7 @@ def get_daily_device_trips(start_date: Optional[date] = None, end_date: Optional
 
     cursor = connection.cursor()
 
-    f = open('device_daily_trips.csv', 'w')
+    f = open('device_daily_trips.csv', 'w', encoding='utf8')
     out = csv.writer(f)
     out.writerow(['date', 'device', 'mode', 'mode_variant', 'length', 'carbon_footprint', 'mins'])
 
@@ -308,7 +308,14 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
                 WHERE
                     api.date = DATE(%(date)s)
                     AND api.device_id = dev.id
-            ) AS nr_queries
+            ) AS nr_queries,
+            (SELECT last_user_agent
+                FROM analytics_devicedailyapiactivity api
+                INNER JOIN trips_device dev ON (dev.uuid = d.uuid)
+                WHERE
+                    api.date = DATE(%(date)s)
+                    AND api.device_id = dev.id
+            ) AS user_agent
         FROM trips_leg leg
         INNER JOIN trips_trip t ON (leg.trip_id = t.id)
         INNER JOIN trips_device d ON (t.device_id = d.id)
@@ -328,7 +335,7 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
 
     f = open('device_daily_stats.csv', 'w')
     out = csv.writer(f)
-    out.writerow(['date', 'device', 'trip_count', 'first_post_code', 'nr_api_queries'])
+    out.writerow(['date', 'device', 'trip_count', 'first_post_code', 'nr_api_queries', 'user_agent'])
 
     while start_date < end_date:
         start_time = LOCAL_TZ.localize(datetime.combine(start_date, time(0)))
@@ -348,7 +355,7 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
             out.writerow([
                 start_date.isoformat(),
                 user_id,
-                row[1], row[2], row[3]
+                row[1], row[2], row[3], row[4]
             ])
 
         if len(unique_uuids) != len(unique_ids):
@@ -356,6 +363,16 @@ def get_daily_device_stats(start_date: Optional[date] = None, end_date: Optional
 
         print('%s: %d' % (start_date.isoformat(), len(unique_uuids)))
         start_date += timedelta(days=1)
+
+
+def get_questions():
+    qs = BackgroundInfoQuestion.objects.order_by('device').select_related('device')
+    f = open('background_questions.csv', 'w')
+    out = csv.writer(f)
+    out.writerow(['device', 'question', 'answer'])
+    for q in qs:
+        user_id = generate_device_id(q.device.uuid)
+        out.writerow([user_id, q.question, q.answer])
 
 
 class Command(BaseCommand):
@@ -370,6 +387,7 @@ class Command(BaseCommand):
         parser.add_argument('--poi', action='store_true')
         parser.add_argument('--daily-device-trips', action='store_true')
         parser.add_argument('--daily-device-stats', action='store_true')
+        parser.add_argument('--questions', action='store_true')
 
     def handle(self, *args, **options):
         area_types: list[AreaType]
@@ -415,3 +433,7 @@ class Command(BaseCommand):
 
         if options['daily_device_stats']:
             get_daily_device_stats(start_date=start_date, end_date=end_date)
+
+        if options['questions']:
+            get_questions()
+
