@@ -9,11 +9,11 @@ from django.utils.decorators import method_decorator
 from django.core.exceptions import PermissionDenied
 from wagtail.contrib.modeladmin.views import IndexView
 from wagtail.contrib.modeladmin.options import (
-    ModelAdmin, modeladmin_register)
+    ModelAdmin, modeladmin_register, ModelAdminGroup)
 from wagtail.contrib.modeladmin.helpers import AdminURLHelper, ButtonHelper
 from djqscsv import render_to_csv_response
 
-from .models import Lottery
+from .models import Lottery, Trips, Legs, SurveyInfo, Partisipants
 
 
 class ExportButtonHelper(ButtonHelper):
@@ -98,10 +98,53 @@ class ExportModelAdminMixin(object):
         return view_class.as_view(**kwargs)(request)
 
 
-@modeladmin_register
+#@modeladmin_register
 class LotteryAdmin(ExportModelAdminMixin, ModelAdmin):
     model = Lottery
     menu_icon = 'snippet'
     list_display = ['user_name', 'user_email']
     csv_export_fields = ['user_name', 'user_email']
     index_template_name = 'export_csv.html'
+
+#@modeladmin_register
+class TripAdmin(ExportModelAdminMixin, ModelAdmin):
+    model = Trips
+    menu_label = "Trips"
+    menu_icon = 'snippet'
+    list_display = ['start_time', 'end_time', 'start_municipality', 'end_municipality', 'original_trip', 'deleted', 'partisipant', 'purpose']
+ #   csv_export_fields = ['user_name', 'user_email']
+    index_template_name = 'export_csv.html'
+
+#@modeladmin_register
+class LegAdmin(ExportModelAdminMixin, ModelAdmin):
+    model = Legs
+    menu_label = "Legs"
+    menu_icon = 'snippet'
+    list_display = ['trip', 'start_time', 'end_time', 'trip_length', 'original_leg', 'deleted']
+ #   csv_export_fields = ['user_name', 'user_email']
+    index_template_name = 'export_csv.html'
+    
+#@modeladmin_register
+class SurveyInfoAdmin(ExportModelAdminMixin, ModelAdmin):
+    model = SurveyInfo
+    menu_icon = 'snippet'
+    list_display = ['start_day', 'end_day', 'days', 'max_back_question', 'description']
+ #   csv_export_fields = ['user_name', 'user_email']
+    index_template_name = 'export_csv.html'
+    
+#@modeladmin_register
+class PartisipantsAdmin(ExportModelAdminMixin, ModelAdmin):
+    model = Partisipants
+    menu_label = "Partisipants"
+    
+    menu_icon = 'snippet'
+    list_display = ['survey_info', 'start_date', 'end_date', 'approved', 'back_question_answers', 'feeling_question_answers']
+ #   csv_export_fields = ['user_name', 'user_email']
+    index_template_name = 'export_csv.html'
+    
+@modeladmin_register
+class PollGroup(ModelAdminGroup):
+    menu_label = "Poll"
+    
+    menu_icon = 'snippet'
+    items = (PartisipantsAdmin, SurveyInfoAdmin, LegAdmin, TripAdmin, LotteryAdmin)
