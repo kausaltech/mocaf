@@ -36,11 +36,19 @@ class Command(BaseCommand):
                 print('Saved %s' % level)
 
     def update_transport_mode_variants(self, mode, data):
-        variants = {x.identifier: x for x in mode.variants.all()}
+        variants: dict[str, TransportModeVariant] = {x.identifier: x for x in mode.variants.all()}
         for item in data:
-            variant = variants.get(item['identifier'])
+            id = item['identifier']
+            variant = variants.get(id)
             if variant is None:
-                variant = TransportModeVariant(mode=mode, identifier=item['identifier'])
+                old_id = item.get('old_identifier')
+                if old_id:
+                    variant = variants.get(old_id)
+                    if variant is not None:
+                        print('\tReplacing %s with %s' % (old_id, id))
+                        variant.identifier = id
+                if variant is None:
+                    variant = TransportModeVariant(mode=mode, identifier=id)
             else:
                 if self.only_new:
                     continue

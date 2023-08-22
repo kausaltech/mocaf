@@ -38,31 +38,173 @@ transport_modes:
     name: Henkilöauto
     name_en: Car
     emission_factor: 185.6
+    # variants:
+    #   - identifier: small_ice
+    #     name: Polttomoottoriauto (pieni)
+    #     name_en: Combustion engine (small)
+    #     emission_factor: 151.2
+    #   - identifier: average_ice
+    #     name: Polttomoottoriauto (keskikokoinen)
+    #     name_en: Combustion engine (medium)
+    #     emission_factor: 185.6
+    #   - identifier: large_ice
+    #     name: Polttomoottoriauto (suuri)
+    #     name_en: Combustion engine (large)
+    #     emission_factor: 203.3
+    #   - identifier: hybrid
+    #     name: Hybridi
+    #     name_en: Hybrid
+    #     emission_factor: 152
+    #   - identifier: bev
+    #     name: Täyssähkö
+    #     name_en: Battery electric
+    #     emission_factor: 55.4
+    #   - identifier: gas
+    #     name: Kaasu
+    #     name_en: Natural gas
+    #     emission_factor: 53.2
     variants:
-      - identifier: small_ice
-        name: Polttomoottoriauto (pieni)
-        name_en: Combustion engine (small)
-        emission_factor: 151.2
-      - identifier: average_ice
-        name: Polttomoottoriauto (keskikokoinen)
-        name_en: Combustion engine (medium)
-        emission_factor: 185.6
-      - identifier: large_ice
-        name: Polttomoottoriauto (suuri)
-        name_en: Combustion engine (large)
-        emission_factor: 203.3
-      - identifier: hybrid
-        name: Hybridi
-        name_en: Hybrid
-        emission_factor: 152
-      - identifier: bev
-        name: Täyssähkö
-        name_en: Battery electric
-        emission_factor: 55.4
-      - identifier: gas
-        name: Kaasu
-        name_en: Natural gas
-        emission_factor: 53.2
+      - identifier: petrol_big
+        name: Bensiini, iso auto
+        name_en: Petrol, large car
+        emission_factor: 241.0
+        old_identifier: large_ice
+
+      - identifier: petrol_medium
+        name: Bensiini, keskikokoinen auto
+        name_en: Petrol, medium car
+        emission_factor: 194.6
+        old_identifier: average_ice
+
+      - identifier: petrol_small
+        name: Bensiini, pieni auto
+        name_en: Petrol, small car
+        emission_factor: 182.6
+        old_identifier: small_ice
+
+      - identifier: diesel_big
+        name: Diesel, iso auto
+        name_en: Diesel, big
+        emission_factor: 205.8
+
+      - identifier: diesel_medium
+        name: Diesel, keskikokoinen auto
+        name_en: Diesel, medium size
+        emission_factor: 212.7
+
+      - identifier: diesel_small
+        name: Diesel, pieni auto
+        name_en: Diesel, small
+        emission_factor: 153.1
+
+      - identifier: biodiesel_big
+        name: Uusiutuva diesel, iso auto
+        name_en: Renewable diesel, big
+        emission_factor: 60.5
+
+      - identifier: biodiesel_medium
+        name: Uusiutuva diesel, keskikokoinen
+        name_en: Renewable diesel, medium
+        emission_factor: 54.8
+
+      - identifier: biodiesel_small
+        name: Uusiutuva diesel, pieni
+        name_en: Renewable diesel, small
+        emission_factor: 38.9
+
+      - identifier: bev_big
+        name: Täyssähkö, iso
+        name_en: Battery electric, big
+        emission_factor: 73.5
+
+      - identifier: bev_medium
+        name: Täyssähkö, keskikokoinen
+        name_en: Battery electric, medium
+        emission_factor: 58.6
+        old_identifier: bev
+
+      - identifier: bev_small
+        name: Täyssähkö, pieni
+        name_en: Battery electric, small
+        emission_factor: 41.0
+
+      - identifier: phev_petrol_big
+        name: Ladattava hybridi, bensiini, iso
+        name_en: Pluggable hybrid, petrol, big
+        emission_factor: 149.3
+
+      - identifier: phev_petrol_medium
+        name: Ladattava hybridi, bensiini, keskikokoinen
+        name_en: Pluggable hybrid, petrol, medium
+        emission_factor: 120.7
+
+      - identifier: phev_petrol_small
+        name: Ladattava hybridi, bensiini, pieni
+        name_en: Pluggable hybrid, petrol, small
+        emission_factor: 103.5
+
+      - identifier: phev_diesel_big
+        name: Ladattava hybridi, diesel, iso
+        name_en: Pluggable hybrid, diesel, big
+        emission_factor: 156.3
+
+      - identifier: phev_diesel_medium
+        name: Ladattava hybridi, diesel, keskikokoinen
+        name_en: Pluggable hybrid, diesel, medium
+        emission_factor: 131.8
+        old_identifier: hybrid
+
+      - identifier: phev_diesel_small
+        name: Ladattava hybridi, diesel, pieni
+        name_en: Pluggable hybrid, diesel, small
+        emission_factor: 108.7
+
+      - identifier: natural_gas_big
+        name: Maakaasu, iso
+        name_en: Natural gas, big
+        emission_factor: 246.5
+
+      - identifier: natural_gas_medium
+        name: Maakaasu, keskikokoinen
+        name_en: Natural gas, medium
+        emission_factor: 224.0
+
+      - identifier: natural_gas_small
+        name: Maakaasu, pieni
+        name_en: Natural gas, small
+        emission_factor: 192.4
+
+      - identifier: biogas_big
+        name: Biokaasu, iso
+        name_en: Biogas, big
+        emission_factor: 81.2
+
+      - identifier: biogas_medium
+        name: Biokaasu, keskikokoinen
+        name_en: Biogas, medium
+        emission_factor: 67.6
+        old_identifier: gas
+
+      - identifier: biogas_small
+        name: Biokaasu, pieni
+        name_en: Biogas, small
+        emission_factor: 55.9
+
+      - identifier: ethanol_big
+        name: Etanoli, iso
+        name_en: Ethanol, big
+        emission_factor: 56.9
+
+      - identifier: ethanol_medium
+        name: Etanoli, keskikokoinen
+        name_en: Ethanol, medium
+        emission_factor: 44.8
+
+      - identifier: ethanol_small
+        name: Etanoli, pieni
+        name_en: Ethanol, small
+        emission_factor: 36.0
+
   - identifier: bus
     name: Bussi
     name_en: Bus
