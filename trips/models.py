@@ -642,14 +642,14 @@ class UserLegUpdate(models.Model):
 
 
 class LegLocationQuerySet(models.QuerySet):
-    def _get_expired_query(self):
+    def _get_expired_query(self, buffer_hours: int = 0):
         now = timezone.now()
-        expiry_time = now - timedelta(hours=settings.ALLOWED_TRIP_UPDATE_HOURS)
+        expiry_time = now - timedelta(hours=settings.ALLOWED_TRIP_UPDATE_HOURS + buffer_hours)
         qs = Q(leg__start_time__lte=expiry_time)
         return qs
 
-    def expired(self):
-        return self.filter(self._get_expired_query())
+    def expired(self, buffer_hours: int = 0):
+        return self.filter(self._get_expired_query(buffer_hours))
 
     def active(self):
         return self.exclude(self._get_expired_query())
