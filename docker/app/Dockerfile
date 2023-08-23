@@ -22,6 +22,12 @@ RUN apt-get install -y python3.10 python3-pip libpython3.10-dev \
 	postgresql-client-common postgresql-client libpq-dev \
 	gettext git-core
 
+#RUN apt install -y libcairo2-dev pkg-config
+#RUN apt install -y pkg-config
+#RUN apt-get install sox ffmpeg libcairo2 libcairo2-dev
+#RUN apt-get install texlive-full
+#RUN pip3 install manimlib
+
 # Geodjango dependencies
 RUN apt-get install -y libproj-dev gdal-bin
 RUN apt-get install -y nodejs yarnpkg
@@ -32,6 +38,7 @@ RUN ln -fs /usr/bin/python3 /usr/bin/python
 #RUN pip install --upgrade pip
 RUN python3 -m pip install --upgrade pip
 RUN pip install wheel
+RUN pip install django-queryset-csv
 COPY requirements.txt requirements-prod.txt /code/
 RUN pip install -r /code/requirements-prod.txt -r /code/requirements.txt
 
