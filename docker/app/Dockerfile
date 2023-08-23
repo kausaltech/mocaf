@@ -22,16 +22,16 @@ RUN apt-get install -y python3.10 python3-pip libpython3.10-dev \
 	postgresql-client-common postgresql-client libpq-dev \
 	gettext git-core
 
+
 # Geodjango dependencies
 RUN apt-get install -y libproj-dev gdal-bin
 RUN apt-get install -y nodejs yarnpkg
 
-#RUN ln -fs /usr/bin/python3.10 /usr/bin/python3
 RUN ln -fs /usr/bin/python3 /usr/bin/python
-#RUN ln -fs /usr/bin/pip3 /usr/bin/pip
-#RUN pip install --upgrade pip
+
 RUN python3 -m pip install --upgrade pip
 RUN pip install wheel
+RUN pip install django-queryset-csv
 COPY requirements.txt requirements-prod.txt /code/
 RUN pip install -r /code/requirements-prod.txt -r /code/requirements.txt
 
