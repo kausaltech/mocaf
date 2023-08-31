@@ -46,6 +46,8 @@ services:
       - CUBEJS_DB_PASS
     volumes:
       - db_data:/var/lib/postgresql/data/
+    networks:
+      - mocaf-network
     ports:
       - "${DATABASE_PORT:-127.0.0.1:54320}:5432"
     healthcheck:
@@ -57,6 +59,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    networks:
+      - mocaf-network
     healthcheck:
       test: ["CMD", "redis-cli","ping"]
       interval: 10s
@@ -67,6 +71,8 @@ services:
     container_name: mocaf
     build: *django-build
     restart: always
+    networks:
+      - mocaf-network
     volumes:
       - mocaf_media:/srv/media
       - mocaf_build_cache:/root/.cache
@@ -89,6 +95,8 @@ services:
     container_name: mocaf_celery_trips_worker
     build: *django-build
     restart: always
+    networks:
+      - mocaf-network
     environment: *django-environment
     depends_on:
       app:
@@ -99,6 +107,8 @@ services:
     container_name: mocaf_celery_transitrt_worker
     build: *django-build
     restart: always
+    networks:
+      - mocaf-network
     environment: *django-environment
     depends_on:
       app:
@@ -109,6 +119,8 @@ services:
     container_name: mocaf_celery_notifications_worker
     build: *django-build
     restart: always
+    networks:
+      - mocaf-network
     environment: *django-environment
     depends_on:
       app:
@@ -119,14 +131,20 @@ services:
     container_name: mocaf_celery_beat
     build: *django-build
     restart: always
+    networks:
+      - mocaf-network
     environment: *django-environment
     depends_on:
       app:
         condition: service_healthy
-    command: celery beat
+    command: celery beat --schedule /schedulerdata/celerybeat-schedule
+    volumes:
+      - scheduler_data:/schedulerdata
 
   celery-exporter:
     image: ovalmoney/celery-exporter
+    networks:
+      - mocaf-network
     restart: always
     depends_on:
       - redis
@@ -137,6 +155,8 @@ services:
   cubeserver:
     container_name: mocaf_cubeserver
     restart: always
+    networks:
+      - mocaf-network
     environment:
       - CUBEJS_DB_USER=mocafcube
       - CUBEJS_DB_PASS=${CUBEJS_DB_PASS}
@@ -154,3 +174,8 @@ volumes:
   db_data:
   mocaf_media:
   mocaf_build_cache:
+  scheduler_data:
+
+networks:
+  mocaf-network:
+    name: mocaf_network
