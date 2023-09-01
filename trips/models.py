@@ -74,7 +74,6 @@ class Device(ExportModelOperationsMixin('device'), models.Model):
     disabled_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(null=True)
     last_processed_data_received_at = models.DateTimeField(null=True)
-    registered_to_survey_at = models.DateTimeField(null=True)
 
     objects = DeviceQuerySet.as_manager()
 
