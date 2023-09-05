@@ -142,9 +142,9 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 18 * 60 * 60,  # 18 hours
         }
     },
-      'send-no-recent-survey-trips-notifications': {
+      'send-no-trips-notifications': {
         'task': 'notifications.tasks.send_notifications',
-        'args': ('notifications.tasks.NoRecentSurveyTripsNotificationTask',),
+        'args': ('notifications.tasks.NoTripsNotificationTask',),
         'schedule': crontab(hour=10, minute=0),
         'options': {
             'expires': 2 * 24 * 60 * 60,  #  2 days
