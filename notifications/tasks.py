@@ -20,6 +20,7 @@ from budget.enums import PrizeLevel, TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
 from budget.tasks import MonthlyPrizeTask
 from trips.models import Device, DeviceQuerySet
+from poll.models import Partisipants
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
 
@@ -598,35 +599,30 @@ class NoRecentTripsNotificationTask(NotificationTask):
 
 
 @register_for_management_command
-class NoRecentSurveyTripsNotificationTask(NotificationTask):
+class NoTripsTask(NotificationTask):
     def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
-        super().__init__(EventTypeChoices.NO_RECENT_SURVEY_TRIPS, now, engine, dry_run, devices, force)
+        super().__init__(EventTypeChoices.NO_TRIPS, now, engine, dry_run, devices, force)
 
     def recipients(self):
         """Return devices that have not had any trips between 2 days after register."""
-        # Don't send anything to devices that already got a no-recent-trips notification in the last 7 days
-        avoid_duplicates_after = self.now - datetime.timedelta(days=7)
         already_notified_devices = (NotificationLogEntry.objects
                                     .filter(template__event_type=self.event_type)
-                                    .filter(sent_at__gte=avoid_duplicates_after)
+                                    .filter(sent_at__gte=F("poll_partisipants__registered_to_survey_at" + datetime.timedelta(days=2)))
                                     .values('device'))
         not_in_survey = (Device.objects
                          .filter(survey_enabled= not True)
                          .values('id'))
-        devices_with_recent_trips = (Device.objects
-                                     .filter(survey_enabled=True)
-                                     .filter(trips__legs__end_time__gt=F("poll_partisipants__registered_to_survey_at" + datetime.timedelta(days=2)))
-                                     .filter(trips__legs__end_time__lte=self.now)
-                                     .values('id'))
-        devices_with_recent_survey_trips = (Device.objects
-                                     .filter(survey_enabled=True)
-                                     .filter(poll_trips__poll_legs__end_time__gt=F("poll_partisipants__registered_to_survey_at" + datetime.timedelta(days=2)))
-                                     .filter(poll_trips__poll_legs__end_time__lte=self.now)
-                                     .values('id'))
+        
+        no_survey_trips = (Partisipants.objects
+                            .filter(poll_trips__poll_legs__start_time__gt=F("registered_to_survey_at"))
+                            .values('device'))
+        no_trips = (Partisipants.objects
+                    .filter(trips__legs__start_time__gt=F("registered_to_survey_at"))
+                    .values('device'))
         return (super().recipients()
-                .exclude(id__in=devices_with_recent_trips)
+                .exclude(id__in=no_survey_trips)
                 .exclude(id__in=already_notified_devices)
-                .exclude(id__in=devices_with_recent_survey_trips)
+                .exclude(id__in=no_trips)
                 .exclude(id__in=not_in_survey))
 
 @register_for_management_command
