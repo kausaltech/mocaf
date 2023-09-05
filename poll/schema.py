@@ -62,7 +62,7 @@ class ApproveUserSurvey(graphene.Mutation, AuthenticatedDeviceNode):
 
         okVal = True
         device = info.context.device
-        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         daysObj = DayInfo.objects.filter(partisipant=partisipantObj, approved=False)
 
@@ -155,7 +155,7 @@ class AddUserAnswerToQuestions(graphene.Mutation, AuthenticatedDeviceNode):
     @classmethod
     def mutate(cls, root, info, surveyId, back_question_answers = "", feeling_question_answers = ""):
         device = info.context.device
-        obj = Partisipants.objects.get(pk=surveyId,device=device)
+        obj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         if back_question_answers != "":
             obj.back_question_answers = back_question_answers
@@ -202,7 +202,7 @@ class MarkUserDayReady(graphene.Mutation, AuthenticatedDeviceNode):
     def mutate(cls, root, info, selectedDate,surveyId):
         device = info.context.device
 
-        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         tripsObj = Trips.objects.filter(partisipant=partisipantObj, start_time__date=selectedDate, deleted=False)
 
@@ -246,7 +246,7 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
         fixStartTime = start_time_d.astimezone(pytz.utc)
         fixEndTime = end_time_d.astimezone(pytz.utc)
 
-        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         tripsObjChk = Trips.objects.filter(start_time__gt=fixStartTime, start_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
         tripsObjChk2 = Trips.objects.filter(end_time__gt=fixStartTime, end_time__lt=fixEndTime, deleted=False, partisipant = partisipantObj)
@@ -394,7 +394,7 @@ class DelTrip(graphene.Mutation, AuthenticatedDeviceNode):
     def mutate(cls, root, info, trip_id, surveyId):
         device = info.context.device
 
-        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
@@ -420,7 +420,7 @@ class DelLeg(graphene.Mutation, AuthenticatedDeviceNode):
 
         try:
             with transaction.atomic():
-                partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+                partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
                 tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
@@ -465,7 +465,7 @@ class JoinTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         try:
             with transaction.atomic():
-                partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+                partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
                 tripKeepObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
                 tripRemoveObj = Trips.objects.get(partisipant=partisipantObj,pk=trip2_id)
@@ -514,7 +514,7 @@ class SplitTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         try:
             with transaction.atomic():
-                partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+                partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
                 oldTripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
@@ -583,7 +583,7 @@ class EditTrip(graphene.Mutation, AuthenticatedDeviceNode):
     def mutate(cls, root, info, trip_id, surveyId, start_time, end_time, purpose, start_municipality, end_municipality,approved):
         device = info.context.device
 
-        partisipantObj = Partisipants.objects.get(pk=surveyId,device=device)
+        partisipantObj = Partisipants.objects.get(survey_info=surveyId,device=device)
 
         fixStartTime = ""
         fixEndTime = ""
@@ -756,7 +756,7 @@ class Query(graphene.ObjectType):
             raise GraphQLError("Authentication required", [info])
 
         if survey_id != "":
-            return  Partisipants.objects.get(pk=survey_id,device=dev)
+            return  Partisipants.objects.get(survey_info=survey_id,device=dev)
         else:   
             return Partisipants.objects.filter(device=dev)
     
@@ -784,7 +784,7 @@ class Query(graphene.ObjectType):
 
         
         if survey_id != "":
-            partisipantObj = Partisipants.objects.get(pk=survey_id,device=dev)
+            partisipantObj = Partisipants.objects.get(survey_info=survey_id,device=dev)
         else:   
             partisipantObj = Partisipants.objects.filter(device=dev)[:1]
 

@@ -271,7 +271,11 @@ def filter_legs(time, x, y, atype, distance, loc_error, speed):
 
         dist = ((x[prev] - x[i]) ** 2 + (y[prev] - y[i]) ** 2) ** 0.5
         timediff = time[i] - time[prev]
-        calc_speed = dist / timediff
+        
+        calc_speed = 0
+        
+        if timediff != 0:
+            calc_speed = dist / timediff
 
         # If the speed based on (x, y) differs too much from speeds reported by GPS,
         # drop the previous sample as invalid.
