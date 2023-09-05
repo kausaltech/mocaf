@@ -219,7 +219,8 @@ class TripGenerator:
                     "Vesilahti": "Vesilahti", "Orivesi": "Orivesi"}
 
         start_town = request_json.get("address").get("town")
-
+        print('Saatu kaupunki')
+        print(start_town)
         town = "muu"
 
         if towndict.get(start_town):
