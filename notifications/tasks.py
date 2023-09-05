@@ -614,10 +614,10 @@ class NoTripsTask(NotificationTask):
                          .values('id'))
         
         has_survey_trips = (Partisipants.objects
-                            .filter(poll_trips__poll_legs__start_time__gt=F("registered_to_survey_at"))
+                            .filter(poll_trips__poll_legs__start_time__gte=F("registered_to_survey_at"))
                             .values('device'))
         has_trips = (Partisipants.objects
-                    .filter(trips__legs__start_time__gt=F("registered_to_survey_at"))
+                    .filter(trips__legs__start_time__gte=F("registered_to_survey_at"))
                     .values('device'))
         return (super().recipients()
                 .exclude(id__in=has_survey_trips)
