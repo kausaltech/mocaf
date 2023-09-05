@@ -613,16 +613,16 @@ class NoTripsTask(NotificationTask):
                          .filter(survey_enabled= not True)
                          .values('id'))
         
-        no_survey_trips = (Partisipants.objects
+        has_survey_trips = (Partisipants.objects
                             .filter(poll_trips__poll_legs__start_time__gt=F("registered_to_survey_at"))
                             .values('device'))
-        no_trips = (Partisipants.objects
+        has_trips = (Partisipants.objects
                     .filter(trips__legs__start_time__gt=F("registered_to_survey_at"))
                     .values('device'))
         return (super().recipients()
-                .exclude(id__in=no_survey_trips)
+                .exclude(id__in=has_survey_trips)
                 .exclude(id__in=already_notified_devices)
-                .exclude(id__in=no_trips)
+                .exclude(id__in=has_trips)
                 .exclude(id__in=not_in_survey))
 
 @register_for_management_command
