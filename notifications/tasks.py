@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.translation import override
 from importlib import import_module
+from django.db.models import F
 
 import sentry_sdk
 
@@ -19,6 +20,7 @@ from budget.enums import PrizeLevel, TimeResolution, EmissionUnit
 from budget.models import EmissionBudgetLevel
 from budget.tasks import MonthlyPrizeTask
 from trips.models import Device, DeviceQuerySet
+from poll.models import Partisipants
 from .engine import NotificationEngine
 from .models import EventTypeChoices, NotificationLogEntry, NotificationTemplate
 
@@ -595,6 +597,81 @@ class NoRecentTripsNotificationTask(NotificationTask):
                 .exclude(id__in=devices_with_recent_trips)
                 .exclude(id__in=already_notified_devices))
 
+
+@register_for_management_command
+class NoTripsTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.NO_TRIPS, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        """Return devices that have not had any trips between 2 days after register."""
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .filter(sent_at__gte=F("poll_partisipants__registered_to_survey_at" + datetime.timedelta(days=2)))
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        
+        has_survey_trips = (Partisipants.objects
+                            .filter(poll_trips__poll_legs__start_time__gte=F("registered_to_survey_at"))
+                            .values('device'))
+        has_trips = (Partisipants.objects
+                    .filter(trips__legs__start_time__gte=F("registered_to_survey_at"))
+                    .values('device'))
+        return (super().recipients()
+                .exclude(id__in=has_survey_trips)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=has_trips)
+                .exclude(id__in=not_in_survey))
+
+@register_for_management_command
+class SurveyNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.PART_OF_SURVEY, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        current_day = datetime.date.today()
+        avoid_duplicates_after = self.now - datetime.timedelta(days=7)
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .filter(sent_at__gte=avoid_duplicates_after)
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        no_start_day = (Device.objects
+                        .filter(survey_enabled=True)
+                        .filter(poll_partisipants__start_date__gt=current_day)
+                        .filter(poll_partisipants__start_date__lt=current_day)
+                        .values('id'))
+        
+        return (super().recipients()
+                .exclude(id__in=no_start_day)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=not_in_survey))
+    
+    
+@register_for_management_command
+class SurveyStartNotificationTask(NotificationTask):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
+        super().__init__(EventTypeChoices.SURVEY_START, now, engine, dry_run, devices, force)
+
+    def recipients(self):
+        already_notified_devices = (NotificationLogEntry.objects
+                                    .filter(template__event_type=self.event_type)
+                                    .values('device'))
+        not_in_survey = (Device.objects
+                         .filter(survey_enabled= not True)
+                         .values('id'))
+        devices_with_survey_not_starting = (Device.objects
+                                     .filter(survey_enabled=True)
+                                     .filter(poll_partisipants__start_date__gt=self.now)
+                                     .values('id'))
+        return (super().recipients()
+                .exclude(id__in=devices_with_survey_not_starting)
+                .exclude(id__in=already_notified_devices)
+                .exclude(id__in=not_in_survey))
 
 @shared_task
 def send_notifications(task_class, devices=None, **kwargs):

@@ -86,7 +86,7 @@ class Partisipants(models.Model):
 
     start_date = models.DateField(null=False)
     end_date = models.DateField(null=True)
-
+    registered_to_survey_at = models.DateTimeField(null=True)
 
     approved = models.BooleanField(null=False, default=False)
 

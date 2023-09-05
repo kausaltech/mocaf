@@ -111,7 +111,7 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
                 obj = Partisipants()
                 obj.device = info.context.device
                 obj.survey_info = SurveyInfo.objects.get(pk=surveyId)
-
+                dev = info.context.device
                 if back_question_answers != "":
                     obj.back_question_answers = back_question_answers
                 
@@ -119,7 +119,9 @@ class EnrollToSurvey(graphene.Mutation, AuthenticatedDeviceNode):
                     obj.feeling_question_answers = feeling_question_answers
 
                 obj.start_date = date.today()
-
+                obj.registered_to_survey_at = timezone.now()
+                dev.survey_enabled = True
+                dev.save()
                 obj.save()
 
                 surveyStartDate = obj.survey_info.get_random_startDate()

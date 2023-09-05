@@ -21,12 +21,15 @@ class EventTypeChoices(models.TextChoices):
     MONTHLY_SUMMARY_NO_LEVEL_REACHED = 'monthly_summary_no_level', _("Monthly summary (worse than bronze budget)")
     WELCOME_MESSAGE = 'welcome_message', _("Welcome message")
     NO_RECENT_TRIPS = 'no_recent_trips', _("No recent trips")
+    NO_TRIPS = 'no_trips', _("No trips after registered to survey")
     HEALTH_SUMMARY_GOLD = 'health_summary_gold', _("Health summary (gold-level budget)")
     HEALTH_SUMMARY_SILVER = 'health_summary_silver', _("Health summary (silver-level budget)")
     HEALTH_SUMMARY_BRONZE = 'health_summary_bronze', _("Health summary (bronze-level budget)")
     HEALTH_SUMMARY_NO_LEVEL_REACHED = 'health_summary_no_level', _("Health summary (worse than bronze budget)")
     HEALTH_SUMMARY_NO_DATA = 'health_summary_no_data', _("Health summary (no physical activity trips)")
     TIMED_MESSAGE = 'timed_message', _("Timed message")
+    PART_OF_SURVEY = 'part_of_survey', _("You are part of survey")
+    SURVEY_START = 'survey_start', _("Survey you have signed up for begins today")
 
 
 def example_month(language):
