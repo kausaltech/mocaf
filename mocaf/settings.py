@@ -52,7 +52,6 @@ env = environ.Env(
     PROMETHEUS_EXPORT_MIGRATIONS=(bool, False),
     POSTGRES_DB=(str, 'mocaf'),
     POSTGRES_PASSWORD=(str, 'abcdef'),
-    MAPBOX_ACCESS_TOKEN=(str, ''),
 )
 PROMETHEUS_EXPORT_MIGRATIONS = env('PROMETHEUS_EXPORT_MIGRATIONS')
 

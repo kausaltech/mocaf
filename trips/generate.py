@@ -168,21 +168,6 @@ class TripGenerator:
 
         mode = self.atype_to_mode[df.iloc[0].atype]
 
-
- #       mycoord = SpatialReference(4326)
- #       gcoord = SpatialReference(LOCAL_2D_CRS)
- #       trans = CoordTransform(gcoord, mycoord)
-
-#        pnt = Point(start.x, start.y, srid=LOCAL_2D_CRS)
-#        pnt.transform(trans)
-#        lat = pnt.y
- #       lon = pnt.x
- #       coord_link = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" +  str(lat) + "&lon=" +  str(lon) + "&zoom=10&addressdetails=10"
- #       request_json = requests.get(coord_link).json()
- #       print(request_json.get("address").get("town"))
-
-  #      start_town = request_json.get("address").get("town")
-
         leg = Legs(
             trip_id=trip.id,
             transport_mode=mode,
