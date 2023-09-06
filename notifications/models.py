@@ -73,6 +73,9 @@ available_variables = {
     EventTypeChoices.WELCOME_MESSAGE: [],
     EventTypeChoices.NO_RECENT_TRIPS: [],
     EventTypeChoices.TIMED_MESSAGE: [],
+    EventTypeChoices.SURVEY_START: [],
+    EventTypeChoices.PART_OF_SURVEY: [],
+    EventTypeChoices.NO_TRIPS: [],
 }
 
 variable_help_text = '<ul style="margin-left: 1em">'

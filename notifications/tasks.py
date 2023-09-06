@@ -146,7 +146,7 @@ class NotificationTask:
 
 @register_for_management_command
 class WelcomeNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
         super().__init__(EventTypeChoices.WELCOME_MESSAGE, now, engine, dry_run, devices, force)
 
     def recipients(self):
@@ -578,7 +578,7 @@ class HealthSummaryNotificationTask(NotificationTask):
 
 @register_for_management_command
 class NoRecentTripsNotificationTask(NotificationTask):
-    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False):
+    def __init__(self, now=None, engine=None, dry_run=False, devices=None, force=False, min_active_days=0):
         super().__init__(EventTypeChoices.NO_RECENT_TRIPS, now, engine, dry_run, devices, force)
 
     def recipients(self):
@@ -631,23 +631,13 @@ class SurveyNotificationTask(NotificationTask):
         super().__init__(EventTypeChoices.PART_OF_SURVEY, now, engine, dry_run, devices, force)
 
     def recipients(self):
-        current_day = datetime.date.today()
-        avoid_duplicates_after = self.now - datetime.timedelta(days=7)
         already_notified_devices = (NotificationLogEntry.objects
                                     .filter(template__event_type=self.event_type)
-                                    .filter(sent_at__gte=avoid_duplicates_after)
                                     .values('device'))
         not_in_survey = (Device.objects
                          .filter(survey_enabled= not True)
                          .values('id'))
-        no_start_day = (Device.objects
-                        .filter(survey_enabled=True)
-                        .filter(poll_partisipants__start_date__gt=current_day)
-                        .filter(poll_partisipants__start_date__lt=current_day)
-                        .values('id'))
-        
         return (super().recipients()
-                .exclude(id__in=no_start_day)
                 .exclude(id__in=already_notified_devices)
                 .exclude(id__in=not_in_survey))
     

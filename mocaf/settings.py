@@ -155,7 +155,7 @@ CELERY_BEAT_SCHEDULE = {
         'args': ('notifications.tasks.SurveyNotificationTask',),
         'schedule': crontab(hour=10, minute=0),
         'options': {
-            'expires': 2 * 24 * 60 * 60,  #  2 days
+            'expires': 23 * 60 * 60,  #  2 days
         }
     },
      'send-survey-start-notifications': {
@@ -163,7 +163,7 @@ CELERY_BEAT_SCHEDULE = {
         'args': ('notifications.tasks.SurveyStartNotificationTask',),
         'schedule': crontab(hour=10, minute=0),
         'options': {
-            'expires': 2 * 24 * 60 * 60,  #  2 days
+            'expires':  23 * 60 * 60,  #  2 days
         }
     },
     # TODO: Update the following.
