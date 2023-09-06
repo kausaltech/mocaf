@@ -218,13 +218,13 @@ class TripGenerator:
                     "Nokia": "Nokia", "Ylöjärvi": "Ylojarvi", "Lempäälä": "Lempaala", 
                     "Vesilahti": "Vesilahti", "Orivesi": "Orivesi"}
 
-        start_town = request_json.get("address").get("town")
-        print('Saatu kaupunki')
-        print(start_town)
         town = "muu"
 
-        if towndict.get(start_town):
-            town = towndict.get(start_town)
+        if request_json.get("name"):
+            start_town = request_json.get("name")
+
+            if towndict.get(start_town):
+                town = towndict.get(start_town)
 
         if starttown:
             tripObj.start_municipality = town
