@@ -7,6 +7,7 @@ from django.utils.timezone import make_aware, utc
 from trips.tests.factories import DeviceFactory, LegFactory, TripFactory
 from poll.tests.factories import (ParticipantsFactory, QuestionsFactory, LotteryFactory, LegsFactory, TripsFactory, SurveyInfoFactory)
 from trips.models import Device, Leg, Trip
+from freezegun import freeze_time
 
 pytestmark = pytest.mark.django_db
 
@@ -433,12 +434,13 @@ def test_enroll_lottery(graphql_client_query_data, uuid, token):
     
     assert data['pollEnrollLottery']['ok'] is True
 
+
 def test_add_survey(graphql_client_query_data, uuid, token):
     data = graphql_client_query_data(
         '''
         mutation($uuid: String!, $token: String!)
         @device(uuid: $uuid, token: $token) {
-            pollAddSurvey(days: 3, description: "kokeilu", startDay: "2023-07-15", endDay: "2023-07-17", maxBackQuestion: 3) {
+            pollAddSurvey(days: 3, description: "kokeilu", startDay: "2023-04-15", endDay: "2023-04-17", maxBackQuestion: 3) {
             ok
             }
         }
@@ -583,6 +585,7 @@ def test_survey_question_query(graphql_client_query_data, uuid, token):
     }
     assert data == expected
 
+@freeze_time("2023-07-15")
 def test_add_trip(graphql_client_query_data, uuid, token, partisipants,day_info):
     partisipants
     day_info
@@ -599,6 +602,7 @@ def test_add_trip(graphql_client_query_data, uuid, token, partisipants,day_info)
     )
     assert data['pollAddTrip']['ok'] == '1'
 
+@freeze_time("2023-07-15")
 def test_add_leg(graphql_client_query_data, uuid, token, survey_trip, day_info, partisipants):
     survey_trip
     day_info
@@ -616,6 +620,7 @@ def test_add_leg(graphql_client_query_data, uuid, token, survey_trip, day_info, 
     )
     assert data['pollAddLeg']['ok'] is True
 
+@freeze_time("2023-07-15")
 def test_del_leg(graphql_client_query_data, uuid, token, survey_leg):
     survey_leg
     data = graphql_client_query_data(
@@ -631,6 +636,7 @@ def test_del_leg(graphql_client_query_data, uuid, token, survey_leg):
     )
     assert data['pollDelLeg']['ok'] is True
 
+@freeze_time("2023-07-15")
 def test_del_trip(graphql_client_query_data, uuid, token, survey_trip):
     survey_trip
     data = graphql_client_query_data(
@@ -696,6 +702,7 @@ def test_trips_legs_query(graphql_client_query_data, uuid, token):
     }
     assert data == expected
 
+@freeze_time("2023-07-15")
 def test_join_trip(graphql_client_query_data, uuid, token, survey_trip, survey_trip2):
     survey_trip
     survey_trip2
@@ -712,6 +719,7 @@ def test_join_trip(graphql_client_query_data, uuid, token, survey_trip, survey_t
     )
     assert data['pollJoinTrip']['ok'] is True
 
+@freeze_time("2023-07-15")
 def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_leg2, day_info, partisipants):
     survey_leg
     survey_leg2
@@ -730,6 +738,7 @@ def test_split_trip(graphql_client_query_data, uuid, token, survey_leg, survey_l
     )
     assert data['pollSplitTrip']['ok'] is True
 
+@freeze_time("2023-07-15")
 def test_edit_trip_times(graphql_client_query_data, uuid, token, survey_trip, day_info, partisipants):
     survey_trip
     day_info
@@ -747,7 +756,7 @@ def test_edit_trip_times(graphql_client_query_data, uuid, token, survey_trip, da
     )
     assert data['pollEditTrip']['ok'] is True
 
-
+@freeze_time("2023-07-15")
 def test_mark_user_day_ready(graphql_client_query_data, uuid, token, day_info, partisipants):
     day_info
     partisipants

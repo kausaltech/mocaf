@@ -4,6 +4,7 @@ from budget.models import EmissionBudgetLevel
 from poll.models import SurveyInfo, Partisipants, DayInfo, Trips, Legs
 from django.utils.timezone import make_aware, utc
 from datetime import datetime
+from freezegun import freeze_time
 
 @pytest.fixture(autouse=True)
 def emission_budget_level_bronze():
@@ -54,6 +55,7 @@ def day_info(partisipants):
 #                                  approved=False,
 #                                  id=3)
 
+@freeze_time("2023-07-15")
 @pytest.fixture
 def survey_trip(partisipants):
     return Trips.objects.create(partisipant=partisipants,
@@ -67,6 +69,8 @@ def survey_trip(partisipants):
                                 approved=False,
                                 id=1)
 
+
+@freeze_time("2023-07-15")
 @pytest.fixture
 def survey_trip2(partisipants):
     return Trips.objects.create(partisipant=partisipants,
@@ -80,6 +84,7 @@ def survey_trip2(partisipants):
                                 approved=False,
                                 id=2)
 
+@freeze_time("2023-07-15")
 @pytest.fixture
 def survey_leg(survey_trip):
     return Legs.objects.create(trip=survey_trip,
@@ -95,6 +100,7 @@ def survey_leg(survey_trip):
                                deleted=False,
                                id=1)
 
+@freeze_time("2023-07-15")
 @pytest.fixture
 def survey_leg2(survey_trip):
     return Legs.objects.create(trip=survey_trip,

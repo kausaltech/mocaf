@@ -2,7 +2,7 @@ from django.db import models
 from enum import Enum
 from django.db import transaction
 from django.contrib.gis.db import models
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import random
 import logging
 import pytz
@@ -46,10 +46,16 @@ class SurveyInfo(models.Model):
     description = models.TextField(null=True)
 
     def get_random_startDate(self):
+        dt_now = date.today()
+        useStartDate = self.start_day
+
+        if dt_now > useStartDate:
+            useStartDate = dt_now
+
         delta = timedelta(days=(self.days - 1))
         lastCalcDay = self.end_day - delta
-        multiply = (lastCalcDay - self.start_day) * random.random()
-        randomDate = self.start_day + multiply
+        multiply = (lastCalcDay - useStartDate) * random.random()
+        randomDate = useStartDate + multiply
         return randomDate
 
 

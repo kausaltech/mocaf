@@ -32,6 +32,7 @@ RUN ln -fs /usr/bin/python3 /usr/bin/python
 RUN python3 -m pip install --upgrade pip
 RUN pip install wheel
 RUN pip install django-queryset-csv
+RUN pip install freezegun
 COPY requirements.txt requirements-prod.txt /code/
 RUN pip install -r /code/requirements-prod.txt -r /code/requirements.txt
 

@@ -3,6 +3,7 @@ from factory import SubFactory
 from factory.django import DjangoModelFactory
 from datetime import datetime
 from trips.tests.factories import DeviceFactory
+from freezegun import freeze_time
 
 class SurveyInfoFactory(DjangoModelFactory):
     class Meta:
@@ -38,7 +39,7 @@ class ParticipantsFactory(DjangoModelFactory):
 class DayInfoFactory(DjangoModelFactory):
     class Meta:
         model = 'poll.DayInfo'
-    participants = SubFactory(ParticipantsFactory)
+    participant = SubFactory(ParticipantsFactory)
     date = make_aware(datetime(2023,7,15),utc)
     poll_approved = 'No'
 
@@ -48,6 +49,7 @@ class LotteryFactory(DjangoModelFactory):
     user_name = 'testUser'
     user_email = 'test@mail.com'
 
+@freeze_time("2023-07-15")
 class TripsFactory(DjangoModelFactory):
     class Meta:
         model = 'poll.Trips'
@@ -58,6 +60,7 @@ class TripsFactory(DjangoModelFactory):
     deleted = False
     t_id = 1
 
+@freeze_time("2023-07-15")
 class LegsFactory(DjangoModelFactory):
     class Meta:
         model = 'poll.Legs'

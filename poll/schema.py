@@ -265,7 +265,7 @@ class AddTrip(graphene.Mutation, AuthenticatedDeviceNode):
         fixEndTime = end_time_d.astimezone(pytz.utc)
 
         dt_now = datetime.today()
-        timetestVal = end_time + timedelta(days=4)
+        timetestVal = end_time + timedelta(days=3)
         if dt_now > timetestVal:
             raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -312,7 +312,7 @@ class AddLeg(graphene.Mutation, AuthenticatedDeviceNode):
         fixEndTime = end_time_d.astimezone(pytz.utc)
 
         dt_now = datetime.today()
-        timetestVal = end_time + timedelta(days=4)
+        timetestVal = end_time + timedelta(days=3)
         if dt_now > timetestVal:
             raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -434,7 +434,7 @@ class AddLegs(graphene.Mutation, AuthenticatedDeviceNode):
             fixEndTime = end_time_d.astimezone(pytz.utc)
 
             dt_now = datetime.today()
-            timetestVal = end_time + timedelta(days=4)
+            timetestVal = end_time + timedelta(days=3)
             if dt_now > timetestVal:
                 raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -525,7 +525,7 @@ class LocationToLeg(graphene.Mutation, AuthenticatedDeviceNode):
         legsObj = Legs.objects.get(pk=leg_id)
 
         dt_now = datetime.today()
-        timetestVal = time + timedelta(days=4)
+        timetestVal = time + timedelta(days=3)
         if dt_now > timetestVal:
             raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -558,8 +558,8 @@ class DelTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-        dt_now = datetime.today()
-        timetestVal = tripObj.end_time + timedelta(days=4)
+        dt_now = LOCAL_TZ.localize(datetime.today())
+        timetestVal = tripObj.end_time + timedelta(days=3)
         if dt_now > timetestVal:
             raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -588,8 +588,9 @@ class DelTrips(graphene.Mutation, AuthenticatedDeviceNode):
 
             tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-            dt_now = datetime.today()
-            timetestVal = tripObj.end_time + timedelta(days=4)
+            dt_now = LOCAL_TZ.localize(datetime.today())
+            timetestVal = tripObj.end_time + timedelta(days=3)
+
             if dt_now > timetestVal:
                 raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -598,7 +599,7 @@ class DelTrips(graphene.Mutation, AuthenticatedDeviceNode):
 
             tripObj.deleteTrip()
 
-            return dict(ok=True)
+        return dict(ok=True)
 
 class DelLeg(graphene.Mutation, AuthenticatedDeviceNode):
     class Arguments:
@@ -619,8 +620,8 @@ class DelLeg(graphene.Mutation, AuthenticatedDeviceNode):
 
                 tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-                dt_now = datetime.today()
-                timetestVal = tripObj.end_time + timedelta(days=4)
+                dt_now = LOCAL_TZ.localize(datetime.today())
+                timetestVal = tripObj.end_time + timedelta(days=3)
                 if dt_now > timetestVal:
                     raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -670,8 +671,8 @@ class JoinTrip(graphene.Mutation, AuthenticatedDeviceNode):
                 tripKeepObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
                 tripRemoveObj = Trips.objects.get(partisipant=partisipantObj,pk=trip2_id)
 
-                dt_now = datetime.today()
-                timetestVal = tripRemoveObj.end_time + timedelta(days=4)
+                dt_now = LOCAL_TZ.localize(datetime.today())
+                timetestVal = tripRemoveObj.end_time + timedelta(days=3)
                 if dt_now > timetestVal:
                     raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -723,8 +724,8 @@ class SplitTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
                 oldTripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-                dt_now = datetime.today()
-                timetestVal = oldTripObj.end_time + timedelta(days=4)
+                dt_now = LOCAL_TZ.localize(datetime.today())
+                timetestVal = oldTripObj.end_time + timedelta(days=3)
                 if dt_now > timetestVal:
                     raise GraphQLError('Dates can be edited only three days', [info])
 
@@ -821,8 +822,8 @@ class EditTrip(graphene.Mutation, AuthenticatedDeviceNode):
 
         tripObj = Trips.objects.get(partisipant=partisipantObj,pk=trip_id)
 
-        dt_now = datetime.today()
-        timetestVal = tripObj.end_time + timedelta(days=4)
+        dt_now = LOCAL_TZ.localize(datetime.today())
+        timetestVal = tripObj.end_time + timedelta(days=3)
         if dt_now > timetestVal:
             raise GraphQLError('Dates can be edited only three days', [info])
 
